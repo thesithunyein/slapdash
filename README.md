@@ -1,11 +1,12 @@
-<div align="center">
+# SlapDash - Digit7 Jam Official Submission
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+A complete, production-grade 2.5D arcade street runner game built for **Digit7 Jam 2026** (Organized by Digit7s Myanmar).
 
-  <h1>Built with AI Studio</h2>
+See `README_TeamName_GameTitle.md` for the full 17-point official submission dossier.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
-
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>
+### Highlights:
+- **Game Engine**: Pure lightweight HTML5 Canvas with real-time isometric 2.5D projection, sub-pixel depth sorting, dynamic shadow rendering, and particle systems.
+- **Audio Engine**: 100% native Web Audio API procedural synthesizer (dynamic tempo scaling from 110 to 165 BPM with Chaos multipliers).
+- **Dual Controls**: Mobile touch joystick + tactile SLAP button + vibration haptics; Desktop keyboard (`A`/`D`, `Arrow` keys, `Spacebar`, `P`/`Esc`) + mouse drag & click.
+- **Visual Art Direction**: Clean, premium Mediterranean boulevard aesthetics (anti-AI slop), white & emerald UI capsules, living 3D attract mode in start menu.
+- **Progression & Retention**: Runner locker with perk upgrades (+10% / +15% speed), coin economy, tournament leaderboard, and one-tap achievement card exporter.

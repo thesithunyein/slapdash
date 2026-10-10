@@ -1,0 +1,6 @@
+{
+  "name": "SlapDash",
+  "description": "A fast, hilarious 2.5D arcade runner where you slap quirky market pedestrians, dodge crazy obstacles, charge the Chaos Meter, and escape the enraged chasing mob!",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
