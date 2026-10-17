@@ -1,164 +1,174 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Hand, MousePointer } from 'lucide-react';
+import React, { useRef, useState } from 'react';
 import { InputState } from '../game/types.ts';
+import { Hand } from 'lucide-react';
 
 interface TouchControlsProps {
   input: InputState;
   onSlap: () => void;
-  isPaused: boolean;
+  isPaused?: boolean;
 }
 
-export const TouchControls: React.FC<TouchControlsProps> = ({
-  input,
-  onSlap,
-  isPaused,
-}) => {
-  const joystickBaseRef = useRef<HTMLDivElement>(null);
-  const [stickPos, setStickPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+export const TouchControls: React.FC<TouchControlsProps> = ({ input, onSlap, isPaused }) => {
+  const joystickBaseRef = useRef<HTMLDivElement | null>(null);
+  const [knobOffset, setKnobOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isJoystickActive, setIsJoystickActive] = useState<boolean>(false);
   const [isSlapPressed, setIsSlapPressed] = useState<boolean>(false);
-  const activeTouchIdRef = useRef<number | null>(null);
-  const baseCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const activePointerIdRef = useRef<number | null>(null);
 
-  // Update base center coordinates on mount / resize
-  const updateBaseCenter = useCallback(() => {
-    if (joystickBaseRef.current) {
-      const rect = joystickBaseRef.current.getBoundingClientRect();
-      baseCenterRef.current = {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-      };
-    }
-  }, []);
-
-  useEffect(() => {
-    updateBaseCenter();
-    window.addEventListener('resize', updateBaseCenter);
-    return () => window.removeEventListener('resize', updateBaseCenter);
-  }, [updateBaseCenter]);
-
-  // Touch handlers for joystick
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (isPaused) return;
-    const touch = e.changedTouches[0];
-    activeTouchIdRef.current = touch.identifier;
-    updateBaseCenter();
-    handleTouchMove(e);
+  const resetJoystick = () => {
+    activePointerIdRef.current = null;
+    setIsJoystickActive(false);
+    setKnobOffset({ x: 0, y: 0 });
+    input.keys.left = false;
+    input.keys.right = false;
+    input.joystick.active = false;
+    input.joystick.x = 0;
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (isPaused || activeTouchIdRef.current === null) return;
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const touch = e.changedTouches[i];
-      if (touch.identifier === activeTouchIdRef.current) {
-        const dx = touch.clientX - baseCenterRef.current.x;
-        const dy = touch.clientY - baseCenterRef.current.y;
-        const maxRadius = 45;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+  const processJoystickMovement = (clientX: number, clientY: number) => {
+    if (!joystickBaseRef.current) return;
+    const rect = joystickBaseRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
 
-        let clampedX = dx;
-        let clampedY = dy;
-        if (dist > maxRadius) {
-          clampedX = (dx / dist) * maxRadius;
-          clampedY = (dy / dist) * maxRadius;
-        }
+    const deltaX = clientX - centerX;
+    const deltaY = clientY - centerY;
 
-        setStickPos({ x: clampedX, y: clampedY });
-        input.joystick.active = true;
-        input.joystick.x = clampedX / maxRadius; // -1 to 1
-        input.joystick.y = clampedY / maxRadius;
-        break;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const maxRadius = rect.width * 0.45;
+
+    const clampedDist = Math.min(distance, maxRadius);
+    const angle = Math.atan2(deltaY, deltaX);
+
+    const knobX = Math.cos(angle) * clampedDist;
+    const knobY = Math.sin(angle) * clampedDist;
+
+    setKnobOffset({ x: knobX, y: knobY });
+
+    // Smooth analog lateral strength (-1.0 to 1.0)
+    const normalizedX = knobX / maxRadius;
+    const deadzone = 0.15;
+
+    if (Math.abs(normalizedX) > deadzone) {
+      input.joystick.active = true;
+      input.joystick.x = normalizedX;
+      if (normalizedX < 0) {
+        input.keys.left = true;
+        input.keys.right = false;
+      } else {
+        input.keys.left = false;
+        input.keys.right = true;
       }
+    } else {
+      input.joystick.active = false;
+      input.joystick.x = 0;
+      input.keys.left = false;
+      input.keys.right = false;
     }
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      if (e.changedTouches[i].identifier === activeTouchIdRef.current) {
-        activeTouchIdRef.current = null;
-        setStickPos({ x: 0, y: 0 });
-        input.joystick.active = false;
-        input.joystick.x = 0;
-        input.joystick.y = 0;
-        break;
-      }
+  // Pointer event handlers with pointer capture (supports Touch, Pen & Mouse)
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isPaused || activePointerIdRef.current !== null) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+
+    activePointerIdRef.current = e.pointerId;
+    setIsJoystickActive(true);
+    processJoystickMovement(e.clientX, e.clientY);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isJoystickActive || isPaused || e.pointerId !== activePointerIdRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    processJoystickMovement(e.clientX, e.clientY);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerId === activePointerIdRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
+      resetJoystick();
     }
   };
 
   return (
-    <div className="absolute inset-x-0 bottom-0 p-4 md:p-8 pointer-events-none z-20 select-none flex items-end justify-between">
-      {/* Left: Virtual Thumb Joystick in Crisp Frosted White */}
-      <div
-        ref={joystickBaseRef}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
-        className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-white/95 border-2 border-slate-200/90 backdrop-blur-xl pointer-events-auto flex items-center justify-center relative touch-none shadow-[0_12px_36px_rgba(0,0,0,0.12)] active:border-emerald-500 transition-colors"
-      >
-        {/* Subtle Crosshair Guide Ring */}
-        <div className="absolute inset-4 rounded-full border border-slate-200 pointer-events-none" />
-
-        {/* Joystick Stick Knob in Emerald Green */}
+    <div className="absolute inset-x-0 bottom-0 pb-[max(1.25rem,env(safe-area-inset-bottom))] px-4 md:px-8 pointer-events-none z-30 flex items-end justify-between select-none">
+      {/* Left: Virtual Thumb Joystick in Wrackline Neo-Brutalist Tactile Cream */}
+      <div className="flex flex-col items-center gap-1.5 pointer-events-auto">
         <div
-          className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 shadow-[0_6px_20px_rgba(16,185,129,0.4)] border-2 border-white pointer-events-none transition-transform duration-75 flex items-center justify-center"
-          style={{
-            transform: `translate(${stickPos.x}px, ${stickPos.y}px)`,
-          }}
+          ref={joystickBaseRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          aria-label="Steer joystick"
+          className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-[#FDFBF7]/90 backdrop-blur-xs border-2 border-[#17181C] shadow-[0_4px_0_#17181C] relative flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
         >
-          <div className="w-4 h-4 rounded-full bg-white/70 shadow-inner" />
-        </div>
-      </div>
+          {/* Crosshairs */}
+          <div className="absolute inset-x-2 h-[2px] bg-[#17181C]/15 pointer-events-none" />
+          <div className="absolute inset-y-2 w-[2px] bg-[#17181C]/15 pointer-events-none" />
 
-      {/* Desktop PC Keyboard & Mouse Control Guide (Clean White Card) */}
-      <div className="hidden md:flex flex-col items-center gap-1.5 bg-white/95 backdrop-blur-xl px-4 py-2.5 rounded-2xl border border-slate-200/90 text-slate-700 text-xs font-semibold shadow-[0_8px_32px_rgba(0,0,0,0.08)]">
-        <div className="flex items-center gap-1.5 text-slate-700 text-[11px]">
-          <kbd className="px-1.5 py-0.5 bg-slate-100 rounded-md border border-slate-300 font-mono text-slate-800 shadow-sm">A</kbd>
-          <kbd className="px-1.5 py-0.5 bg-slate-100 rounded-md border border-slate-300 font-mono text-slate-800 shadow-sm">D</kbd>
-          <span className="text-slate-400 font-normal">or</span>
-          <kbd className="px-1.5 py-0.5 bg-slate-100 rounded-md border border-slate-300 font-mono text-slate-800 shadow-sm">◄</kbd>
-          <kbd className="px-1.5 py-0.5 bg-slate-100 rounded-md border border-slate-300 font-mono text-slate-800 shadow-sm">►</kbd>
-          <span className="text-slate-500 font-medium ml-0.5">Steer</span>
-        </div>
-        <div className="flex items-center gap-2 text-emerald-700 text-[11px] font-bold">
-          <div className="flex items-center gap-1">
-            <kbd className="px-2 py-0.5 bg-emerald-50 rounded-md border border-emerald-300 font-mono text-emerald-800 shadow-sm">SPACE</kbd>
-            <span className="text-slate-400 font-normal">or</span>
-            <span className="inline-flex items-center gap-0.5 text-emerald-700">
-              <MousePointer className="w-3 h-3" />
-              <span>CLICK</span>
-            </span>
+          {/* Tactile Thumb Knob in Deep Cobalt */}
+          <div
+            className={`w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#24698F] border-2 border-[#17181C] shadow-[0_3px_0_#10364C] flex items-center justify-center transition-transform ${
+              isJoystickActive ? 'scale-105 shadow-[0_1px_0_#10364C]' : 'scale-100'
+            }`}
+            style={{
+              transform: `translate(${knobOffset.x}px, ${knobOffset.y}px)`,
+            }}
+          >
+            <div className="w-4 h-4 rounded-full bg-white/30 border border-white/50" />
           </div>
-          <span>to SLAP!</span>
         </div>
+
+        {/* Desktop Keyboard Cues */}
+        <span className="hidden md:inline-block font-game text-[10px] text-[#17181C]/60 bg-[#FDFBF7]/80 px-2 py-0.5 rounded-md border border-[#17181C]/30 shadow-[0_1px_0_#17181C]">
+          [A] [D] / [◄] [►] STEER
+        </span>
       </div>
 
-      {/* Right: Big Action Tactile SLAP Button in Emerald Green */}
-      <button
-        onTouchStart={(e) => {
-          e.preventDefault();
-          setIsSlapPressed(true);
-          onSlap();
-        }}
-        onTouchEnd={() => setIsSlapPressed(false)}
-        onTouchCancel={() => setIsSlapPressed(false)}
-        onMouseDown={() => {
-          setIsSlapPressed(true);
-          onSlap();
-        }}
-        onMouseUp={() => setIsSlapPressed(false)}
-        onMouseLeave={() => setIsSlapPressed(false)}
-        aria-label="Slap"
-        className={`w-24 h-24 md:w-28 md:h-28 rounded-full pointer-events-auto transition-transform flex flex-col items-center justify-center gap-1 shadow-[0_12px_36px_rgba(16,185,129,0.45)] border-4 border-white active:scale-90 ${
-          isSlapPressed
-            ? 'bg-gradient-to-br from-emerald-600 to-teal-700 scale-95 shadow-[0_4px_16px_rgba(16,185,129,0.6)]'
-            : 'bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 shadow-[0_12px_36px_rgba(16,185,129,0.45)] hover:scale-105'
-        }`}
-      >
-        <Hand className="w-8 h-8 md:w-10 md:h-10 text-white fill-white drop-shadow" />
-        <span className="text-white font-black text-xs md:text-sm tracking-wider uppercase drop-shadow">
-          SLAP!
+      {/* Right: Tactile Neo-Brutalist SLAP! Button in Punch Coral */}
+      <div className="flex flex-col items-center gap-1.5 pointer-events-auto">
+        <button
+          onPointerDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsSlapPressed(true);
+            onSlap();
+          }}
+          onPointerUp={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsSlapPressed(false);
+          }}
+          onPointerCancel={(e) => {
+            setIsSlapPressed(false);
+          }}
+          aria-label="Slap action button"
+          className={`w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-[#FF4757] hover:bg-[#E25B45] text-white border-3 border-[#17181C] shadow-[0_6px_0_#17181C] active:translate-y-[2px] active:shadow-[0_2px_0_#17181C] flex flex-col items-center justify-center transition-all cursor-pointer touch-none ${
+            isSlapPressed ? 'translate-y-[2px] shadow-[0_2px_0_#17181C]' : ''
+          }`}
+        >
+          <Hand className="w-8 h-8 md:w-9 md:h-9 stroke-[2.5] -rotate-12 mb-0.5 drop-shadow-[0_2px_0_#17181C]" />
+          <span className="font-game text-base md:text-lg tracking-wider text-white drop-shadow-[0_1px_0_#17181C]">
+            SLAP!
+          </span>
+        </button>
+
+        {/* Desktop Keyboard Cue */}
+        <span className="hidden md:inline-block font-game text-[10px] text-[#17181C]/60 bg-[#FDFBF7]/80 px-2 py-0.5 rounded-md border border-[#17181C]/30 shadow-[0_1px_0_#17181C]">
+          [SPACE] SLAP
         </span>
-      </button>
+      </div>
     </div>
   );
 };

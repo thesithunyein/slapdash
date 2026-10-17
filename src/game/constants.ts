@@ -105,5 +105,5 @@ export const BYSTANDER_TEMPLATES: BystanderTemplate[] = [
 export const COMIC_WORDS = ['SLAP!', 'POW!', 'WHACK!', 'BONK!', 'SMACK!', 'BAM!', 'KAPOW!'];
 
 export const ROAD_WIDTH = 400; // Spacious 3-lane boulevard (-200 to 200)
-export const SLAP_REACH = 95; // Extended reach distance for comfortable slap hitbox
+export const SLAP_REACH = 110; // Extended reach distance for comfortable slap hitbox
 export const MOB_SAFE_DISTANCE = 45; // Minimum distance before mob catches player

@@ -44,6 +44,7 @@ export interface Bystander {
   accessory: 'hat' | 'glasses' | 'phone' | 'fish' | 'fruit';
   slapped: boolean;
   wobble: number;
+  inStrikeRange?: boolean;
   flyingAccessory?: {
     x: number;
     y: number;
@@ -175,4 +176,5 @@ export interface GameStats {
   comboStreak: number;
   maxCombo: number;
   longestChaseEscape: number;
+  mobDistance?: number;
 }

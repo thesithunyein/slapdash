@@ -10,9 +10,10 @@ import { CHARACTER_SKINS, DEFAULT_LEADERBOARD } from './game/constants.ts';
 import { sounds } from './game/SoundEngine.ts';
 import { HUD } from './components/HUD.tsx';
 import { TouchControls } from './components/TouchControls.tsx';
-import { StartScreen } from './components/StartScreen.tsx';
+import { StartScreen, PACE_MODES, PaceMode } from './components/StartScreen.tsx';
 import { GameOverModal } from './components/GameOverModal.tsx';
 import { LeaderboardModal } from './components/LeaderboardModal.tsx';
+import { GuideModal } from './components/GuideModal.tsx';
 import { Play } from 'lucide-react';
 
 export default function App() {
@@ -22,8 +23,11 @@ export default function App() {
 
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [selectedSkin, setSelectedSkin] = useState<CharacterSkin>(CHARACTER_SKINS[0]);
+  const [selectedPace, setSelectedPace] = useState<PaceMode>(PACE_MODES[1]); // Default: RUSH
   const [isMuted, setIsMuted] = useState<boolean>(sounds.getMuted());
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState<boolean>(false);
+  const [showGuide, setShowGuide] = useState<boolean>(false);
+  const [hurtFlash, setHurtFlash] = useState<boolean>(false);
 
   // Persistent Unlocked Skins
   const [unlockedSkinIds, setUnlockedSkinIds] = useState<string[]>(() => {
@@ -96,12 +100,18 @@ export default function App() {
     }
   }, [selectedSkin.id]);
 
+  const handleHurtFlash = useCallback(() => {
+    setHurtFlash(true);
+    setTimeout(() => setHurtFlash(false), 240);
+  }, []);
+
   // Initialize GameEngine
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
 
-    const engine = new GameEngine(canvasRef.current, handleStatsUpdate);
+    const engine = new GameEngine(canvasRef.current, handleStatsUpdate, handleHurtFlash);
     engineRef.current = engine;
+    engine.paceMultiplier = selectedPace.multiplier;
 
     const handleResize = () => {
       if (!containerRef.current || !engineRef.current) return;
@@ -118,14 +128,75 @@ export default function App() {
       window.removeEventListener('resize', handleResize);
       engine.destroy();
     };
-  }, [handleStatsUpdate]);
+  }, [handleStatsUpdate, handleHurtFlash]);
 
-  // Keyboard controls listener
+  // Fullscreen toggle helper
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  // Keyboard controls listener (Wrackline Style Shortcuts)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const engine = engineRef.current;
+
+      // Global Shortcuts
+      if (e.code === 'KeyM') {
+        handleToggleMute();
+        return;
+      }
+      if (e.code === 'KeyH' || e.key === '?') {
+        setShowGuide((prev) => !prev);
+        return;
+      }
+      if (e.code === 'KeyF') {
+        toggleFullscreen();
+        return;
+      }
+
+      // Title Screen Shortcuts: 1, 2, 3 for pace
+      if (gameState === 'MENU') {
+        if (e.code === 'Digit1' || e.code === 'Numpad1') {
+          sounds.playClick();
+          setSelectedPace(PACE_MODES[0]);
+          if (engine) engine.paceMultiplier = PACE_MODES[0].multiplier;
+          return;
+        }
+        if (e.code === 'Digit2' || e.code === 'Numpad2') {
+          sounds.playClick();
+          setSelectedPace(PACE_MODES[1]);
+          if (engine) engine.paceMultiplier = PACE_MODES[1].multiplier;
+          return;
+        }
+        if (e.code === 'Digit3' || e.code === 'Numpad3') {
+          sounds.playClick();
+          setSelectedPace(PACE_MODES[2]);
+          if (engine) engine.paceMultiplier = PACE_MODES[2].multiplier;
+          return;
+        }
+        if (e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault();
+          handleStartGame();
+          return;
+        }
+      }
+
+      // Game Over Shortcuts: R to restart
+      if (gameState === 'GAMEOVER') {
+        if (e.code === 'KeyR' || e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault();
+          handleRestart();
+          return;
+        }
+      }
+
       if (!engine) return;
 
+      // In-game steering & slapping
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         engine.input.keys.left = true;
       } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
@@ -160,10 +231,11 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, []);
+  }, [gameState, selectedPace]);
 
   const handleStartGame = () => {
     if (engineRef.current) {
+      engineRef.current.paceMultiplier = selectedPace.multiplier;
       engineRef.current.setSkin(selectedSkin);
       engineRef.current.startGame();
     }
@@ -171,6 +243,7 @@ export default function App() {
 
   const handleRestart = () => {
     if (engineRef.current) {
+      engineRef.current.paceMultiplier = selectedPace.multiplier;
       engineRef.current.restartGame();
     }
   };
@@ -198,12 +271,33 @@ export default function App() {
   };
 
   const handleSlap = () => {
-    if (engineRef.current && gameState === 'PLAYING') {
+    if (engineRef.current) {
       engineRef.current.requestSlap();
     }
   };
 
-  // Pointer/mouse tracking for PC and touch-drag steering on canvas
+  const handleUnlockSkin = (skin: CharacterSkin) => {
+    if (stats.totalCoinsCollected >= skin.cost) {
+      const remainingCoins = stats.totalCoinsCollected - skin.cost;
+      const updatedSkins = [...unlockedSkinIds, skin.id];
+      setUnlockedSkinIds(updatedSkins);
+      setSelectedSkin(skin);
+      if (engineRef.current) engineRef.current.setSkin(skin);
+
+      setStats((prev) => ({
+        ...prev,
+        totalCoinsCollected: remainingCoins,
+      }));
+
+      try {
+        localStorage.setItem('slap_run_unlocked_skins', JSON.stringify(updatedSkins));
+        localStorage.setItem('slap_run_total_coins', String(remainingCoins));
+      } catch {}
+      sounds.playPowerup();
+    }
+  };
+
+  // Pointer drag steering on canvas
   const isPointerDownRef = useRef<boolean>(false);
   const pointerStartXRef = useRef<number>(0);
   const pointerStartTimeRef = useRef<number>(0);
@@ -212,62 +306,46 @@ export default function App() {
     if (gameState !== 'PLAYING') return;
     isPointerDownRef.current = true;
     pointerStartXRef.current = e.clientX;
-    pointerStartTimeRef.current = Date.now();
+    pointerStartTimeRef.current = performance.now();
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isPointerDownRef.current || gameState !== 'PLAYING' || !engineRef.current) return;
+    if (!isPointerDownRef.current || !engineRef.current || gameState !== 'PLAYING') return;
+
     const deltaX = e.clientX - pointerStartXRef.current;
-    if (Math.abs(deltaX) > 10) {
-      const maxDrag = Math.min(window.innerWidth * 0.25, 120);
-      const steerX = Math.max(-1, Math.min(1, deltaX / maxDrag));
+    const threshold = 12;
+
+    if (Math.abs(deltaX) > threshold) {
+      const steerStrength = Math.min(1.0, Math.max(-1.0, deltaX / 60));
       engineRef.current.input.joystick.active = true;
-      engineRef.current.input.joystick.x = steerX;
+      engineRef.current.input.joystick.x = steerStrength;
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isPointerDownRef.current) return;
     isPointerDownRef.current = false;
-    const duration = Date.now() - pointerStartTimeRef.current;
-    const deltaX = Math.abs(e.clientX - pointerStartXRef.current);
-
-    // If quick click/tap without dragging, trigger SLAP!
-    if (duration < 280 && deltaX < 18) {
-      handleSlap();
-    }
 
     if (engineRef.current) {
       engineRef.current.input.joystick.active = false;
       engineRef.current.input.joystick.x = 0;
     }
-  };
 
-  const handleUnlockSkin = (skin: CharacterSkin) => {
-    if (stats.totalCoinsCollected >= skin.cost && !unlockedSkinIds.includes(skin.id)) {
-      sounds.playUnlock();
-      const remainingCoins = stats.totalCoinsCollected - skin.cost;
-      const updatedUnlocked = [...unlockedSkinIds, skin.id];
-      setUnlockedSkinIds(updatedUnlocked);
-      setStats((prev) => ({ ...prev, totalCoinsCollected: remainingCoins }));
-      setSelectedSkin(skin);
-      if (engineRef.current) {
-        engineRef.current.stats.totalCoinsCollected = remainingCoins;
-        engineRef.current.setSkin(skin);
-      }
-      try {
-        localStorage.setItem('slap_run_unlocked_skins', JSON.stringify(updatedUnlocked));
-        localStorage.setItem('slap_run_total_coins', String(remainingCoins));
-      } catch {}
+    const elapsed = performance.now() - pointerStartTimeRef.current;
+    const deltaX = Math.abs(e.clientX - pointerStartXRef.current);
+
+    // Short tap = Slap!
+    if (elapsed < 240 && deltaX < 18) {
+      handleSlap();
     }
   };
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-screen h-[100dvh] overflow-hidden bg-sky-200 flex items-center justify-center select-none"
+      className="relative w-screen h-screen overflow-hidden select-none bg-[#D6E6F2] font-ui touch-none"
     >
-      {/* 2.5D Arcade Canvas Viewport with PC & Mobile Pointer Drag/Click */}
+      {/* 2.5D Arcade Canvas Viewport */}
       <canvas
         ref={canvasRef}
         onPointerDown={handlePointerDown}
@@ -277,13 +355,18 @@ export default function App() {
         className="w-full h-full block touch-none cursor-pointer"
       />
 
-      {/* Start Screen */}
+      {/* Start / Menu Screen in Wrackline Neo-Brutalist Design */}
       {gameState === 'MENU' && (
         <StartScreen
           highScore={stats.highScore}
           totalCoins={stats.totalCoinsCollected}
           selectedSkin={selectedSkin}
           unlockedSkinIds={unlockedSkinIds}
+          selectedPace={selectedPace}
+          onSelectPace={(pace) => {
+            setSelectedPace(pace);
+            if (engineRef.current) engineRef.current.paceMultiplier = pace.multiplier;
+          }}
           onSelectSkin={(skin) => {
             setSelectedSkin(skin);
             if (engineRef.current) engineRef.current.setSkin(skin);
@@ -293,6 +376,8 @@ export default function App() {
           isMuted={isMuted}
           onToggleMute={handleToggleMute}
           onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+          onOpenGuide={() => setShowGuide(true)}
+          onToggleFullscreen={toggleFullscreen}
         />
       )}
 
@@ -304,10 +389,11 @@ export default function App() {
           onToggleMute={handleToggleMute}
           isPaused={gameState === 'PAUSED'}
           onTogglePause={handleTogglePause}
+          hurtFlash={hurtFlash}
         />
       )}
 
-      {/* Mobile & PC Controls Overlay */}
+      {/* Mobile & PC Touch Controls */}
       {gameState === 'PLAYING' && engineRef.current && (
         <TouchControls
           input={engineRef.current.input}
@@ -316,26 +402,54 @@ export default function App() {
         />
       )}
 
-      {/* Pause Overlay */}
+      {/* Neo-Brutalist Tactile Pause Overlay */}
       {gameState === 'PAUSED' && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md select-none">
-          <div className="bg-white/95 border border-slate-200/90 p-6 rounded-3xl text-center max-w-xs w-full shadow-[0_20px_50px_rgba(0,0,0,0.18)]">
-            <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">GAME PAUSED</h3>
-            <button
-              onClick={handleTogglePause}
-              className="w-full py-3.5 px-6 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:brightness-105 text-white font-black text-base uppercase tracking-wider rounded-2xl shadow-[0_10px_30px_rgba(16,185,129,0.35)] flex items-center justify-center gap-2 active:scale-95 transition-transform"
-            >
-              <Play className="w-5 h-5 fill-white" />
-              <span>RESUME RUN</span>
-            </button>
+        <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-[#17181C]/55 backdrop-blur-xs select-none">
+          <div className="bg-[#FDFBF7] border-3 border-[#17181C] p-6 rounded-3xl text-center max-w-xs w-full shadow-[0_8px_0_#17181C]">
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#17181C]/60 block mb-1">
+              ARCADE RUN
+            </span>
+            <h3 className="font-game text-2xl md:text-3xl font-bold text-[#17181C] mb-4 tracking-wide">
+              GAME PAUSED
+            </h3>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={handleTogglePause}
+                className="w-full py-3.5 px-6 bg-[#24698F] hover:bg-[#1B5575] text-white font-game text-base uppercase tracking-wider rounded-2xl border-2 border-[#17181C] shadow-[0_4px_0_#17181C] active:translate-y-[2px] active:shadow-[0_1px_0_#17181C] flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <Play className="w-5 h-5 fill-white" />
+                <span>RESUME RUN</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  sounds.playStart();
+                  handleRestart();
+                }}
+                className="w-full py-3 px-6 bg-[#FDFBF7] hover:bg-[#EAD7B0] text-[#17181C] font-game text-base uppercase tracking-wider rounded-2xl border-2 border-[#17181C] shadow-[0_4px_0_#17181C] active:translate-y-[2px] active:shadow-[0_1px_0_#17181C] flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <span>RESTART</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  sounds.playClick();
+                  handleHome();
+                }}
+                className="w-full py-2.5 px-6 bg-[#FDFBF7] hover:bg-[#EAD7B0] text-[#17181C]/80 font-game text-sm uppercase tracking-wider rounded-2xl border-2 border-[#17181C] shadow-[0_3px_0_#17181C] active:translate-y-[2px] active:shadow-[0_1px_0_#17181C] flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <span>QUIT TO MENU</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Game Over Modal */}
+      {/* Game Over Screen in Wrackline Neo-Brutalist Faceted Scorecard Style */}
       {gameState === 'GAMEOVER' && (
         <GameOverModal
           stats={stats}
+          paceName={selectedPace.name}
           onRestart={handleRestart}
           onHome={handleHome}
           onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
@@ -349,6 +463,11 @@ export default function App() {
           playerScore={stats.highScore}
           onClose={() => setIsLeaderboardOpen(false)}
         />
+      )}
+
+      {/* How To Play Guide Modal */}
+      {showGuide && (
+        <GuideModal onClose={() => setShowGuide(false)} />
       )}
     </div>
   );

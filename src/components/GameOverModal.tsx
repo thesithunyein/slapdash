@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { GameStats } from '../game/types.ts';
 import { sounds } from '../game/SoundEngine.ts';
-import { RotateCcw, Home, Trophy, Hand, Flame, Coins, ShieldAlert, Share2, Download, Check } from 'lucide-react';
+import { SlapDashLogo } from './SlapDashLogo.tsx';
+import { buildShareCard, sanitizeName, SHARE_NAME_KEY } from '../game/shareCard.ts';
 
 interface GameOverModalProps {
   stats: GameStats;
+  paceName?: string;
   onRestart: () => void;
   onHome: () => void;
   onOpenLeaderboard: () => void;
@@ -12,250 +14,234 @@ interface GameOverModalProps {
 
 export const GameOverModal: React.FC<GameOverModalProps> = ({
   stats,
+  paceName = 'RUSH',
   onRestart,
   onHome,
   onOpenLeaderboard,
 }) => {
-  const [copied, setCopied] = useState<boolean>(false);
-  const [downloading, setDownloading] = useState<boolean>(false);
-  const isNewHighScore = stats.score > 0 && stats.score >= stats.highScore;
+  const isNewBest = stats.score > 0 && stats.score >= stats.highScore;
 
-  // Copy score to clipboard
-  const handleCopyScore = () => {
-    sounds.playClick();
-    const text = `🏆 SlapDash Rampage!\nScore: ${stats.score.toLocaleString()} points\n👋 Slaps: ${stats.slapsCount}\n🔥 Max Multiplier: ${stats.maxCombo > 0 ? `${stats.maxCombo}x` : '1x'}\n🪙 Coins: ${stats.coins}\nCan you outrun the mob? Play now!`;
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }).catch(() => {});
+  // Player Name for Share Card (saved in localStorage, just like wrackline)
+  const [playerName, setPlayerName] = useState<string>(() => {
+    try {
+      return localStorage.getItem(SHARE_NAME_KEY) || '';
+    } catch {}
+    return '';
+  });
+
+  const [askName, setAskName] = useState<boolean>(false);
+  const [nameDraft, setNameDraft] = useState<string>('');
+  const [cardState, setCardState] = useState<'IDLE' | 'WORKING' | 'DONE'>('IDLE');
+  const [shareNote, setShareNote] = useState<string>('');
+
+  const submitName = (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = sanitizeName(nameDraft);
+    setPlayerName(clean);
+    try {
+      localStorage.setItem(SHARE_NAME_KEY, clean);
+    } catch {}
+    setAskName(false);
+    generateAndDownloadCard(clean);
   };
 
-  // Generate & Download high-res achievement run badge image via canvas
-  const handleDownloadCard = () => {
+  const handleShare = () => {
     sounds.playClick();
-    setDownloading(true);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 640;
-    canvas.height = 720;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Background gradient: clean white & emerald
-    const grad = ctx.createLinearGradient(0, 0, 0, 720);
-    grad.addColorStop(0, '#FFFFFF');
-    grad.addColorStop(0.5, '#F0FDF4');
-    grad.addColorStop(1, '#DCFCE7');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 640, 720);
-
-    // Decorative Emerald Border
-    ctx.strokeStyle = '#10B981';
-    ctx.lineWidth = 14;
-    ctx.strokeRect(10, 10, 620, 700);
-
-    // Header Badge
-    ctx.fillStyle = '#059669';
-    ctx.beginPath();
-    ctx.roundRect(170, 45, 300, 44, 22);
-    ctx.fill();
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = "900 20px 'Plus Jakarta Sans', system-ui, sans-serif";
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('SLAPDASH CHAMPION', 320, 67);
-
-    // Score Label & Big Value
-    ctx.fillStyle = '#64748B';
-    ctx.font = "700 16px 'Plus Jakarta Sans', system-ui, sans-serif";
-    ctx.fillText('OFFICIAL RUN SCORE', 320, 140);
-
-    ctx.fillStyle = '#0F172A';
-    ctx.font = "900 68px 'JetBrains Mono', monospace";
-    ctx.fillText(stats.score.toLocaleString(), 320, 205);
-
-    // High Score Badge
-    if (isNewHighScore) {
-      ctx.fillStyle = '#F59E0B';
-      ctx.beginPath();
-      ctx.roundRect(200, 250, 240, 36, 18);
-      ctx.fill();
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = "900 16px 'Plus Jakarta Sans', system-ui, sans-serif";
-      ctx.fillText('★ NEW HIGH SCORE ★', 320, 268);
+    if (!playerName) {
+      setNameDraft('');
+      setAskName(true);
+      return;
     }
-
-    // Stats Grid Container
-    ctx.fillStyle = '#FFFFFF';
-    ctx.strokeStyle = '#E2E8F0';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(60, 310, 520, 180, 24);
-    ctx.fill();
-    ctx.stroke();
-
-    // 3 Stat Columns
-    const cols = [
-      { label: 'SLAPS LANDED', val: `${stats.slapsCount}`, col: 146 },
-      { label: 'MAX COMBO', val: `${stats.maxCombo > 0 ? `${stats.maxCombo}x` : '1x'}`, col: 320 },
-      { label: 'COINS LOOTED', val: `${stats.coins}`, col: 494 },
-    ];
-
-    cols.forEach((c) => {
-      ctx.fillStyle = '#64748B';
-      ctx.font = "700 13px 'Plus Jakarta Sans', system-ui, sans-serif";
-      ctx.fillText(c.label, c.col, 365);
-
-      ctx.fillStyle = '#059669';
-      ctx.font = "900 36px 'JetBrains Mono', monospace";
-      ctx.fillText(c.val, c.col, 420);
-    });
-
-    // Date & Footer stamp
-    ctx.fillStyle = '#94A3B8';
-    ctx.font = "600 14px 'Plus Jakarta Sans', system-ui, sans-serif";
-    ctx.fillText(`Recorded on ${new Date().toLocaleDateString()} · Digit7 Tournament Verified`, 320, 540);
-
-    // App Branding
-    ctx.fillStyle = '#047857';
-    ctx.font = "900 24px 'Plus Jakarta Sans', system-ui, sans-serif";
-    ctx.fillText('🏃 SLAPDASH: 3D ARCADE RAMPAGE', 320, 620);
-
-    // Download file
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `slapdash_score_${stats.score}.png`;
-    a.click();
-    setDownloading(false);
+    generateAndDownloadCard(playerName);
   };
+
+  const generateAndDownloadCard = async (name: string) => {
+    setCardState('WORKING');
+    try {
+      const blob = await buildShareCard({
+        score: stats.score,
+        highScore: stats.highScore,
+        slapsCount: stats.slapsCount,
+        maxCombo: stats.maxCombo,
+        distanceRun: stats.distanceRun,
+        feverCount: stats.feverActive ? 2 : 1,
+        playerName: name || 'RUNNER',
+        paceName,
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `slapdash-${stats.score}-points.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setCardState('DONE');
+      setShareNote('SAVED PNG!');
+      setTimeout(() => {
+        setCardState('IDLE');
+        setShareNote('');
+      }, 3000);
+    } catch (err) {
+      setCardState('IDLE');
+      setShareNote('FAILED');
+      setTimeout(() => setShareNote(''), 2000);
+    }
+  };
+
+  const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-slap-pop select-none">
-      <div className="w-full max-w-sm bg-white/95 border border-slate-200/90 rounded-3xl p-5 md:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.18)] flex flex-col items-center text-center relative overflow-hidden">
-        {/* Subtle Ambient Emerald Flare */}
-        <div className="absolute -top-16 inset-x-0 h-28 bg-emerald-500/10 blur-2xl pointer-events-none" />
+    <div className="absolute inset-0 bg-[#D6E6F2]/95 backdrop-blur-sm flex flex-col items-center justify-center z-50 pointer-events-auto overflow-y-auto p-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] md:p-6 select-none">
+      {/* Top Logo Mark */}
+      <SlapDashLogo size="sm" showTitle={false} className="mb-2 md:mb-3" />
 
-        {/* Busted Badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-600 text-xs font-black tracking-widest uppercase mb-1">
-          <ShieldAlert className="w-3.5 h-3.5" />
-          <span>CAUGHT BY THE MOB!</span>
-        </div>
+      {/* The headline names the cause (Wrackline Style) */}
+      <h2 className="font-game text-3xl md:text-5xl tracking-wide text-center mb-1 text-[#17181C]">
+        THE MOB CAUGHT YOU
+      </h2>
+      <p className="text-[10px] md:text-xs font-black text-[#17181C]/60 uppercase tracking-widest mb-4 md:mb-6 text-center">
+        tripped on peel and cornered after {Math.round(stats.distanceRun)}m sprint
+      </p>
 
-        <h2 className="text-4xl font-black text-slate-900 tracking-tight drop-shadow-sm mb-1.5">
-          BUSTED!
-        </h2>
+      {/* Neo-Brutalist Faceted Scorecard */}
+      <div className="bg-[#FDFBF7] border-3 border-[#17181C] rounded-3xl shadow-[0_8px_0_#17181C] w-80 max-w-full flex flex-col items-center p-5 md:p-6 mb-5 md:mb-7">
+        <span className="text-xs font-black text-[#17181C]/60 uppercase tracking-widest mb-1">
+          FINAL SCORE
+        </span>
+        <span className="font-game text-5xl md:text-6xl text-[#24698F] mb-2 leading-none">
+          {stats.score.toLocaleString()}
+        </span>
 
-        {/* New High Score Celebratory Banner */}
-        {isNewHighScore && (
-          <div className="mb-2 px-3.5 py-1 bg-amber-50 border border-amber-300 rounded-xl text-amber-700 font-extrabold text-xs tracking-wider flex items-center gap-1.5 animate-pulse">
-            <Trophy className="w-4 h-4 text-amber-500" />
-            <span>NEW HIGH SCORE!</span>
-          </div>
+        {isNewBest && (
+          <span className="font-game text-xs tracking-widest text-[#17181C] bg-[#F6C445] border-2 border-[#17181C] px-3.5 py-1 rounded-lg shadow-[0_2px_0_#17181C] mb-2.5">
+            NEW RECORD!
+          </span>
         )}
 
-        {/* Score Display Card */}
-        <div className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 my-1.5 shadow-inner">
-          <div className="text-xs uppercase font-bold text-slate-400 tracking-wider">Final Score</div>
-          <div className="text-4xl font-mono-numbers font-black text-slate-900 my-0.5 tracking-tight">
-            {stats.score.toLocaleString()}
+        <div className="w-full pt-3 border-t-2 border-[#17181C]/15 grid grid-cols-4 gap-1.5 text-center text-xs font-bold text-[#17181C]/75">
+          <div>
+            <div className="text-[8px] uppercase font-black text-[#17181C]/45">SLAPS</div>
+            <div className="font-game text-base text-[#17181C]">{stats.slapsCount}</div>
           </div>
-          <div className="text-xs text-slate-500 flex items-center justify-center gap-1.5 font-semibold">
-            <span>Best:</span>
-            <span className="font-mono-numbers text-slate-700">{stats.highScore.toLocaleString()}</span>
+          <div>
+            <div className="text-[8px] uppercase font-black text-[#17181C]/45">COMBO</div>
+            <div className="font-game text-base text-[#17181C]">{stats.maxCombo}x</div>
           </div>
-        </div>
-
-        {/* Run Breakdown Grid */}
-        <div className="w-full grid grid-cols-3 gap-2 my-1.5 text-left">
-          <div className="bg-slate-50 border border-slate-200/80 p-2.5 rounded-xl">
-            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
-              <Hand className="w-3 h-3 text-rose-500" />
-              <span>Slaps</span>
-            </div>
-            <div className="text-lg font-mono-numbers font-black text-slate-900 mt-0.5">
-              {stats.slapsCount}
-            </div>
+          <div>
+            <div className="text-[8px] uppercase font-black text-[#17181C]/45">COINS</div>
+            <div className="font-game text-base text-[#F59E0B]">+{stats.coins}</div>
           </div>
-
-          <div className="bg-slate-50 border border-slate-200/80 p-2.5 rounded-xl">
-            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
-              <Flame className="w-3 h-3 text-amber-500" />
-              <span>Max Mult</span>
-            </div>
-            <div className="text-lg font-mono-numbers font-black text-amber-600 mt-0.5">
-              {stats.maxCombo > 0 ? `${Math.min(16, Math.max(1, stats.maxCombo))}x` : '1x'}
-            </div>
+          <div>
+            <div className="text-[8px] uppercase font-black text-[#17181C]/45">BEST</div>
+            <div className="font-game text-base text-[#24698F] truncate">{Math.max(stats.score, stats.highScore).toLocaleString()}</div>
           </div>
-
-          <div className="bg-slate-50 border border-slate-200/80 p-2.5 rounded-xl">
-            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
-              <Coins className="w-3 h-3 text-emerald-500" />
-              <span>Coins</span>
-            </div>
-            <div className="text-lg font-mono-numbers font-black text-emerald-600 mt-0.5">
-              {stats.coins}
-            </div>
-          </div>
-        </div>
-
-        {/* Tournament Actions: Copy & Save Badge */}
-        <div className="w-full grid grid-cols-2 gap-2 my-2">
-          <button
-            onClick={handleCopyScore}
-            className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-transform active:scale-95"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Share2 className="w-3.5 h-3.5 text-slate-500" />}
-            <span>{copied ? 'Copied!' : 'Share Score'}</span>
-          </button>
-
-          <button
-            onClick={handleDownloadCard}
-            disabled={downloading}
-            className="py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-transform active:scale-95"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Save Badge</span>
-          </button>
-        </div>
-
-        {/* Primary Action Buttons */}
-        <div className="w-full flex items-center gap-2 mt-2">
-          <button
-            onClick={() => {
-              sounds.playClick();
-              onHome();
-            }}
-            className="p-3.5 bg-slate-100 hover:bg-slate-200 rounded-2xl border border-slate-200 text-slate-700 flex items-center justify-center transition-transform active:scale-95 shrink-0 shadow-sm"
-            title="Menu"
-          >
-            <Home className="w-5 h-5" />
-          </button>
-
-          <button
-            onClick={() => {
-              sounds.playClick();
-              onOpenLeaderboard();
-            }}
-            className="p-3.5 bg-amber-50 hover:bg-amber-100 rounded-2xl border border-amber-300 text-amber-700 flex items-center justify-center transition-transform active:scale-95 shrink-0 shadow-sm"
-            title="Leaderboard"
-          >
-            <Trophy className="w-5 h-5" />
-          </button>
-
-          <button
-            onClick={() => {
-              sounds.playClick();
-              onRestart();
-            }}
-            className="flex-1 py-3.5 px-5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:brightness-105 text-white font-black text-base uppercase tracking-wider rounded-2xl shadow-[0_10px_30px_rgba(16,185,129,0.35)] flex items-center justify-center gap-2 transition-transform active:scale-95"
-          >
-            <RotateCcw className="w-5 h-5" />
-            <span>PLAY AGAIN</span>
-          </button>
         </div>
       </div>
+
+      {/* Near-miss framing: pull to play again */}
+      {!isNewBest && stats.highScore > stats.score && (
+        <p className="font-game text-sm md:text-base text-[#E25B45] mb-4 md:mb-5">
+          {(stats.highScore - stats.score).toLocaleString()} POINTS TO BEAT YOUR BEST
+        </p>
+      )}
+
+      {/* Tactile Action Buttons */}
+      <div className="flex flex-wrap items-center justify-center gap-2.5 md:gap-4 max-w-sm">
+        <button
+          onClick={() => {
+            sounds.playStart();
+            onRestart();
+          }}
+          className="px-6 py-3 md:px-8 md:py-3.5 rounded-2xl bg-[#17181C] hover:bg-[#24698F] text-[#FFFDF8] font-game text-lg md:text-xl tracking-wider border-2 border-[#17181C] shadow-[0_5px_0_#0D0E10] active:translate-y-[2px] active:shadow-[0_1px_0_#0D0E10] transition-all cursor-pointer"
+        >
+          PLAY AGAIN
+        </button>
+
+        <button
+          onClick={() => {
+            sounds.playClick();
+            onHome();
+          }}
+          className="px-5 py-3 md:px-6 md:py-3.5 rounded-2xl bg-[#FDFBF7] hover:bg-[#EAD7B0] text-[#17181C] font-game text-lg md:text-xl tracking-wider border-2 border-[#17181C] shadow-[0_5px_0_#17181C] active:translate-y-[2px] active:shadow-[0_1px_0_#17181C] transition-all cursor-pointer"
+        >
+          MENU
+        </button>
+
+        <button
+          onClick={handleShare}
+          aria-label="Save high-res share card of this run"
+          className="px-5 py-3 md:px-6 md:py-3.5 rounded-2xl bg-[#FDFBF7] hover:bg-[#EAD7B0] text-[#17181C] font-game text-lg md:text-xl tracking-wider border-2 border-[#17181C] shadow-[0_5px_0_#17181C] active:translate-y-[2px] active:shadow-[0_1px_0_#17181C] transition-all cursor-pointer"
+        >
+          {cardState === 'WORKING' ? 'MAKING CARD...' : shareNote || 'SHARE'}
+        </button>
+      </div>
+
+      {/* Who the card is signed by */}
+      <p className="mt-3 text-[10px] font-black text-[#17181C]/50 uppercase tracking-widest text-center max-w-xs">
+        {playerName ? (
+          <>
+            the card signs as{' '}
+            <button
+              onClick={() => {
+                setNameDraft(playerName);
+                setAskName(true);
+              }}
+              aria-label="Change signature name"
+              className="underline decoration-dotted underline-offset-2 cursor-pointer text-[#24698F]"
+            >
+              {playerName}
+            </button>
+          </>
+        ) : (
+          'share asks for a name the first time, and keeps it on this device'
+        )}
+      </p>
+
+      <p className="mt-2 text-[10px] font-black text-[#17181C]/40 uppercase tracking-widest">
+        {isTouch ? 'Tap PLAY AGAIN for another run' : 'Press R or Space to go again'}
+      </p>
+
+      {/* Name Prompt Modal (Wrackline Style) */}
+      {askName && (
+        <div className="absolute inset-0 z-[60] bg-[#17181C]/50 backdrop-blur-xs flex items-center justify-center p-4 pointer-events-auto">
+          <form
+            onSubmit={submitName}
+            className="bg-[#FDFBF7] border-3 border-[#17181C] rounded-3xl max-w-sm w-full p-6 shadow-[0_8px_0_#17181C]"
+          >
+            <h3 className="font-game text-2xl text-[#17181C] tracking-wide mb-1">
+              WHO IS DASHING?
+            </h3>
+            <p className="text-xs font-bold text-[#17181C]/70 mb-4">
+              Your name goes on the official run card. It stays on this device, like your best score: no account, no server.
+            </p>
+            <input
+              autoFocus
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              maxLength={16}
+              placeholder="SLAPDASH CHAMP"
+              aria-label="Name to sign your share card"
+              className="w-full px-4 py-3 rounded-xl bg-[#EAD7B0]/40 border-2 border-[#17181C] font-game text-lg tracking-widest uppercase text-[#17181C] placeholder:text-[#17181C]/35 mb-4 outline-none"
+            />
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-[#24698F] hover:bg-[#1B5575] text-white font-game text-base tracking-wider border-2 border-[#17181C] shadow-[0_4px_0_#17181C] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer mb-2"
+            >
+              MAKE MY CARD
+            </button>
+            <button
+              type="button"
+              onClick={() => setAskName(false)}
+              className="w-full py-2.5 rounded-xl bg-[#FDFBF7] hover:bg-[#EAD7B0] text-[#17181C] font-game text-sm tracking-wider border-2 border-[#17181C] shadow-[0_3px_0_#17181C] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+            >
+              NOT NOW
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

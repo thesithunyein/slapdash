@@ -21,6 +21,19 @@ class SoundEngine {
     } catch {
       // Storage access disabled
     }
+
+    // Modern browser AudioContext unlock on first user gesture
+    if (typeof window !== 'undefined') {
+      const unlockAudio = () => {
+        this.initContext();
+        window.removeEventListener('pointerdown', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+      };
+      window.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
+      window.addEventListener('keydown', unlockAudio, { once: true, passive: true });
+      window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+    }
   }
 
   private initContext(): AudioContext | null {
@@ -356,6 +369,34 @@ class SoundEngine {
     gain.connect(ctx.destination);
     osc.start(t);
     osc.stop(t + 0.05);
+  }
+
+  /**
+   * Energetic arcade run start jingle
+   */
+  public playStart(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+
+    const freqs = [330, 440, 554.37, 659.25]; // E4, A4, C#5, E5
+    freqs.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const st = t + idx * 0.06;
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, st);
+
+      gain.gain.setValueAtTime(0.3, st);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + 0.18);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.19);
+    });
   }
 
   /**

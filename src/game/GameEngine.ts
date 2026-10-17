@@ -75,9 +75,16 @@ export class GameEngine {
 
   // Callback to sync stats with React UI
   private onStatsUpdate?: (stats: GameStats, state: GameState) => void;
+  public onHurtFlash?: () => void;
+  public paceMultiplier: number = 1.5;
 
-  constructor(canvas: HTMLCanvasElement, onStatsUpdate?: (stats: GameStats, state: GameState) => void) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    onStatsUpdate?: (stats: GameStats, state: GameState) => void,
+    onHurtFlash?: () => void
+  ) {
     this.canvas = canvas;
+    this.onHurtFlash = onHurtFlash;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Could not get 2D canvas context');
     this.ctx = context;
@@ -173,14 +180,15 @@ export class GameEngine {
   }
 
   private initPlayer(): void {
+    const calculatedBase = (4.8 + this.selectedSkin.speedBonus) * (this.paceMultiplier || 1.0);
     this.player = {
       x: 0,
       y: 0,
       z: 0,
       vx: 0,
       vz: 0,
-      speed: 4.8 + this.selectedSkin.speedBonus,
-      baseSpeed: 4.8 + this.selectedSkin.speedBonus,
+      speed: calculatedBase,
+      baseSpeed: calculatedBase,
       slapCooldown: 0,
       isSlapping: false,
       slapHand: 'right',
@@ -331,8 +339,15 @@ export class GameEngine {
 
     // 6. Update Bystanders & Check for missed Slap window
     for (const b of this.bystanders) {
-      if (b.slapped && b.wobble > 0) {
-        b.wobble -= 0.05 * dtFactor;
+      if (!b.slapped) {
+        const dy = b.y - p.y;
+        const dx = Math.abs(b.x - p.x);
+        b.inStrikeRange = dy >= -25 && dy <= 65 && dx <= SLAP_REACH;
+      } else {
+        b.inStrikeRange = false;
+        if (b.wobble > 0) {
+          b.wobble -= 0.05 * dtFactor;
+        }
       }
       // Update flying accessory knocked into the air
       if (b.flyingAccessory) {
@@ -376,6 +391,8 @@ export class GameEngine {
         }
       }
     }
+
+    this.stats.mobDistance = this.chasers.length > 0 ? Math.round(closestMobDist) : 999;
 
     // 8. Obstacle Collisions & Traps
     for (const obs of this.obstacles) {
@@ -422,12 +439,14 @@ export class GameEngine {
         } else {
           if (obs.type === 'banana') {
             sounds.playSlip();
+            this.onHurtFlash?.();
             p.slipTimer = 28; // Spin slip!
             this.renderer.triggerShake(4);
             this.addFloatingText(p.x, p.y + 20, 'SLIP!', '#FACC15', 20);
             this.stats.comboStreak = 0; // Combo reset
           } else if (obs.type === 'barrel') {
             sounds.playWhack();
+            this.onHurtFlash?.();
             this.renderer.triggerShake(6);
             this.spawnParticleExplosion(obs.x, obs.y, '#78350F', 10);
             this.addFloatingText(p.x, p.y + 20, 'BARREL CRUNCH!', '#EF4444', 20);
@@ -436,6 +455,7 @@ export class GameEngine {
           } else {
             // Collision with crate / cart / watermelon / barrier
             sounds.playWhack();
+            this.onHurtFlash?.();
             this.renderer.triggerShake(7);
             this.spawnParticleExplosion(obs.x, obs.y, '#EA580C', 10);
             this.addFloatingText(p.x, p.y + 20, 'OOF!', '#EF4444', 22);
@@ -530,6 +550,7 @@ export class GameEngine {
     this.obstacles = this.obstacles.filter((o) => o.y > cleanupY);
     this.coins = this.coins.filter((c) => c.y > cleanupY);
     this.powerups = this.powerups.filter((pu) => pu.y > cleanupY);
+    this.chasers = this.chasers.filter((c) => c.y > cleanupY);
 
     // Sync stats with UI
     if (this.onStatsUpdate) {
@@ -635,9 +656,9 @@ export class GameEngine {
       // Add points floating popup
       this.addFloatingText(b.x, b.y + 55, `+${slapPoints}`, '#10B981', 18);
 
-      // Enraged bystander joins the angry mob!
+      // Enraged bystander joins the angry mob! (Capped to max 6 for optimal performance and gameplay)
       setTimeout(() => {
-        if (this.state === 'PLAYING') {
+        if (this.state === 'PLAYING' && this.chasers.length < 6) {
           this.chasers.push({
             id: this.entityIdCounter++,
             x: b.x,
