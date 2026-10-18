@@ -45,6 +45,7 @@ export interface Bystander {
   slapped: boolean;
   wobble: number;
   inStrikeRange?: boolean;
+  knockbackVx?: number;
   flyingAccessory?: {
     x: number;
     y: number;
@@ -76,6 +77,7 @@ export interface Obstacle {
   width: number;
   height: number;
   hit: boolean;
+  nearMissChecked?: boolean;
   rotation?: number;
   rollSpeed?: number;
 }
@@ -177,4 +179,5 @@ export interface GameStats {
   maxCombo: number;
   longestChaseEscape: number;
   mobDistance?: number;
+  globalRank?: number;
 }

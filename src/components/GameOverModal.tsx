@@ -115,11 +115,18 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           {stats.score.toLocaleString()}
         </span>
 
-        {isNewBest && (
-          <span className="font-game text-xs tracking-widest text-[#17181C] bg-[#F6C445] border-2 border-[#17181C] px-3.5 py-1 rounded-lg shadow-[0_2px_0_#17181C] mb-2.5">
-            NEW RECORD!
-          </span>
-        )}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-2.5">
+          {stats.globalRank && (
+            <span className="font-game text-xs tracking-wider text-white bg-[#24698F] border-2 border-[#17181C] px-3 py-1 rounded-lg shadow-[0_2px_0_#17181C] flex items-center gap-1">
+              <span>🏆</span> GLOBAL RANK #{stats.globalRank}
+            </span>
+          )}
+          {isNewBest && (
+            <span className="font-game text-xs tracking-widest text-[#17181C] bg-[#F6C445] border-2 border-[#17181C] px-3 py-1 rounded-lg shadow-[0_2px_0_#17181C]">
+              NEW RECORD!
+            </span>
+          )}
+        </div>
 
         <div className="w-full pt-3 border-t-2 border-[#17181C]/15 grid grid-cols-4 gap-1.5 text-center text-xs font-bold text-[#17181C]/75">
           <div>

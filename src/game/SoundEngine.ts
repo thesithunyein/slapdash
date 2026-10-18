@@ -117,6 +117,51 @@ class SoundEngine {
     oscGain.connect(ctx.destination);
     osc.start(t);
     osc.stop(t + 0.11);
+
+    // 3. Arcade Combo Musical Pitch Chime (Scales musically with combo streak)
+    if (comboLevel > 0) {
+      const chime = ctx.createOscillator();
+      const chimeGain = ctx.createGain();
+      chime.type = 'sine';
+      // Climbs musically in semitones (A4 = 440Hz base up to 18 semitones)
+      const semitone = Math.min(18, comboLevel);
+      const chimeFreq = 440 * Math.pow(2, semitone / 12);
+      chime.frequency.setValueAtTime(chimeFreq, t);
+      chime.frequency.exponentialRampToValueAtTime(chimeFreq * 1.35, t + 0.12);
+
+      const chimeVol = Math.min(0.32, 0.12 + comboLevel * 0.02);
+      chimeGain.gain.setValueAtTime(chimeVol, t);
+      chimeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+
+      chime.connect(chimeGain);
+      chimeGain.connect(ctx.destination);
+      chime.start(t);
+      chime.stop(t + 0.13);
+    }
+  }
+
+  /**
+   * Crisp whoosh & chime for near-miss obstacle dodging
+   */
+  public playNearMiss(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(659.25, t); // E5
+    osc.frequency.exponentialRampToValueAtTime(987.77, t + 0.1); // B5
+
+    gain.gain.setValueAtTime(0.22, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.13);
   }
 
   /**

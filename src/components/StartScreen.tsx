@@ -57,29 +57,20 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-between p-4 md:p-6 bg-[#D6E6F2]/30 pointer-events-none select-none overflow-y-auto">
-      {/* 1. TOP HEADER: Best Score Badge (Left) & Tactile Buttons (Right) */}
+      {/* 1. TOP HEADER: Unified Best Record & Coins Capsule (Left) & Tactile Buttons (Right) */}
       <div className="w-full flex items-center justify-between pointer-events-auto shrink-0 z-40">
-        {/* Top Left: Best Record Badge */}
-        <div className="flex items-center gap-2">
-          {highScore > 0 ? (
-            <div className="bg-[#FDFBF7] border-2 border-[#17181C] rounded-2xl px-4 py-2 shadow-[0_3px_0_#17181C] flex items-center gap-2.5">
-              <span className="text-[10px] font-black text-[#17181C]/60 uppercase tracking-widest">
-                BEST
-              </span>
-              <span className="font-game text-xl font-bold text-[#24698F] leading-none">
-                {highScore.toLocaleString()}
-              </span>
-            </div>
-          ) : (
-            <div className="bg-[#FDFBF7] border-2 border-[#17181C] rounded-2xl px-3.5 py-2 shadow-[0_3px_0_#17181C] flex items-center gap-2">
-              <span className="text-[10px] font-black text-[#17181C]/70 uppercase tracking-widest">
-                ARCADE STAGE
-              </span>
-            </div>
-          )}
-
-          {/* Coins Badge */}
-          <div className="bg-[#FDFBF7] border-2 border-[#17181C] rounded-2xl px-3.5 py-2 shadow-[0_3px_0_#17181C] flex items-center gap-1.5 font-mono-numbers font-black text-xs md:text-sm text-[#17181C]">
+        {/* Top Left: Unified Score & Coins Capsule */}
+        <div className="bg-[#FDFBF7] border-2 border-[#17181C] rounded-2xl px-3.5 py-1.5 md:py-2 shadow-[0_3px_0_#17181C] flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-black text-[#17181C]/60 uppercase tracking-widest">
+              BEST
+            </span>
+            <span className="font-game text-base md:text-lg font-bold text-[#24698F] leading-none">
+              {highScore > 0 ? highScore.toLocaleString() : '0'}
+            </span>
+          </div>
+          <div className="h-3.5 w-[2px] bg-[#17181C]/20" />
+          <div className="flex items-center gap-1.5 font-mono-numbers font-black text-xs md:text-sm text-[#17181C]">
             <Coins className="w-4 h-4 text-[#F6C445] fill-[#F6C445]" />
             <span>{totalCoins.toLocaleString()}</span>
           </div>
@@ -141,13 +132,15 @@ export const StartScreen: React.FC<StartScreenProps> = ({
         </div>
       </div>
 
-      {/* 2. CENTER HERO: Logo, Pace Selector, Play Button & Runner Wardrobe */}
+      {/* 2. CENTER HERO: Floating Logo, Pace Selector, Dominant Play Button & Wardrobe */}
       <div className="w-full max-w-md mx-auto my-auto flex flex-col items-center pointer-events-auto py-2">
-        {/* SlapDash Neo-Brutalist Logo */}
-        <SlapDashLogo size="md" className="mb-3 md:mb-4" />
+        {/* SlapDash Neo-Brutalist Logo with Floating Animation */}
+        <div className="animate-float-logo mb-2 md:mb-3">
+          <SlapDashLogo size="md" />
+        </div>
 
-        {/* Pace / Difficulty Selector (Wrackline Style) */}
-        <div className="w-full bg-[#FDFBF7] border-2 border-[#17181C] rounded-2xl p-2.5 shadow-[0_4px_0_#17181C] mb-4">
+        {/* Pace / Difficulty Selector (Segmented Arcade Bar) */}
+        <div className="w-full bg-[#FDFBF7] border-2 border-[#17181C] rounded-2xl p-2.5 shadow-[0_4px_0_#17181C] mb-3 md:mb-4">
           <div className="flex items-center justify-between px-1 mb-2">
             <span className="text-[10px] font-black text-[#17181C]/60 uppercase tracking-widest">
               SELECT STREET PACE
@@ -183,15 +176,17 @@ export const StartScreen: React.FC<StartScreenProps> = ({
           </div>
         </div>
 
-        {/* Giant Tactile PLAY Button */}
+        {/* Dominant Hero START SPRINT Button */}
         <button
           onClick={() => {
             sounds.playStart();
             onStartGame();
           }}
-          className="w-full py-4 rounded-2xl bg-[#F6C445] hover:bg-[#EAD7B0] text-[#17181C] font-game text-2xl md:text-3xl tracking-wider border-3 border-[#17181C] shadow-[0_6px_0_#17181C] active:translate-y-[2px] active:shadow-[0_2px_0_#17181C] transition-all cursor-pointer flex items-center justify-center gap-3 mb-3.5"
+          className="w-full py-4 md:py-5 rounded-2xl bg-gradient-to-r from-[#F6C445] via-[#FBBF24] to-[#F59E0B] hover:from-[#FDE047] hover:to-[#F59E0B] text-[#17181C] font-game text-2xl md:text-3xl tracking-wider border-3 border-[#17181C] shadow-[0_7px_0_#17181C] hover:shadow-[0_9px_0_#17181C] hover:-translate-y-0.5 active:translate-y-[3px] active:shadow-[0_2px_0_#17181C] transition-all cursor-pointer flex items-center justify-center gap-3 mb-3.5 group relative overflow-hidden"
         >
-          <span>RUN BOULEVARD</span>
+          <span className="text-xl md:text-2xl transition-transform group-hover:scale-125">⚡</span>
+          <span className="tracking-widest font-black">START SPRINT</span>
+          <span className="text-sm font-mono opacity-60 hidden sm:inline ml-1 font-bold">[SPACE]</span>
         </button>
 
         {/* Character Wardrobe Toggle & Selector */}

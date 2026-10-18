@@ -239,56 +239,139 @@ export class IsometricRenderer {
   }
 
   /**
-   * Stylized Puffy White Clouds
+   * Faceted Low-Poly 3D Puffy Clouds (Flat-shaded polygon clusters)
    */
   private drawStylizedClouds(ctx: CanvasRenderingContext2D, horizonY: number): void {
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     const speed = this.time * 6;
 
-    const clouds = [
-      { x: (speed + 80) % (this.width + 240) - 120, y: horizonY * 0.22, r: 32 },
-      { x: (speed * 0.6 + 360) % (this.width + 240) - 120, y: horizonY * 0.42, r: 24 },
-      { x: (speed * 0.85 + 720) % (this.width + 240) - 120, y: horizonY * 0.28, r: 38 },
+    const cloudClusters = [
+      { x: (speed + 80) % (this.width + 260) - 130, y: horizonY * 0.22, s: 1.1 },
+      { x: (speed * 0.6 + 420) % (this.width + 260) - 130, y: horizonY * 0.44, s: 0.8 },
+      { x: (speed * 0.85 + 780) % (this.width + 260) - 130, y: horizonY * 0.28, s: 1.25 },
     ];
 
-    for (const c of clouds) {
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
-      ctx.arc(c.x + c.r * 0.7, c.y - c.r * 0.2, c.r * 0.8, 0, Math.PI * 2);
-      ctx.arc(c.x - c.r * 0.7, c.y - c.r * 0.15, c.r * 0.7, 0, Math.PI * 2);
-      ctx.arc(c.x + c.r * 1.35, c.y + c.r * 0.1, c.r * 0.6, 0, Math.PI * 2);
-      ctx.fill();
+    for (const cl of cloudClusters) {
+      const cx = cl.x;
+      const cy = cl.y;
+      const s = cl.s;
+
+      // Cluster of 4 connected low-poly faceted blocks
+      const blocks = [
+        { ox: -24 * s, oy: 4 * s, w: 26 * s, h: 16 * s },
+        { ox: -8 * s, oy: -10 * s, w: 32 * s, h: 24 * s },
+        { ox: 16 * s, oy: -4 * s, w: 28 * s, h: 20 * s },
+        { ox: 36 * s, oy: 6 * s, w: 20 * s, h: 14 * s },
+      ];
+
+      for (const b of blocks) {
+        // Top sunlit polygon facet
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.moveTo(cx + b.ox, cy + b.oy);
+        ctx.lineTo(cx + b.ox + b.w * 0.6, cy + b.oy - b.h * 0.5);
+        ctx.lineTo(cx + b.ox + b.w, cy + b.oy - b.h * 0.2);
+        ctx.lineTo(cx + b.ox + b.w * 0.5, cy + b.oy + b.h * 0.1);
+        ctx.closePath();
+        ctx.fill();
+
+        // Front midtone polygon facet
+        ctx.fillStyle = '#F8FAFC';
+        ctx.beginPath();
+        ctx.moveTo(cx + b.ox, cy + b.oy);
+        ctx.lineTo(cx + b.ox + b.w * 0.5, cy + b.oy + b.h * 0.1);
+        ctx.lineTo(cx + b.ox + b.w * 0.4, cy + b.oy + b.h * 0.8);
+        ctx.lineTo(cx + b.ox - b.w * 0.1, cy + b.oy + b.h * 0.6);
+        ctx.closePath();
+        ctx.fill();
+
+        // Side/Under ambient shadow polygon facet
+        ctx.fillStyle = '#E2E8F0';
+        ctx.beginPath();
+        ctx.moveTo(cx + b.ox + b.w * 0.5, cy + b.oy + b.h * 0.1);
+        ctx.lineTo(cx + b.ox + b.w, cy + b.oy - b.h * 0.2);
+        ctx.lineTo(cx + b.ox + b.w * 0.9, cy + b.oy + b.h * 0.7);
+        ctx.lineTo(cx + b.ox + b.w * 0.4, cy + b.oy + b.h * 0.8);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
     ctx.restore();
   }
 
   /**
-   * Distant Cityscape and Mountain Ridges on the Horizon
+   * Faceted Low-Poly Mountain Ridges & Angular Skyline on the Horizon
    */
   private drawDistantCityscape(ctx: CanvasRenderingContext2D, horizonY: number, fever: boolean): void {
     ctx.save();
-    const mountainColor = fever ? '#064E3B' : '#BAE6FD';
+    // 1. Low-Poly Mountain Peaks (Triangular Lit & Shadow Facets)
+    const mtnLit = fever ? '#065F46' : '#7DD3FC';
+    const mtnShade = fever ? '#064E3B' : '#38BDF8';
+    const peaks = [
+      { x: this.width * 0.12, y: horizonY - 60, w: 110 },
+      { x: this.width * 0.32, y: horizonY - 48, w: 95 },
+      { x: this.width * 0.55, y: horizonY - 68, w: 130 },
+      { x: this.width * 0.78, y: horizonY - 52, w: 105 },
+      { x: this.width * 0.95, y: horizonY - 42, w: 85 },
+    ];
+
+    for (const p of peaks) {
+      // Lit Left Mountain Facet
+      ctx.fillStyle = mtnLit;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - p.w * 0.6, horizonY);
+      ctx.lineTo(p.x + p.w * 0.05, horizonY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Shaded Right Mountain Facet
+      ctx.fillStyle = mtnShade;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + p.w * 0.05, horizonY);
+      ctx.lineTo(p.x + p.w * 0.65, horizonY);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 2. Low-Poly Skyline Towers with Angular Spire Pediments
     const cityColor = fever ? '#047857' : '#93C5FD';
-
-    // Soft Mountain Ridge
-    ctx.fillStyle = mountainColor;
-    ctx.beginPath();
-    ctx.moveTo(0, horizonY);
-    ctx.lineTo(0, horizonY - 24);
-    ctx.quadraticCurveTo(this.width * 0.25, horizonY - 55, this.width * 0.5, horizonY - 26);
-    ctx.quadraticCurveTo(this.width * 0.75, horizonY - 50, this.width, horizonY - 20);
-    ctx.lineTo(this.width, horizonY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Distant Modern Skyline Buildings
-    ctx.fillStyle = cityColor;
-    const numTowers = 22;
+    const citySide = fever ? '#022C22' : '#60A5FA';
+    const numTowers = 20;
     const step = this.width / numTowers;
+
     for (let i = 0; i < numTowers; i++) {
-      const h = 18 + Math.sin(i * 1.8) * 16 + (i % 4) * 8;
-      ctx.fillRect(i * step, horizonY - h, step + 1, h + 2);
+      const h = 20 + Math.sin(i * 2.1) * 16 + (i % 3) * 10;
+      const tx = i * step;
+      const tw = step * 0.85;
+
+      // Front tower face
+      ctx.fillStyle = cityColor;
+      ctx.fillRect(tx, horizonY - h, tw * 0.7, h + 2);
+
+      // Shaded side tower face
+      ctx.fillStyle = citySide;
+      ctx.fillRect(tx + tw * 0.7, horizonY - h, tw * 0.3, h + 2);
+
+      // Angular spire/pyramid roof for alternate towers
+      if (i % 2 === 0) {
+        ctx.fillStyle = cityColor;
+        ctx.beginPath();
+        ctx.moveTo(tx, horizonY - h);
+        ctx.lineTo(tx + tw * 0.35, horizonY - h - 10);
+        ctx.lineTo(tx + tw * 0.7, horizonY - h);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = citySide;
+        ctx.beginPath();
+        ctx.moveTo(tx + tw * 0.7, horizonY - h);
+        ctx.lineTo(tx + tw * 0.35, horizonY - h - 10);
+        ctx.lineTo(tx + tw, horizonY - h);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
     ctx.restore();
   }
@@ -902,7 +985,7 @@ export class IsometricRenderer {
   }
 
   /**
-   * Sculpted 3D Tree with Multi-Sphere Foliage and Natural Ambient Shadows
+   * Faceted Low-Poly 3D Geometric Tree (Angular trunk & icosahedral faceted foliage)
    */
   private draw3DLushTree(
     ctx: CanvasRenderingContext2D,
@@ -919,45 +1002,91 @@ export class IsometricRenderer {
     const y = p.y;
 
     ctx.save();
-    // 1. Soft Ground Contact Shadow
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.22)';
+    // 1. Angular Low-Poly Ground Contact Shadow
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.25)';
     ctx.beginPath();
-    ctx.ellipse(x, y, 22 * s, 10 * s, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 2. Sculpted Wood Trunk with Bark Tone
-    ctx.fillStyle = '#654321';
-    ctx.beginPath();
-    ctx.moveTo(x - 4 * s, y);
-    ctx.lineTo(x - 2.5 * s, y - 28 * s);
-    ctx.lineTo(x + 2.5 * s, y - 28 * s);
-    ctx.lineTo(x + 4 * s, y);
+    ctx.moveTo(x - 24 * s, y);
+    ctx.lineTo(x - 12 * s, y + 8 * s);
+    ctx.lineTo(x + 14 * s, y + 8 * s);
+    ctx.lineTo(x + 22 * s, y);
+    ctx.lineTo(x + 10 * s, y - 6 * s);
+    ctx.lineTo(x - 14 * s, y - 6 * s);
     ctx.closePath();
     ctx.fill();
 
-    // 3. Volumetric Foliage: 3 Spheres with Ambient Occlusion & Sunlit Rim
-    const clusters = [
-      { dx: 0, dy: -42 * s, r: 22 * s, color: '#10B981' },
-      { dx: -10 * s, dy: -36 * s, r: 17 * s, color: '#059669' },
-      { dx: 11 * s, dy: -38 * s, r: 18 * s, color: '#34D399' },
-      { dx: 0, dy: -52 * s, r: 16 * s, color: '#6EE7B7' },
-    ];
+    // 2. Faceted Low-Poly Trunk (3 Distinct Lit Planes)
+    // Left sunlit facet
+    ctx.fillStyle = '#8B5A2B';
+    ctx.beginPath();
+    ctx.moveTo(x - 4.5 * s, y);
+    ctx.lineTo(x - 3 * s, y - 28 * s);
+    ctx.lineTo(x, y - 28 * s);
+    ctx.lineTo(x - 1 * s, y);
+    ctx.closePath();
+    ctx.fill();
 
-    for (const c of clusters) {
-      const grad = ctx.createRadialGradient(
-        x + c.dx - c.r * 0.35,
-        y + c.dy - c.r * 0.35,
-        c.r * 0.2,
-        x + c.dx,
-        y + c.dy,
-        c.r
-      );
-      grad.addColorStop(0, '#A7F3D0'); // Bright sunlit leaves
-      grad.addColorStop(0.4, c.color); // Rich foliage green
-      grad.addColorStop(1, '#064E3B'); // Deep shade under canopy
-      ctx.fillStyle = grad;
+    // Right shadow facet
+    ctx.fillStyle = '#4A280D';
+    ctx.beginPath();
+    ctx.moveTo(x - 1 * s, y);
+    ctx.lineTo(x, y - 28 * s);
+    ctx.lineTo(x + 3 * s, y - 28 * s);
+    ctx.lineTo(x + 4.5 * s, y);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Faceted Low-Poly Icosahedral Foliage (Triangular Flat-Shaded Polygon Mesh)
+    const treeTopY = y - 30 * s;
+
+    // Bottom layer facets (Underside ambient shade)
+    const bottomFacets = [
+      { pts: [[-22, -6], [-10, -18], [0, -4]], color: '#064E3B' },
+      { pts: [[0, -4], [-10, -18], [8, -16]], color: '#047857' },
+      { pts: [[0, -4], [8, -16], [22, -6]], color: '#065F46' },
+      { pts: [[8, -16], [22, -6], [16, -20]], color: '#047857' },
+    ];
+    for (const f of bottomFacets) {
+      ctx.fillStyle = f.color;
       ctx.beginPath();
-      ctx.arc(x + c.dx, y + c.dy, c.r, 0, Math.PI * 2);
+      ctx.moveTo(x + f.pts[0][0] * s, treeTopY + f.pts[0][1] * s);
+      ctx.lineTo(x + f.pts[1][0] * s, treeTopY + f.pts[1][1] * s);
+      ctx.lineTo(x + f.pts[2][0] * s, treeTopY + f.pts[2][1] * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Middle layer facets (Midtones & Sunlit greens)
+    const midFacets = [
+      { pts: [[-22, -6], [-10, -18], [-18, -26]], color: '#059669' },
+      { pts: [[-10, -18], [-18, -26], [0, -32]], color: '#10B981' },
+      { pts: [[-10, -18], [0, -32], [8, -16]], color: '#34D399' },
+      { pts: [[8, -16], [0, -32], [16, -20]], color: '#10B981' },
+      { pts: [[16, -20], [0, -32], [20, -28]], color: '#059669' },
+    ];
+    for (const f of midFacets) {
+      ctx.fillStyle = f.color;
+      ctx.beginPath();
+      ctx.moveTo(x + f.pts[0][0] * s, treeTopY + f.pts[0][1] * s);
+      ctx.lineTo(x + f.pts[1][0] * s, treeTopY + f.pts[1][1] * s);
+      ctx.lineTo(x + f.pts[2][0] * s, treeTopY + f.pts[2][1] * s);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Top crown pyramid facets (Sunlight Highlights)
+    const topFacets = [
+      { pts: [[-18, -26], [0, -32], [0, -46]], color: '#6EE7B7' },
+      { pts: [[0, -32], [0, -46], [10, -42]], color: '#A7F3D0' },
+      { pts: [[0, -32], [20, -28], [10, -42]], color: '#34D399' },
+      { pts: [[-18, -26], [0, -46], [-8, -44]], color: '#34D399' },
+    ];
+    for (const f of topFacets) {
+      ctx.fillStyle = f.color;
+      ctx.beginPath();
+      ctx.moveTo(x + f.pts[0][0] * s, treeTopY + f.pts[0][1] * s);
+      ctx.lineTo(x + f.pts[1][0] * s, treeTopY + f.pts[1][1] * s);
+      ctx.lineTo(x + f.pts[2][0] * s, treeTopY + f.pts[2][1] * s);
+      ctx.closePath();
       ctx.fill();
     }
 
@@ -965,7 +1094,7 @@ export class IsometricRenderer {
   }
 
   /**
-   * Classic Cast-Iron Lamppost with Glowing Lantern Head
+   * Faceted Low-Poly 3D Cast-Iron Lamppost with Hexagonal Lantern
    */
   private draw3DLamppost(
     ctx: CanvasRenderingContext2D,
@@ -982,34 +1111,80 @@ export class IsometricRenderer {
     const y = p.y;
 
     ctx.save();
-    // Base shadow
+    // Faceted base shadow
     ctx.fillStyle = 'rgba(15, 23, 42, 0.2)';
     ctx.beginPath();
-    ctx.ellipse(x, y, 6 * s, 3 * s, 0, 0, Math.PI * 2);
+    ctx.moveTo(x - 7 * s, y);
+    ctx.lineTo(x, y + 3 * s);
+    ctx.lineTo(x + 7 * s, y);
+    ctx.lineTo(x, y - 3 * s);
+    ctx.closePath();
     ctx.fill();
 
-    // Dark slate cast-iron pedestal
+    // Hexagonal Cast-Iron Pedestal (Lit & Shadow Facets)
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.moveTo(x - 4 * s, y);
+    ctx.lineTo(x - 3.5 * s, y - 9 * s);
+    ctx.lineTo(x, y - 9 * s);
+    ctx.lineTo(x, y);
+    ctx.closePath();
+    ctx.fill();
+
     ctx.fillStyle = '#1E293B';
-    ctx.fillRect(x - 3.5 * s, y - 8 * s, 7 * s, 8 * s);
-
-    // Slim tapered pole
-    ctx.fillRect(x - 1.8 * s, y - 56 * s, 3.6 * s, 48 * s);
-
-    // Lantern Head with Warm Glowing Filament
-    const lanternY = y - 62 * s;
-    const glow = ctx.createRadialGradient(x, lanternY, 2 * s, x, lanternY, 14 * s);
-    glow.addColorStop(0, '#FEF9C3');
-    glow.addColorStop(0.4, 'rgba(253, 224, 71, 0.5)');
-    glow.addColorStop(1, 'rgba(253, 224, 71, 0)');
-    ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(x, lanternY, 14 * s, 0, Math.PI * 2);
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y - 9 * s);
+    ctx.lineTo(x + 3.5 * s, y - 9 * s);
+    ctx.lineTo(x + 4 * s, y);
+    ctx.closePath();
     ctx.fill();
 
-    // Lantern Housing
-    ctx.fillStyle = '#FFFFFF';
+    // Tapered Pole
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(x - 2 * s, y - 56 * s, 2 * s, 47 * s);
+    ctx.fillStyle = '#1E293B';
+    ctx.fillRect(x, y - 56 * s, 2 * s, 47 * s);
+
+    // Faceted 3D Hexagonal Lantern Head
+    const lanternY = y - 62 * s;
+
+    // Warm Ambient Light Cone on Ground
+    ctx.fillStyle = 'rgba(253, 224, 71, 0.18)';
     ctx.beginPath();
-    ctx.arc(x, lanternY, 5 * s, 0, Math.PI * 2);
+    ctx.moveTo(x - 16 * s, y + 4 * s);
+    ctx.lineTo(x + 16 * s, y + 4 * s);
+    ctx.lineTo(x + 8 * s, y - 2 * s);
+    ctx.lineTo(x - 8 * s, y - 2 * s);
+    ctx.closePath();
+    ctx.fill();
+
+    // Lantern Glass Facets (Warm Golden/Yellow)
+    ctx.fillStyle = '#FEF08A';
+    ctx.beginPath();
+    ctx.moveTo(x - 5 * s, lanternY + 4 * s);
+    ctx.lineTo(x - 4 * s, lanternY - 4 * s);
+    ctx.lineTo(x, lanternY - 5 * s);
+    ctx.lineTo(x, lanternY + 5 * s);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#FDE047';
+    ctx.beginPath();
+    ctx.moveTo(x, lanternY + 5 * s);
+    ctx.lineTo(x, lanternY - 5 * s);
+    ctx.lineTo(x + 4 * s, lanternY - 4 * s);
+    ctx.lineTo(x + 5 * s, lanternY + 4 * s);
+    ctx.closePath();
+    ctx.fill();
+
+    // Lantern Roof Pyramid
+    ctx.fillStyle = '#0F172A';
+    ctx.beginPath();
+    ctx.moveTo(x - 6 * s, lanternY - 4 * s);
+    ctx.lineTo(x, lanternY - 10 * s);
+    ctx.lineTo(x + 6 * s, lanternY - 4 * s);
+    ctx.closePath();
     ctx.fill();
 
     ctx.restore();
@@ -1459,98 +1634,60 @@ export class IsometricRenderer {
       const steerDir = player.vx > 0 ? 1 : -1;
       const eyeX = steerDir * 4 * s;
 
-      // Big bright cartoon eye
-      ctx.fillStyle = '#FFFFFF';
+      // Glossy cartoon bean eye
+      ctx.fillStyle = fever ? '#F59E0B' : '#0F172A';
       ctx.beginPath();
-      ctx.ellipse(eyeX, headY - 1 * s, 3.5 * s, 4.2 * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(eyeX, headY - 1 * s, 3.2 * s, 4.4 * s, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Emerald / Gold iris & dark pupil
-      ctx.fillStyle = fever ? '#F59E0B' : '#059669';
-      ctx.beginPath();
-      ctx.arc(eyeX, headY - 1 * s, 2 * s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#0F172A';
-      ctx.beginPath();
-      ctx.arc(eyeX, headY - 1 * s, 1.1 * s, 0, Math.PI * 2);
-      ctx.fill();
+      // Bright white catchlight gleam
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
-      ctx.arc(eyeX - 0.8 * s, headY - 2 * s, 0.9 * s, 0, Math.PI * 2);
+      ctx.arc(eyeX - 0.9 * s, headY - 2.2 * s, 1.2 * s, 0, Math.PI * 2);
       ctx.fill();
 
       // Confident angled sporty eyebrow
       ctx.strokeStyle = '#0F172A';
       ctx.lineWidth = 1.8 * s;
       ctx.beginPath();
-      ctx.moveTo(eyeX - 3 * s, headY - 5.5 * s);
-      ctx.lineTo(eyeX + 3 * s, headY - 4 * s);
+      ctx.moveTo(eyeX - 3.5 * s, headY - 5.5 * s);
+      ctx.lineTo(eyeX + 3.5 * s, headY - 4 * s);
       ctx.stroke();
 
       // Determined cheeky smirk with tooth gleam
       ctx.beginPath();
-      ctx.arc(eyeX * 0.4, headY + 4 * s, 3 * s, 0.1 * Math.PI, 0.85 * Math.PI);
+      ctx.arc(eyeX * 0.4, headY + 3.8 * s, 3 * s, 0.1 * Math.PI, 0.85 * Math.PI);
       ctx.stroke();
 
       // Peach flushed cheek
-      ctx.fillStyle = 'rgba(251, 113, 133, 0.7)';
+      ctx.fillStyle = 'rgba(251, 113, 133, 0.75)';
       ctx.beginPath();
-      ctx.arc(eyeX + steerDir * 2 * s, headY + 2.5 * s, 2.2 * s, 0, Math.PI * 2);
+      ctx.arc(eyeX + steerDir * 2 * s, headY + 2.5 * s, 2.4 * s, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      // Forward sprint stance: CRYSTAL CLEAR, EXPRESSIVE CARTOON EYES & LIVELY MOUTH
+      // Forward sprint stance: GLOSSY CARTOON BEAN EYES (Fall Guys / Subway Surfers style)
       // Left Eye
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = fever ? '#F59E0B' : '#0F172A';
       ctx.beginPath();
-      ctx.ellipse(-4.5 * s, headY - 1.5 * s, 3.4 * s, 4.2 * s, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#0F172A';
-      ctx.lineWidth = 1.1 * s;
-      ctx.stroke();
-
-      // Left Iris (Emerald or Gold in Fever)
-      ctx.fillStyle = fever ? '#F59E0B' : '#059669';
-      ctx.beginPath();
-      ctx.arc(-4.5 * s, headY - 1.5 * s, 2.1 * s, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Left Pupil
-      ctx.fillStyle = '#0F172A';
-      ctx.beginPath();
-      ctx.arc(-4.5 * s, headY - 1.5 * s, 1.2 * s, 0, Math.PI * 2);
+      ctx.ellipse(-4.5 * s, headY - 1.5 * s, 3.2 * s, 4.4 * s, -0.05, 0, Math.PI * 2);
       ctx.fill();
 
       // Left Specular Catchlight Glint
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
-      ctx.arc(-5.2 * s, headY - 2.5 * s, 0.9 * s, 0, Math.PI * 2);
+      ctx.arc(-5.4 * s, headY - 2.8 * s, 1.2 * s, 0, Math.PI * 2);
       ctx.fill();
 
       // Right Eye
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = fever ? '#F59E0B' : '#0F172A';
       ctx.beginPath();
-      ctx.ellipse(4.5 * s, headY - 1.5 * s, 3.4 * s, 4.2 * s, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#0F172A';
-      ctx.lineWidth = 1.1 * s;
-      ctx.stroke();
-
-      // Right Iris
-      ctx.fillStyle = fever ? '#F59E0B' : '#059669';
-      ctx.beginPath();
-      ctx.arc(4.5 * s, headY - 1.5 * s, 2.1 * s, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Right Pupil
-      ctx.fillStyle = '#0F172A';
-      ctx.beginPath();
-      ctx.arc(4.5 * s, headY - 1.5 * s, 1.2 * s, 0, Math.PI * 2);
+      ctx.ellipse(4.5 * s, headY - 1.5 * s, 3.2 * s, 4.4 * s, 0.05, 0, Math.PI * 2);
       ctx.fill();
 
       // Right Specular Catchlight Glint
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
-      ctx.arc(3.8 * s, headY - 2.5 * s, 0.9 * s, 0, Math.PI * 2);
+      ctx.arc(3.6 * s, headY - 2.8 * s, 1.2 * s, 0, Math.PI * 2);
       ctx.fill();
 
       // Determined athletic eyebrows
@@ -1708,20 +1845,20 @@ export class IsometricRenderer {
       ctx.rotate(wobbleAngle);
     }
 
-    // Legs
+    // Legs (Cute stubby chibi legs)
     ctx.fillStyle = '#1E293B';
-    ctx.fillRect(-7 * s, -12 * s, 5 * s, 15 * s);
-    ctx.fillRect(2 * s, -12 * s, 5 * s, 15 * s);
+    ctx.fillRect(-6 * s, -10 * s, 4.5 * s, 11 * s);
+    ctx.fillRect(1.5 * s, -10 * s, 4.5 * s, 11 * s);
 
-    // Torso Shirt
+    // Torso Shirt (Chibi compact rounded shirt)
     ctx.fillStyle = b.slapped ? '#EF4444' : b.shirtColor; // Flushes bright red on slap!
     ctx.beginPath();
-    ctx.roundRect(-11 * s, -34 * s, 22 * s, 24 * s, 5 * s);
+    ctx.roundRect(-9.5 * s, -28 * s, 19 * s, 18 * s, 5 * s);
     ctx.fill();
 
-    // Head
-    const headY = -45 * s;
-    const headRadius = 11.5 * s;
+    // Head (Bigger chibi head ratio: 13.5s vs 11.5s for friendly, cute look)
+    const headY = -39 * s;
+    const headRadius = 13.5 * s;
 
     // Directional head lighting
     const headGrad = ctx.createRadialGradient(-2 * s, headY - 3 * s, 2 * s, 0, headY, headRadius);
@@ -1733,11 +1870,11 @@ export class IsometricRenderer {
     ctx.arc(0, headY, headRadius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Ears on sides
+    // Cute ears on sides
     ctx.fillStyle = b.bodyColor;
     ctx.beginPath();
-    ctx.arc(-headRadius + 0.5 * s, headY, 2.6 * s, 0, Math.PI * 2);
-    ctx.arc(headRadius - 0.5 * s, headY, 2.6 * s, 0, Math.PI * 2);
+    ctx.arc(-headRadius + 0.5 * s, headY, 2.8 * s, 0, Math.PI * 2);
+    ctx.arc(headRadius - 0.5 * s, headY, 2.8 * s, 0, Math.PI * 2);
     ctx.fill();
 
     // REAL EXPRESSIVE CARTOON FACIAL FEATURES
@@ -1748,30 +1885,30 @@ export class IsometricRenderer {
 
       // Left spiral eye (@_@)
       ctx.beginPath();
-      ctx.arc(-4 * s, headY - 1 * s, 3.2 * s, 0, Math.PI * 1.6);
+      ctx.arc(-4.5 * s, headY - 1 * s, 3.2 * s, 0, Math.PI * 1.6);
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(-4 * s, headY - 1 * s, 1.6 * s, Math.PI * 0.5, Math.PI * 2);
+      ctx.arc(-4.5 * s, headY - 1 * s, 1.6 * s, Math.PI * 0.5, Math.PI * 2);
       ctx.stroke();
 
       // Right spiral eye
       ctx.beginPath();
-      ctx.arc(4 * s, headY - 1 * s, 3.2 * s, 0, Math.PI * 1.6);
+      ctx.arc(4.5 * s, headY - 1 * s, 3.2 * s, 0, Math.PI * 1.6);
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(4 * s, headY - 1 * s, 1.6 * s, Math.PI * 0.5, Math.PI * 2);
+      ctx.arc(4.5 * s, headY - 1 * s, 1.6 * s, Math.PI * 0.5, Math.PI * 2);
       ctx.stroke();
 
       // Surprised high curved eyebrows
       ctx.beginPath();
-      ctx.arc(-4 * s, headY - 6 * s, 2.5 * s, Math.PI, Math.PI * 2);
-      ctx.arc(4 * s, headY - 6 * s, 2.5 * s, Math.PI, Math.PI * 2);
+      ctx.arc(-4.5 * s, headY - 6 * s, 2.5 * s, Math.PI, Math.PI * 2);
+      ctx.arc(4.5 * s, headY - 6 * s, 2.5 * s, Math.PI, Math.PI * 2);
       ctx.stroke();
 
       // Screaming O-mouth with white teeth and tongue
       ctx.fillStyle = '#0F172A';
       ctx.beginPath();
-      ctx.ellipse(0, headY + 5.5 * s, 3.8 * s, 5.2 * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, headY + 5.5 * s, 4 * s, 5.5 * s, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // Pearly white upper teeth
@@ -1787,96 +1924,53 @@ export class IsometricRenderer {
       // Bright red shocked blushing cheeks
       ctx.fillStyle = '#EF4444';
       ctx.beginPath();
-      ctx.arc(-7 * s, headY + 3 * s, 2.5 * s, 0, Math.PI * 2);
-      ctx.arc(7 * s, headY + 3 * s, 2.5 * s, 0, Math.PI * 2);
+      ctx.arc(-8 * s, headY + 3 * s, 2.8 * s, 0, Math.PI * 2);
+      ctx.arc(8 * s, headY + 3 * s, 2.8 * s, 0, Math.PI * 2);
       ctx.fill();
 
       // Comic dizzy stars orbiting head
       ctx.fillStyle = '#F59E0B';
       const starPhase = this.time * 12;
-      const star1X = Math.cos(starPhase) * 14 * s;
-      const star1Y = headY - 10 * s + Math.sin(starPhase) * 5 * s;
+      const star1X = Math.cos(starPhase) * 15 * s;
+      const star1Y = headY - 11 * s + Math.sin(starPhase) * 5 * s;
       ctx.beginPath();
-      ctx.arc(star1X, star1Y, 2.2 * s, 0, Math.PI * 2);
+      ctx.arc(star1X, star1Y, 2.4 * s, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      // VIBRANT, EXPRESSIVE, FRIENDLY WALKING HUMAN FACE
-      // 1. Left Eye: white eyeball, colored iris, pupil, and white catchlight
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.ellipse(-4.5 * s, headY - 1.5 * s, 3.2 * s, 4 * s, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#0F172A';
-      ctx.lineWidth = 1 * s;
-      ctx.stroke();
-
-      // Left Iris (Role-colored)
-      const irisColor = b.type === 'fishmonger' ? '#0369A1' : b.type === 'influencer' ? '#7C3AED' : '#059669';
-      ctx.fillStyle = irisColor;
-      ctx.beginPath();
-      ctx.arc(-4.5 * s, headY - 1.5 * s, 2 * s, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Left Pupil
+      // ADORABLE, FRIENDLY, CHIBI CARTOON FACE (Fall Guys / Animal Crossing style)
+      // Oversized glossy dark bean eyes (Removes all uncanny stare!)
       ctx.fillStyle = '#0F172A';
       ctx.beginPath();
-      ctx.arc(-4.5 * s, headY - 1.5 * s, 1.1 * s, 0, Math.PI * 2);
+      ctx.ellipse(-4.2 * s, headY - 1 * s, 2.6 * s, 3.8 * s, -0.06, 0, Math.PI * 2);
+      ctx.ellipse(4.2 * s, headY - 1 * s, 2.6 * s, 3.8 * s, 0.06, 0, Math.PI * 2);
       ctx.fill();
 
-      // Left Specular Catchlight
+      // Single crisp, bright white specular highlight in upper corner
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
-      ctx.arc(-5.2 * s, headY - 2.5 * s, 0.8 * s, 0, Math.PI * 2);
+      ctx.arc(-4.9 * s, headY - 2.2 * s, 1.0 * s, 0, Math.PI * 2);
+      ctx.arc(3.5 * s, headY - 2.2 * s, 1.0 * s, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. Right Eye: matching expressive eyeball
-      ctx.fillStyle = '#FFFFFF';
+      // Soft, warm rosy blushing cheeks
+      ctx.fillStyle = 'rgba(251, 113, 133, 0.75)';
       ctx.beginPath();
-      ctx.ellipse(4.5 * s, headY - 1.5 * s, 3.2 * s, 4 * s, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#0F172A';
-      ctx.lineWidth = 1 * s;
-      ctx.stroke();
-
-      // Right Iris
-      ctx.fillStyle = irisColor;
-      ctx.beginPath();
-      ctx.arc(4.5 * s, headY - 1.5 * s, 2 * s, 0, Math.PI * 2);
+      ctx.arc(-7.2 * s, headY + 2.8 * s, 2.6 * s, 0, Math.PI * 2);
+      ctx.arc(7.2 * s, headY + 2.8 * s, 2.6 * s, 0, Math.PI * 2);
       ctx.fill();
 
-      // Right Pupil
-      ctx.fillStyle = '#0F172A';
-      ctx.beginPath();
-      ctx.arc(4.5 * s, headY - 1.5 * s, 1.1 * s, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Right Specular Catchlight
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(3.8 * s, headY - 2.5 * s, 0.8 * s, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 3. Expressive Eyebrows
+      // Friendly curved eyebrows (Peaceful and happy)
       ctx.strokeStyle = '#0F172A';
       ctx.lineWidth = 1.6 * s;
       ctx.beginPath();
-      ctx.arc(-4.5 * s, headY - 5 * s, 3 * s, 1.1 * Math.PI, 1.8 * Math.PI);
-      ctx.arc(4.5 * s, headY - 5 * s, 3 * s, 1.2 * Math.PI, 1.9 * Math.PI);
+      ctx.arc(-4.2 * s, headY - 5.5 * s, 2.2 * s, 1.15 * Math.PI, 1.85 * Math.PI);
+      ctx.arc(4.2 * s, headY - 5.5 * s, 2.2 * s, 1.15 * Math.PI, 1.85 * Math.PI);
       ctx.stroke();
 
-      // 4. Cheerful Friendly Smile with dimples
-      ctx.strokeStyle = '#0F172A';
-      ctx.lineWidth = 1.8 * s;
+      // Cute little happy smile mouth
       ctx.beginPath();
-      ctx.arc(0, headY + 3.8 * s, 3.8 * s, 0.1 * Math.PI, 0.9 * Math.PI);
+      ctx.arc(0, headY + 3.2 * s, 2.8 * s, 0.15 * Math.PI, 0.85 * Math.PI);
       ctx.stroke();
-
-      // 5. Cute Blushing Rosy Cheeks
-      ctx.fillStyle = 'rgba(251, 113, 133, 0.65)';
-      ctx.beginPath();
-      ctx.arc(-7 * s, headY + 2.5 * s, 2.2 * s, 0, Math.PI * 2);
-      ctx.arc(7 * s, headY + 2.5 * s, 2.2 * s, 0, Math.PI * 2);
-      ctx.fill();
     }
 
     // Role-specific accessories (Chef toque, Influencer phone, Baker apron)

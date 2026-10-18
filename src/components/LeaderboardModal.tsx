@@ -25,8 +25,11 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
               <SlapDashMark className="w-full h-full" />
             </div>
             <div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-[#17181C]/60">
-                ARCADE LEADERBOARD
+              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#17181C]/60">
+                <span>GLOBAL LEADERBOARD</span>
+                <span className="flex items-center gap-1 text-[9px] text-[#10B981] font-mono font-bold bg-[#DCFCE7] px-1.5 py-0.5 rounded-md border border-[#10B981]/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" /> LIVE API
+                </span>
               </div>
               <h3 className="font-game text-2xl text-[#17181C] tracking-wide leading-none">
                 TOP RUNNERS

@@ -77,6 +77,7 @@ export class GameEngine {
   private onStatsUpdate?: (stats: GameStats, state: GameState) => void;
   public onHurtFlash?: () => void;
   public paceMultiplier: number = 1.5;
+  private hitFreezeMs: number = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -226,6 +227,14 @@ export class GameEngine {
     const dt = Math.min(32, now - this.lastTime); // Cap delta time
     this.lastTime = now;
 
+    // Tactical arcade hit-stop freeze (50-70ms) to give slap impacts maximum weight!
+    if (this.hitFreezeMs > 0) {
+      this.hitFreezeMs -= dt;
+      this.render();
+      this.animFrameId = requestAnimationFrame(this.loop);
+      return;
+    }
+
     if (this.state === 'PLAYING') {
       this.update(dt / 16.666); // Normalized to ~60fps
     } else if (this.state === 'MENU') {
@@ -339,6 +348,13 @@ export class GameEngine {
 
     // 6. Update Bystanders & Check for missed Slap window
     for (const b of this.bystanders) {
+      // Directional Slap Knockback
+      if (b.knockbackVx) {
+        b.x += b.knockbackVx * 0.016 * dtFactor;
+        b.knockbackVx *= 0.85;
+        if (Math.abs(b.knockbackVx) < 0.8) b.knockbackVx = 0;
+      }
+
       if (!b.slapped) {
         const dy = b.y - p.y;
         const dx = Math.abs(b.x - p.x);
@@ -463,6 +479,15 @@ export class GameEngine {
             p.slipTimer = 35;
             this.stats.comboStreak = 0;
           }
+        }
+      } else if (!obs.hit && !obs.nearMissChecked && obs.type !== 'ramp') {
+        // High-Skill Near-Miss Dodge Bonus (+50 pts & crisp whoosh sound)
+        const obsHalfW = obs.width / 2;
+        if (dy < 24 && dx >= (obsHalfW + 12) && dx <= (obsHalfW + 36)) {
+          obs.nearMissChecked = true;
+          this.stats.score += 50 * this.stats.chaosMultiplier;
+          this.addFloatingText(p.x, p.y + 35, 'CLOSE CALL! +50', '#38BDF8', 16);
+          sounds.playNearMiss();
         }
       }
     }
@@ -593,13 +618,17 @@ export class GameEngine {
       const b = hitBystander;
       b.slapped = true;
       b.wobble = 1.0;
+      this.hitFreezeMs = 65; // ~65ms tactical hit-stop frame freeze!
+
+      // Directional Slap Knockback!
+      const side = b.x >= p.x ? 1 : -1;
+      b.knockbackVx = side * (160 + Math.random() * 80);
 
       // Knock off accessories into the air!
-      const side = b.x > p.x ? 1 : -1;
       b.flyingAccessory = {
         x: b.x,
         y: b.y + 10,
-        vx: side * (3 + Math.random() * 4),
+        vx: side * (3.5 + Math.random() * 4),
         vy: 5 + Math.random() * 3,
         rotation: 0,
       };

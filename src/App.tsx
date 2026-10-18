@@ -72,31 +72,71 @@ export default function App() {
     };
   });
 
+  // Initial Global Leaderboard Sync from API
+  useEffect(() => {
+    fetch('/api/leaderboard')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && Array.isArray(data.entries) && data.entries.length > 0) {
+          setLeaderboardEntries(data.entries);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Handle stats updates from GameEngine
   const handleStatsUpdate = useCallback((newStats: GameStats, newState: GameState) => {
     setStats({ ...newStats });
     setGameState(newState);
 
-    // If transitioned to GAMEOVER with a score, update tournament leaderboard
+    // If transitioned to GAMEOVER with a score, submit to real Leaderboard API!
     if (newState === 'GAMEOVER' && newStats.score > 0) {
-      setLeaderboardEntries((prev) => {
-        const newEntry = {
-          id: String(Date.now()),
-          name: 'YOU (CHAMPION)',
+      let savedName = 'YOU (CHAMPION)';
+      try {
+        const stored = localStorage.getItem('slap_run_share_name');
+        if (stored) savedName = stored;
+      } catch {}
+
+      fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: savedName,
           score: newStats.score,
           maxCombo: newStats.maxCombo,
-          date: 'Just Now',
           skinId: selectedSkin.id,
-          isPlayer: true,
-        };
-        const updated = [...prev.filter((e) => !e.isPlayer || e.score >= newStats.score), newEntry]
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 10);
-        try {
-          localStorage.setItem('slap_run_leaderboard', JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
+        }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.rank) {
+            setStats((curr) => ({ ...curr, globalRank: data.rank }));
+            if (Array.isArray(data.entries)) {
+              setLeaderboardEntries(data.entries);
+            }
+          }
+        })
+        .catch(() => {
+          // Fallback if offline
+          setLeaderboardEntries((prev) => {
+            const newEntry = {
+              id: String(Date.now()),
+              name: savedName,
+              score: newStats.score,
+              maxCombo: newStats.maxCombo,
+              date: 'Just Now',
+              skinId: selectedSkin.id,
+              isPlayer: true,
+            };
+            const updated = [...prev.filter((e) => !e.isPlayer || e.score >= newStats.score), newEntry]
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 15);
+            try {
+              localStorage.setItem('slap_run_leaderboard', JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        });
     }
   }, [selectedSkin.id]);
 
