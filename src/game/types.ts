@@ -28,6 +28,7 @@ export interface Player {
   feverTime: number; // Remaining time in Fever mode (ms)
   skin: CharacterSkin;
   runCycle: number;
+  stamina: number; // 0 to 100, depletes continually unless slapping
 }
 
 export type BystanderType = 'fishmonger' | 'influencer' | 'bouncer' | 'fruitseller' | 'salaryman';
@@ -46,6 +47,7 @@ export interface Bystander {
   wobble: number;
   inStrikeRange?: boolean;
   knockbackVx?: number;
+  ignoredTriggered?: boolean;
   flyingAccessory?: {
     x: number;
     y: number;
@@ -67,7 +69,16 @@ export interface Chaser {
   animOffset: number;
 }
 
-export type ObstacleType = 'banana' | 'watermelon' | 'crate' | 'cart' | 'barrier' | 'barrel' | 'ramp';
+export type ObstacleType =
+  | 'crate'
+  | 'barrier'
+  | 'barrel'
+  | 'ramp'
+  | 'cart'
+  | 'watermelon'
+  | 'planter'
+  | 'hydrant'
+  | 'cafe_table';
 
 export interface Obstacle {
   id: number;
@@ -80,6 +91,8 @@ export interface Obstacle {
   nearMissChecked?: boolean;
   rotation?: number;
   rollSpeed?: number;
+  vx?: number;
+  isEdgeHazard?: boolean;
 }
 
 export interface LeaderboardEntry {
@@ -180,4 +193,9 @@ export interface GameStats {
   longestChaseEscape: number;
   mobDistance?: number;
   globalRank?: number;
+  stamina: number; // 0 to 100, depletes unless slapping pedestrians
+  maxStamina: number;
+  chaserOnScreen: boolean; // Subway Surfers police chase indicator (true if stumbled)
+  chaserAlertTimer: number; // time left before chaser falls off-screen
+  gameOverReason?: 'BUSTED' | 'EXHAUSTED' | 'COLLISION';
 }

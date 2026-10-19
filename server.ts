@@ -23,14 +23,14 @@ interface LeaderboardRecord {
 
 // Initialized Global Arcade Leaderboard seeded with authentic tournament scores
 let globalLeaderboard: LeaderboardRecord[] = [
-  { id: 'rec-1', name: 'SLAP_NINJA_99', score: 38450, maxCombo: 34, date: 'Today', skinId: 'ninja' },
-  { id: 'rec-2', name: 'TURBO_DASH_PRO', score: 31200, maxCombo: 28, date: 'Today', skinId: 'gold' },
-  { id: 'rec-3', name: 'CHAOS_QUEEN', score: 26800, maxCombo: 24, date: 'Yesterday', skinId: 'boxer' },
-  { id: 'rec-4', name: 'MARKET_MENACE', score: 22150, maxCombo: 19, date: '2d ago', skinId: 'classic' },
-  { id: 'rec-5', name: 'SWERVE_KING', score: 18900, maxCombo: 17, date: '3d ago', skinId: 'disco' },
-  { id: 'rec-6', name: 'SLAP_MASTER_J', score: 15400, maxCombo: 15, date: '3d ago', skinId: 'classic' },
-  { id: 'rec-7', name: 'MOB_RUNNER_X', score: 12600, maxCombo: 12, date: '4d ago', skinId: 'ninja' },
-  { id: 'rec-8', name: 'CHIBI_BRAWLER', score: 9800, maxCombo: 10, date: '5d ago', skinId: 'boxer' },
+  { id: 'rec-1', name: 'SLAP_NINJA_99', score: 38450, maxCombo: 34, date: 'Today', skinId: 'golden_champ' },
+  { id: 'rec-2', name: 'TURBO_DASH_PRO', score: 31200, maxCombo: 28, date: 'Today', skinId: 'cyber_boxer' },
+  { id: 'rec-3', name: 'CHAOS_QUEEN', score: 26800, maxCombo: 24, date: 'Yesterday', skinId: 'market_ninja' },
+  { id: 'rec-4', name: 'MARKET_MENACE', score: 22150, maxCombo: 19, date: '2d ago', skinId: 'speedy_dash' },
+  { id: 'rec-5', name: 'SWERVE_KING', score: 18900, maxCombo: 17, date: '3d ago', skinId: 'golden_champ' },
+  { id: 'rec-6', name: 'SLAP_MASTER_J', score: 15400, maxCombo: 15, date: '3d ago', skinId: 'speedy_dash' },
+  { id: 'rec-7', name: 'MOB_RUNNER_X', score: 12600, maxCombo: 12, date: '4d ago', skinId: 'market_ninja' },
+  { id: 'rec-8', name: 'CHIBI_BRAWLER', score: 9800, maxCombo: 10, date: '5d ago', skinId: 'cyber_boxer' },
 ];
 
 // GET /api/leaderboard - Returns official global standings
@@ -78,7 +78,11 @@ app.post('/api/leaderboard', (req, res) => {
   });
 });
 
+import http from 'http';
+
 async function startServer() {
+  const httpServer = http.createServer(app);
+
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, 'dist')));
     app.get('*', (_req, res) => {
@@ -86,13 +90,16 @@ async function startServer() {
     });
   } else {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`SlapDash Full-Stack server running at http://0.0.0.0:${PORT}`);
   });
 }

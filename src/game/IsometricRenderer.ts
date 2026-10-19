@@ -72,12 +72,12 @@ export class IsometricRenderer {
     // Dynamically calibrated so the runner is ALWAYS prominently framed at ~70% of screen height on Mobile & PC
     const centerX = this.width / 2;
     const isMobile = this.width < 768;
-    const horizonY = this.height * (isMobile ? 0.24 : 0.27);
-    const targetPlayerY = this.height * (isMobile ? 0.69 : 0.71);
+    const horizonY = this.height * (isMobile ? 0.22 : 0.25);
+    const targetPlayerY = this.height * (isMobile ? 0.70 : 0.72);
 
-    const playerDistance = 220; // World distance behind player
+    const playerDistance = 240; // Spacious 3D viewing angle for wide-angle road clarity
     const cameraY = player.y - playerDistance;
-    const playerScale = Math.min(2.0, Math.max(1.3, this.height / 480));
+    const playerScale = Math.min(1.85, Math.max(1.2, this.height / 500));
     const fov = playerDistance * playerScale;
     const cameraZ = (targetPlayerY - horizonY) / playerScale;
 
@@ -111,12 +111,12 @@ export class IsometricRenderer {
     // Distant City Skyline & Mountains
     this.drawDistantCityscape(ctx, horizonY, feverActive);
 
-    // 2. BOULEVARD ROADBED & SIDEWALKS
-    // Broad 3-lane boulevard (ROAD_WIDTH = 400: halfRoad = 200)
-    const halfRoad = ROAD_WIDTH / 2; // 200
-    const sidewalkWidth = 90;
-    const nearY = player.y - 140; // Extended behind player for seamless bottom coverage
-    const farY = player.y + 1100;
+    // 2. GRAND BOULEVARD ROADBED & SIDEWALKS
+    // Broad 5-lane boulevard (ROAD_WIDTH = 500: halfRoad = 250)
+    const halfRoad = ROAD_WIDTH / 2; // 250
+    const sidewalkWidth = 95;
+    const nearY = player.y - 160; // Extended behind player for seamless bottom coverage
+    const farY = player.y + 1200;
 
     this.drawBroadBoulevard(ctx, project, halfRoad, sidewalkWidth, nearY, farY, horizonY, feverActive);
 
@@ -377,7 +377,7 @@ export class IsometricRenderer {
   }
 
   /**
-   * Broad 3-Lane Boulevard (Spacious, Clean, High Playability)
+   * Grand 5-Lane Boulevard (Spacious, High-Contrast, Crystal Clear Playability)
    */
   private drawBroadBoulevard(
     ctx: CanvasRenderingContext2D,
@@ -403,8 +403,8 @@ export class IsometricRenderer {
     ctx.fillStyle = fever ? '#064E3B' : '#10B981';
     ctx.fillRect(0, horizonY, this.width, this.height - horizonY);
 
-    // 2. Left Sidewalk (Warm travertine pavers with bevel)
-    ctx.fillStyle = fever ? '#0F172A' : '#F1F5F9';
+    // 2. Left Sidewalk (Crisp, clean travertine pavers)
+    ctx.fillStyle = fever ? '#0F172A' : '#F8FAFC';
     ctx.beginPath();
     ctx.moveTo(swNL.x, swNL.y);
     ctx.lineTo(swFL.x, swFL.y);
@@ -414,7 +414,7 @@ export class IsometricRenderer {
     ctx.fill();
 
     // 3. Right Sidewalk
-    ctx.fillStyle = fever ? '#0F172A' : '#F1F5F9';
+    ctx.fillStyle = fever ? '#0F172A' : '#F8FAFC';
     ctx.beginPath();
     ctx.moveTo(rNR.x, rNR.y);
     ctx.lineTo(rFR.x, rFR.y);
@@ -423,7 +423,7 @@ export class IsometricRenderer {
     ctx.closePath();
     ctx.fill();
 
-    // Sidewalk Stone Paver Seams
+    // Sidewalk Stone Paver Seams (Clean and subtle)
     ctx.strokeStyle = fever ? '#1E293B' : '#E2E8F0';
     ctx.lineWidth = 1.2;
     const jointStep = 60;
@@ -448,8 +448,17 @@ export class IsometricRenderer {
       }
     }
 
-    // 4. Main Asphalt Roadbed (Clean architectural matte slate)
-    ctx.fillStyle = fever ? '#022C22' : '#334155';
+    // 4. Main Asphalt Roadbed (Deep, sleek, high-visibility tarmac with depth gradient)
+    const roadGrad = ctx.createLinearGradient(0, horizonY, 0, this.height);
+    if (fever) {
+      roadGrad.addColorStop(0, '#042F2E');
+      roadGrad.addColorStop(1, '#022C22');
+    } else {
+      roadGrad.addColorStop(0, '#263040'); // Soft horizon tarmac
+      roadGrad.addColorStop(0.3, '#1E2532');
+      roadGrad.addColorStop(1, '#151A24'); // Rich deep roadbed in foreground
+    }
+    ctx.fillStyle = roadGrad;
     ctx.beginPath();
     ctx.moveTo(rNL.x, rNL.y);
     ctx.lineTo(rFL.x, rFL.y);
@@ -458,67 +467,80 @@ export class IsometricRenderer {
     ctx.closePath();
     ctx.fill();
 
-    // 5. Directional Sunlight Road Shading
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.12)';
-    const shNear = project(-halfRoad * 0.15, nearY, 0);
-    const shFar = project(-halfRoad * 0.45, farY, 0);
+    // 5. Solid High-Visibility Outer Road Boundary Stripes (Shoulder Lines)
+    // Left shoulder line at (-halfRoad + 10), Right shoulder at (halfRoad - 10)
+    const edgeOffset = 10;
+    const leftEdgeNear = project(-halfRoad + edgeOffset, nearY, 0);
+    const leftEdgeFar = project(-halfRoad + edgeOffset, farY, 0);
+    const rightEdgeNear = project(halfRoad - edgeOffset, nearY, 0);
+    const rightEdgeFar = project(halfRoad - edgeOffset, farY, 0);
+
+    ctx.strokeStyle = fever ? '#34D399' : '#FFFFFF';
+    ctx.lineWidth = Math.max(2, 3.5 * leftEdgeNear.scale);
     ctx.beginPath();
-    ctx.moveTo(rNL.x, rNL.y);
-    ctx.lineTo(rFL.x, rFL.y);
-    ctx.lineTo(shFar.x, shFar.y);
-    ctx.lineTo(shNear.x, shNear.y);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(leftEdgeNear.x, leftEdgeNear.y);
+    ctx.lineTo(leftEdgeFar.x, leftEdgeFar.y);
+    ctx.stroke();
 
-    // 6. 3-Lane White Dashed Dividers (Lane 1 / Lane 2 / Lane 3)
-    // Separators at -halfRoad * 0.33 and +halfRoad * 0.33
-    const divLeftX = -halfRoad * 0.34; // approx -68
-    const divRightX = halfRoad * 0.34; // approx +68
-    ctx.fillStyle = '#FFFFFF';
+    ctx.lineWidth = Math.max(2, 3.5 * rightEdgeNear.scale);
+    ctx.beginPath();
+    ctx.moveTo(rightEdgeNear.x, rightEdgeNear.y);
+    ctx.lineTo(rightEdgeFar.x, rightEdgeFar.y);
+    ctx.stroke();
 
-    const dashLength = 36;
+    // 6. 4 Clean White Dashed Lane Dividers (Separating the 5 lanes evenly)
+    // Lanes: [-200, -100, 0, 100, 200]
+    // Dividers: [-150, -50, 50, 150]
+    const laneDividers = [-150, -50, 50, 150];
+    const dashLength = 40;
     const dashGap = 44;
     const cycle = dashLength + dashGap;
     const startDashY = Math.floor(nearY / cycle) * cycle;
 
-    for (let y = startDashY; y < farY; y += cycle) {
-      // Left lane divider
-      const dL1 = project(divLeftX, y, 0);
-      const dL2 = project(divLeftX, y + dashLength, 0);
-      const wL = 2.8 * dL1.scale;
+    ctx.fillStyle = fever ? '#6EE7B7' : '#FFFFFF';
 
-      if (dL1.y > horizonY && dL1.y < this.height + 40) {
-        ctx.beginPath();
-        ctx.moveTo(dL1.x - wL, dL1.y);
-        ctx.lineTo(dL1.x + wL, dL1.y);
-        ctx.lineTo(dL2.x + wL, dL2.y);
-        ctx.lineTo(dL2.x - wL, dL2.y);
-        ctx.closePath();
-        ctx.fill();
-      }
+    for (const divX of laneDividers) {
+      for (let y = startDashY; y < farY; y += cycle) {
+        const d1 = project(divX, y, 0);
+        const d2 = project(divX, y + dashLength, 0);
+        const w = Math.max(1.2, 3.2 * d1.scale);
 
-      // Right lane divider
-      const dR1 = project(divRightX, y, 0);
-      const dR2 = project(divRightX, y + dashLength, 0);
-      const wR = 2.8 * dR1.scale;
-
-      if (dR1.y > horizonY && dR1.y < this.height + 40) {
-        ctx.beginPath();
-        ctx.moveTo(dR1.x - wR, dR1.y);
-        ctx.lineTo(dR1.x + wR, dR1.y);
-        ctx.lineTo(dR2.x + wR, dR2.y);
-        ctx.lineTo(dR2.x - wR, dR2.y);
-        ctx.closePath();
-        ctx.fill();
+        if (d1.y > horizonY && d1.y < this.height + 40) {
+          ctx.beginPath();
+          ctx.moveTo(d1.x - w, d1.y);
+          ctx.lineTo(d1.x + w, d1.y);
+          ctx.lineTo(d2.x + w, d2.y);
+          ctx.lineTo(d2.x - w, d2.y);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
     }
 
-    // 7. Crisp Granite 3D Curbs (Raised stone lip separating road & sidewalk)
+    // 7. Subtle Center-Lane Forward Speed Chevrons (Every ~280 units)
+    const chevronStep = 280;
+    const startChevY = Math.floor(nearY / chevronStep) * chevronStep;
+    ctx.strokeStyle = fever ? 'rgba(52, 211, 153, 0.4)' : 'rgba(255, 255, 255, 0.22)';
+    for (let y = startChevY; y < farY; y += chevronStep) {
+      const tip = project(0, y + 26, 0);
+      const leftTip = project(-18, y, 0);
+      const rightTip = project(18, y, 0);
+      if (tip.y > horizonY && tip.y < this.height + 20) {
+        ctx.lineWidth = Math.max(1.5, 3.0 * tip.scale);
+        ctx.beginPath();
+        ctx.moveTo(leftTip.x, leftTip.y);
+        ctx.lineTo(tip.x, tip.y);
+        ctx.lineTo(rightTip.x, rightTip.y);
+        ctx.stroke();
+      }
+    }
+
+    // 8. Crisp Granite & Beveled 3D Curbs (Raised stone lips separating road & sidewalk)
+    const curbH = 7;
     // Left curb
-    const curbH = 5;
     const cNL = project(-halfRoad, nearY, curbH);
     const cFL = project(-halfRoad, farY, curbH);
-    ctx.fillStyle = '#CBD5E1';
+    ctx.fillStyle = fever ? '#065F46' : '#94A3B8';
     ctx.beginPath();
     ctx.moveTo(rNL.x, rNL.y);
     ctx.lineTo(rFL.x, rFL.y);
@@ -527,10 +549,10 @@ export class IsometricRenderer {
     ctx.closePath();
     ctx.fill();
 
-    // Left curb top bevel
+    // Left curb top bevel (gleaming white edge highlight)
     ctx.fillStyle = '#FFFFFF';
-    const cNLtop = project(-halfRoad - 4, nearY, curbH);
-    const cFLtop = project(-halfRoad - 4, farY, curbH);
+    const cNLtop = project(-halfRoad - 5, nearY, curbH);
+    const cFLtop = project(-halfRoad - 5, farY, curbH);
     ctx.beginPath();
     ctx.moveTo(cNL.x, cNL.y);
     ctx.lineTo(cFL.x, cFL.y);
@@ -542,7 +564,7 @@ export class IsometricRenderer {
     // Right curb
     const cNR = project(halfRoad, nearY, curbH);
     const cFR = project(halfRoad, farY, curbH);
-    ctx.fillStyle = '#94A3B8';
+    ctx.fillStyle = fever ? '#065F46' : '#64748B';
     ctx.beginPath();
     ctx.moveTo(rNR.x, rNR.y);
     ctx.lineTo(rFR.x, rFR.y);
@@ -551,10 +573,10 @@ export class IsometricRenderer {
     ctx.closePath();
     ctx.fill();
 
-    // Right curb top bevel
+    // Right curb top bevel (gleaming white edge highlight)
     ctx.fillStyle = '#FFFFFF';
-    const cNRtop = project(halfRoad + 4, nearY, curbH);
-    const cFRtop = project(halfRoad + 4, farY, curbH);
+    const cNRtop = project(halfRoad + 5, nearY, curbH);
+    const cFRtop = project(halfRoad + 5, farY, curbH);
     ctx.beginPath();
     ctx.moveTo(cNR.x, cNR.y);
     ctx.lineTo(cFR.x, cFR.y);
@@ -2515,66 +2537,6 @@ export class IsometricRenderer {
       ctx.beginPath();
       ctx.arc(bW / 2 - 6 * s, -bH + 2 * s, 1.8 * s, 0, Math.PI * 2);
       ctx.fill();
-    } else if (type === 'banana') {
-      // Realistic Glossy Curved 3D Banana Peel
-      ctx.rotate(rotation);
-
-      // Peel Base Shadow
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.2)';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 14 * s, 8 * s, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Peel Petals (3 curled banana skin peels radiating outwards)
-      const peelGrad = ctx.createRadialGradient(0, 0, 1 * s, 0, 0, 16 * s);
-      peelGrad.addColorStop(0, '#FEF08A');
-      peelGrad.addColorStop(0.6, '#FACC15');
-      peelGrad.addColorStop(0.9, '#CA8A04');
-      peelGrad.addColorStop(1, '#854D0E');
-
-      ctx.fillStyle = peelGrad;
-      // Center & 3 curved peels
-      ctx.beginPath();
-      ctx.arc(0, 0, 5 * s, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Top peel
-      ctx.beginPath();
-      ctx.moveTo(-3 * s, 0);
-      ctx.quadraticCurveTo(-6 * s, -14 * s, 0, -16 * s);
-      ctx.quadraticCurveTo(6 * s, -14 * s, 3 * s, 0);
-      ctx.closePath();
-      ctx.fill();
-
-      // Bottom-left peel
-      ctx.beginPath();
-      ctx.moveTo(0, 2 * s);
-      ctx.quadraticCurveTo(-15 * s, 2 * s, -16 * s, 10 * s);
-      ctx.quadraticCurveTo(-8 * s, 12 * s, 0, 4 * s);
-      ctx.closePath();
-      ctx.fill();
-
-      // Bottom-right peel
-      ctx.beginPath();
-      ctx.moveTo(0, 2 * s);
-      ctx.quadraticCurveTo(15 * s, 2 * s, 16 * s, 10 * s);
-      ctx.quadraticCurveTo(8 * s, 12 * s, 0, 4 * s);
-      ctx.closePath();
-      ctx.fill();
-
-      // Dark brown bruised tip
-      ctx.fillStyle = '#451A03';
-      ctx.beginPath();
-      ctx.arc(0, -15 * s, 2 * s, 0, Math.PI * 2);
-      ctx.arc(-15 * s, 9 * s, 1.8 * s, 0, Math.PI * 2);
-      ctx.arc(15 * s, 9 * s, 1.8 * s, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Glossy peel highlight
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.beginPath();
-      ctx.ellipse(-1 * s, -8 * s, 1.5 * s, 5 * s, -0.1, 0, Math.PI * 2);
-      ctx.fill();
     } else if (type === 'watermelon') {
       // Volumetric 3D Striped Watermelon with Sunlight Specular Sphere
       const wR = 15 * s;
@@ -2695,7 +2657,7 @@ export class IsometricRenderer {
       ctx.beginPath();
       ctx.arc(0, -bR, 2.8 * s, 0, Math.PI * 2);
       ctx.fill();
-    } else {
+    } else if (type === 'crate' || type === 'cart') {
       // 3D Timber Fruit Crate Filled with Volumetric 3D Oranges
       const w = 38 * s;
       const h = 26 * s;
@@ -2757,6 +2719,129 @@ export class IsometricRenderer {
       ctx.arc(-w / 2 + 2.5 * s, -h + 2.5 * s, 0.9 * s, 0, Math.PI * 2);
       ctx.arc(w / 2 - 2.5 * s, -h + 2.5 * s, 0.9 * s, 0, Math.PI * 2);
       ctx.fill();
+    } else if (type === 'planter') {
+      // Concrete Sidewalk Flower Planter (Curb Barrier)
+      const pW = 42 * s;
+      const pH = 24 * s;
+
+      // Concrete Trough Box
+      const stoneGrad = ctx.createLinearGradient(-pW / 2, -pH, pW / 2, 0);
+      stoneGrad.addColorStop(0, '#E2E8F0');
+      stoneGrad.addColorStop(0.5, '#CBD5E1');
+      stoneGrad.addColorStop(1, '#94A3B8');
+      ctx.fillStyle = stoneGrad;
+      ctx.fillRect(-pW / 2, -pH, pW, pH);
+      ctx.strokeStyle = '#1E293B';
+      ctx.lineWidth = 1.6 * s;
+      ctx.strokeRect(-pW / 2, -pH, pW, pH);
+
+      // Dark Soil Rim
+      ctx.fillStyle = '#3E2723';
+      ctx.fillRect(-pW / 2 + 3 * s, -pH, pW - 6 * s, 5 * s);
+
+      // Lush Green Foliage Bush & Blooming Flowers
+      const foliageColors = ['#059669', '#10B981', '#34D399'];
+      for (let i = 0; i < 5; i++) {
+        const bx = -pW / 2 + 6 * s + i * 7.5 * s;
+        ctx.fillStyle = foliageColors[i % 3];
+        ctx.beginPath();
+        ctx.arc(bx, -pH - 3 * s, 5.5 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Blossoming Red/Gold Flowers
+      const flowerColors = ['#EF4444', '#F59E0B', '#EC4899', '#FBBF24'];
+      for (let i = 0; i < 4; i++) {
+        const fx = -pW / 2 + 8 * s + i * 8.5 * s;
+        ctx.fillStyle = flowerColors[i % 4];
+        ctx.beginPath();
+        ctx.arc(fx, -pH - 6 * s, 3.2 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FFFDF0';
+        ctx.beginPath();
+        ctx.arc(fx, -pH - 6 * s, 1.2 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (type === 'hydrant') {
+      // Cast Iron Fire Hydrant
+      const hW = 20 * s;
+      const hH = 30 * s;
+
+      // Red Iron Body Cylinder
+      const ironGrad = ctx.createLinearGradient(-hW / 2, 0, hW / 2, 0);
+      ironGrad.addColorStop(0, '#EF4444');
+      ironGrad.addColorStop(0.4, '#DC2626');
+      ironGrad.addColorStop(1, '#991B1B');
+      ctx.fillStyle = ironGrad;
+      ctx.fillRect(-hW / 2, -hH * 0.8, hW, hH * 0.8);
+      ctx.strokeStyle = '#17181C';
+      ctx.lineWidth = 1.6 * s;
+      ctx.strokeRect(-hW / 2, -hH * 0.8, hW, hH * 0.8);
+
+      // Domed Top Cap
+      ctx.fillStyle = '#B91C1C';
+      ctx.beginPath();
+      ctx.arc(0, -hH * 0.8, hW * 0.52, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Top Pentagonal Brass Nut
+      ctx.fillStyle = '#F59E0B';
+      ctx.fillRect(-3 * s, -hH - 3 * s, 6 * s, 4 * s);
+
+      // Side Brass Nozzles
+      ctx.fillStyle = '#F59E0B';
+      ctx.fillRect(-hW / 2 - 4 * s, -hH * 0.55, 4 * s, 6 * s);
+      ctx.fillRect(hW / 2, -hH * 0.55, 4 * s, 6 * s);
+      ctx.strokeStyle = '#17181C';
+      ctx.lineWidth = 1 * s;
+      ctx.strokeRect(-hW / 2 - 4 * s, -hH * 0.55, 4 * s, 6 * s);
+      ctx.strokeRect(hW / 2, -hH * 0.55, 4 * s, 6 * s);
+    } else if (type === 'cafe_table') {
+      // Parisian Bistro Sidewalk Table & Umbrella
+      const tW = 38 * s;
+      const tH = 36 * s;
+
+      // Center Umbrella Pole
+      ctx.strokeStyle = '#1E293B';
+      ctx.lineWidth = 3 * s;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -tH);
+      ctx.stroke();
+
+      // Round Table Surface
+      ctx.fillStyle = '#F8FAFC';
+      ctx.beginPath();
+      ctx.ellipse(0, -14 * s, 16 * s, 7 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1.5 * s;
+      ctx.stroke();
+
+      // Striped Cafe Umbrella Canopy (Red & White)
+      ctx.beginPath();
+      ctx.moveTo(-tW / 2, -tH + 6 * s);
+      ctx.quadraticCurveTo(0, -tH - 12 * s, tW / 2, -tH + 6 * s);
+      ctx.closePath();
+      ctx.fillStyle = '#EF4444';
+      ctx.fill();
+      ctx.strokeStyle = '#17181C';
+      ctx.lineWidth = 1.8 * s;
+      ctx.stroke();
+
+      // White umbrella stripes
+      ctx.fillStyle = '#FFFFFF';
+      for (let i = 0; i < 3; i++) {
+        const ux = -tW / 4 + i * (tW / 4);
+        ctx.beginPath();
+        ctx.moveTo(ux - 3 * s, -tH + 5 * s);
+        ctx.lineTo(0, -tH - 8 * s);
+        ctx.lineTo(ux + 3 * s, -tH + 5 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
 
     ctx.restore();

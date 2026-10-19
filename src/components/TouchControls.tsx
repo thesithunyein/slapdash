@@ -35,7 +35,7 @@ export const TouchControls: React.FC<TouchControlsProps> = ({ input, onSlap, isP
     const deltaY = clientY - centerY;
 
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const maxRadius = rect.width * 0.45;
+    const maxRadius = rect.width * 0.42;
 
     const clampedDist = Math.min(distance, maxRadius);
     const angle = Math.atan2(deltaY, deltaX);
@@ -101,9 +101,9 @@ export const TouchControls: React.FC<TouchControlsProps> = ({ input, onSlap, isP
   };
 
   return (
-    <div className="absolute inset-x-0 bottom-0 pb-[max(1.25rem,env(safe-area-inset-bottom))] px-4 md:px-8 pointer-events-none z-30 flex items-end justify-between select-none">
-      {/* Left: Virtual Thumb Joystick in Wrackline Neo-Brutalist Tactile Cream */}
-      <div className="flex flex-col items-center gap-1.5 pointer-events-auto">
+    <div className="absolute inset-x-0 bottom-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] px-3 sm:px-4 md:px-8 pointer-events-none z-30 flex items-end justify-between select-none">
+      {/* Left: Ergonomic Touch Joystick with Visual D-Pad */}
+      <div className="flex flex-col items-center gap-1 pointer-events-auto">
         <div
           ref={joystickBaseRef}
           onPointerDown={handlePointerDown}
@@ -111,38 +111,46 @@ export const TouchControls: React.FC<TouchControlsProps> = ({ input, onSlap, isP
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
           aria-label="Steer joystick"
-          className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-[#FDFBF7]/90 backdrop-blur-xs border-2 border-[#17181C] shadow-[0_4px_0_#17181C] relative flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
+          className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 bg-[#181A24]/90 border-3 border-[#000000] shadow-[3px_3px_0px_#000000] relative flex items-center justify-center touch-none cursor-grab active:cursor-grabbing select-none"
         >
-          {/* Crosshairs */}
-          <div className="absolute inset-x-2 h-[2px] bg-[#17181C]/15 pointer-events-none" />
-          <div className="absolute inset-y-2 w-[2px] bg-[#17181C]/15 pointer-events-none" />
+          {/* Retro Pixel Directional Indicators */}
+          <div className="absolute top-1 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">▲</div>
+          <div className="absolute bottom-1 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">▼</div>
+          <div className="absolute left-1.5 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">◀</div>
+          <div className="absolute right-1.5 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">▶</div>
 
-          {/* Tactile Thumb Knob in Deep Cobalt */}
+          {/* Center Pixel Crosshair */}
+          <div className="absolute inset-x-2.5 h-[2px] bg-[#000000] pointer-events-none opacity-40" />
+          <div className="absolute inset-y-2.5 w-[2px] bg-[#000000] pointer-events-none opacity-40" />
+
+          {/* Chunky Pixel Thumb Knob */}
           <div
-            className={`w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#24698F] border-2 border-[#17181C] shadow-[0_3px_0_#10364C] flex items-center justify-center transition-transform ${
-              isJoystickActive ? 'scale-105 shadow-[0_1px_0_#10364C]' : 'scale-100'
+            className={`w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 bg-[#24698F] border-2 border-[#000000] shadow-[2px_2px_0px_#000000] flex items-center justify-center transition-transform duration-75 ${
+              isJoystickActive ? 'bg-[#38BDF8] scale-105' : ''
             }`}
             style={{
               transform: `translate(${knobOffset.x}px, ${knobOffset.y}px)`,
             }}
           >
-            <div className="w-4 h-4 rounded-full bg-white/30 border border-white/50" />
+            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#FFFFFF] border border-[#000000]" />
           </div>
         </div>
-
-        {/* Desktop Keyboard Cues */}
-        <span className="hidden md:inline-block font-game text-[10px] text-[#17181C]/60 bg-[#FDFBF7]/80 px-2 py-0.5 rounded-md border border-[#17181C]/30 shadow-[0_1px_0_#17181C]">
-          [A] [D] / [◄] [►] STEER
+        <span className="text-[6px] sm:text-[7px] font-pixel text-[#FFFFFF]/60 tracking-wider">
+          STEER
         </span>
       </div>
 
-      {/* Right: Tactile Neo-Brutalist SLAP! Button in Punch Coral */}
-      <div className="flex flex-col items-center gap-1.5 pointer-events-auto">
+      {/* Right: Tactile Arcade SLAP! Action Button with Haptics */}
+      <div className="flex flex-col items-center gap-1 pointer-events-auto">
         <button
+          type="button"
           onPointerDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
             setIsSlapPressed(true);
+            if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+              try { navigator.vibrate(22); } catch {}
+            }
             onSlap();
           }}
           onPointerUp={(e) => {
@@ -150,23 +158,21 @@ export const TouchControls: React.FC<TouchControlsProps> = ({ input, onSlap, isP
             e.stopPropagation();
             setIsSlapPressed(false);
           }}
-          onPointerCancel={(e) => {
+          onPointerCancel={() => {
             setIsSlapPressed(false);
           }}
           aria-label="Slap action button"
-          className={`w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-[#FF4757] hover:bg-[#E25B45] text-white border-3 border-[#17181C] shadow-[0_6px_0_#17181C] active:translate-y-[2px] active:shadow-[0_2px_0_#17181C] flex flex-col items-center justify-center transition-all cursor-pointer touch-none ${
-            isSlapPressed ? 'translate-y-[2px] shadow-[0_2px_0_#17181C]' : ''
+          className={`w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 bg-[#FF4757] hover:bg-[#E25B45] text-white border-3 sm:border-4 border-[#000000] shadow-[4px_4px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#000000] flex flex-col items-center justify-center cursor-pointer touch-none select-none transition-none ${
+            isSlapPressed ? 'translate-x-[2px] translate-y-[2px] shadow-[1px_1px_0px_#000000] bg-[#E25B45]' : ''
           }`}
         >
-          <Hand className="w-8 h-8 md:w-9 md:h-9 stroke-[2.5] -rotate-12 mb-0.5 drop-shadow-[0_2px_0_#17181C]" />
-          <span className="font-game text-base md:text-lg tracking-wider text-white drop-shadow-[0_1px_0_#17181C]">
+          <Hand className="w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 stroke-[2.5] -rotate-12 mb-0.5" />
+          <span className="font-pixel text-[9px] sm:text-xs md:text-sm tracking-wider text-white">
             SLAP!
           </span>
         </button>
-
-        {/* Desktop Keyboard Cue */}
-        <span className="hidden md:inline-block font-game text-[10px] text-[#17181C]/60 bg-[#FDFBF7]/80 px-2 py-0.5 rounded-md border border-[#17181C]/30 shadow-[0_1px_0_#17181C]">
-          [SPACE] SLAP
+        <span className="text-[6px] sm:text-[7px] font-pixel text-[#FF4757]/80 tracking-wider">
+          RECHARGE
         </span>
       </div>
     </div>

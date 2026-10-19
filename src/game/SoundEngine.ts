@@ -393,6 +393,88 @@ class SoundEngine {
   }
 
   /**
+   * Subway Surfers police whistle / siren alert when officer rushes on-screen
+   */
+  public playPoliceWhistle(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+
+    // Dual trilling high-pitched whistle burst
+    for (let i = 0; i < 2; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const st = t + i * 0.14;
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1760, st); // A6
+      osc.frequency.linearRampToValueAtTime(2200, st + 0.05);
+      osc.frequency.linearRampToValueAtTime(1760, st + 0.1);
+
+      gain.gain.setValueAtTime(0.24, st);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.13);
+    }
+  }
+
+  /**
+   * Escape chime when player clears obstacles and chaser drops off-screen
+   */
+  public playEscaped(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+
+    const notes = [587.33, 739.99, 880]; // D5, F#5, A5
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const st = t + idx * 0.06;
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, st);
+
+      gain.gain.setValueAtTime(0.2, st);
+      gain.gain.exponentialRampToValueAtTime(0.001, st + 0.2);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(st);
+      osc.stop(st + 0.21);
+    });
+  }
+
+  /**
+   * Crisp emerald health/stamina refill chime upon landing a slap
+   */
+  public playStaminaRefill(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(659.25, t); // E5
+    osc.frequency.exponentialRampToValueAtTime(1046.5, t + 0.12); // C6
+
+    gain.gain.setValueAtTime(0.28, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.19);
+  }
+
+  /**
    * Tactile button click
    */
   public playClick(): void {

@@ -23,7 +23,7 @@ export default function App() {
 
   const [gameState, setGameState] = useState<GameState>('MENU');
   const [selectedSkin, setSelectedSkin] = useState<CharacterSkin>(CHARACTER_SKINS[0]);
-  const [selectedPace, setSelectedPace] = useState<PaceMode>(PACE_MODES[1]); // Default: RUSH
+  const [selectedPace, setSelectedPace] = useState<PaceMode>(PACE_MODES[0]); // Default: NORMAL (1.0X)
   const [isMuted, setIsMuted] = useState<boolean>(sounds.getMuted());
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState<boolean>(false);
   const [showGuide, setShowGuide] = useState<boolean>(false);
@@ -69,6 +69,10 @@ export default function App() {
       comboStreak: 0,
       maxCombo: 0,
       longestChaseEscape: 0,
+      stamina: 100,
+      maxStamina: 100,
+      chaserOnScreen: false,
+      chaserAlertTimer: 0,
     };
   });
 
@@ -290,7 +294,7 @@ export default function App() {
 
   const handleHome = () => {
     if (engineRef.current) {
-      engineRef.current.state = 'MENU';
+      engineRef.current.resetToMenu();
       setGameState('MENU');
     }
   };
@@ -313,6 +317,11 @@ export default function App() {
   const handleSlap = () => {
     if (engineRef.current) {
       engineRef.current.requestSlap();
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate(22);
+        } catch {}
+      }
     }
   };
 
@@ -337,15 +346,19 @@ export default function App() {
     }
   };
 
-  // Pointer drag steering on canvas
+  // Pointer drag & swipe steering on canvas for mobile and desktop
   const isPointerDownRef = useRef<boolean>(false);
   const pointerStartXRef = useRef<number>(0);
+  const pointerStartYRef = useRef<number>(0);
   const pointerStartTimeRef = useRef<number>(0);
+  const swipeHandledRef = useRef<boolean>(false);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (gameState !== 'PLAYING') return;
     isPointerDownRef.current = true;
+    swipeHandledRef.current = false;
     pointerStartXRef.current = e.clientX;
+    pointerStartYRef.current = e.clientY;
     pointerStartTimeRef.current = performance.now();
   };
 
@@ -353,10 +366,33 @@ export default function App() {
     if (!isPointerDownRef.current || !engineRef.current || gameState !== 'PLAYING') return;
 
     const deltaX = e.clientX - pointerStartXRef.current;
-    const threshold = 12;
+    const deltaY = e.clientY - pointerStartYRef.current;
+    const elapsed = performance.now() - pointerStartTimeRef.current;
 
+    // Fast flick / swipe detection for Subway Surfers lane switching
+    if (!swipeHandledRef.current && elapsed < 260 && Math.abs(deltaX) > 36 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      swipeHandledRef.current = true;
+      if (deltaX < 0) {
+        engineRef.current.input.keys.left = true;
+        setTimeout(() => {
+          if (engineRef.current) engineRef.current.input.keys.left = false;
+        }, 120);
+      } else {
+        engineRef.current.input.keys.right = true;
+        setTimeout(() => {
+          if (engineRef.current) engineRef.current.input.keys.right = false;
+        }, 120);
+      }
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try { navigator.vibrate(15); } catch {}
+      }
+      return;
+    }
+
+    const threshold = 6;
     if (Math.abs(deltaX) > threshold) {
-      const steerStrength = Math.min(1.0, Math.max(-1.0, deltaX / 60));
+      // Smooth dynamic analog drag steering on mobile
+      const steerStrength = Math.min(1.0, Math.max(-1.0, deltaX / 42));
       engineRef.current.input.joystick.active = true;
       engineRef.current.input.joystick.x = steerStrength;
     }
@@ -373,9 +409,10 @@ export default function App() {
 
     const elapsed = performance.now() - pointerStartTimeRef.current;
     const deltaX = Math.abs(e.clientX - pointerStartXRef.current);
+    const deltaY = Math.abs(e.clientY - pointerStartYRef.current);
 
-    // Short tap = Slap!
-    if (elapsed < 240 && deltaX < 18) {
+    // Short tap anywhere on road (< 240ms, < 16px motion) = Slap!
+    if (!swipeHandledRef.current && elapsed < 240 && deltaX < 16 && deltaY < 16) {
       handleSlap();
     }
   };
@@ -383,19 +420,22 @@ export default function App() {
   return (
     <div
       ref={containerRef}
-      className="relative w-screen h-screen overflow-hidden select-none bg-[#D6E6F2] font-ui touch-none"
+      className="relative w-screen h-[100dvh] overflow-hidden select-none bg-[#181A24] font-pixel touch-none overscroll-none"
     >
-      {/* 2.5D Arcade Canvas Viewport */}
+      {/* Authentic Retro 3D Pixel Canvas Viewport */}
       <canvas
         ref={canvasRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        className="w-full h-full block touch-none cursor-pointer"
+        className="w-full h-full block touch-none cursor-pointer pixel-canvas"
       />
 
-      {/* Start / Menu Screen in Wrackline Neo-Brutalist Design */}
+      {/* Subtle Retro Arcade CRT Scanline Overlay */}
+      <div className="absolute inset-0 pointer-events-none pixel-scanlines z-10 opacity-70" />
+
+      {/* Start / Menu Screen in Retro 8-bit Pixel Design */}
       {gameState === 'MENU' && (
         <StartScreen
           highScore={stats.highScore}
@@ -442,23 +482,23 @@ export default function App() {
         />
       )}
 
-      {/* Neo-Brutalist Tactile Pause Overlay */}
+      {/* 8-Bit Retro Arcade Pause Overlay */}
       {gameState === 'PAUSED' && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-[#17181C]/55 backdrop-blur-xs select-none">
-          <div className="bg-[#FDFBF7] border-3 border-[#17181C] p-6 rounded-3xl text-center max-w-xs w-full shadow-[0_8px_0_#17181C]">
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#17181C]/60 block mb-1">
+        <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-[#000000]/75 backdrop-blur-xs select-none">
+          <div className="bg-[#181A24] border-4 border-[#000000] p-5 text-center max-w-xs w-full shadow-[6px_6px_0px_#000000]">
+            <span className="text-[8px] font-pixel uppercase tracking-wider text-[#F6C445] block mb-1">
               ARCADE RUN
             </span>
-            <h3 className="font-game text-2xl md:text-3xl font-bold text-[#17181C] mb-4 tracking-wide">
+            <h3 className="font-pixel text-lg md:text-xl font-bold text-[#FFFFFF] mb-4 tracking-wider">
               GAME PAUSED
             </h3>
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2">
               <button
                 onClick={handleTogglePause}
-                className="w-full py-3.5 px-6 bg-[#24698F] hover:bg-[#1B5575] text-white font-game text-base uppercase tracking-wider rounded-2xl border-2 border-[#17181C] shadow-[0_4px_0_#17181C] active:translate-y-[2px] active:shadow-[0_1px_0_#17181C] flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full py-3 px-4 bg-[#F6C445] hover:bg-[#FBBF24] text-[#000000] font-pixel text-xs uppercase tracking-wider border-2 border-[#000000] shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-none"
               >
-                <Play className="w-5 h-5 fill-white" />
-                <span>RESUME RUN</span>
+                <Play className="w-4 h-4 fill-black" />
+                <span>RESUME</span>
               </button>
 
               <button
@@ -466,7 +506,7 @@ export default function App() {
                   sounds.playStart();
                   handleRestart();
                 }}
-                className="w-full py-3 px-6 bg-[#FDFBF7] hover:bg-[#EAD7B0] text-[#17181C] font-game text-base uppercase tracking-wider rounded-2xl border-2 border-[#17181C] shadow-[0_4px_0_#17181C] active:translate-y-[2px] active:shadow-[0_1px_0_#17181C] flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full py-2.5 px-4 bg-[#24698F] hover:bg-[#38BDF8] text-white font-pixel text-xs uppercase tracking-wider border-2 border-[#000000] shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-none"
               >
                 <span>RESTART</span>
               </button>
@@ -476,7 +516,7 @@ export default function App() {
                   sounds.playClick();
                   handleHome();
                 }}
-                className="w-full py-2.5 px-6 bg-[#FDFBF7] hover:bg-[#EAD7B0] text-[#17181C]/80 font-game text-sm uppercase tracking-wider rounded-2xl border-2 border-[#17181C] shadow-[0_3px_0_#17181C] active:translate-y-[2px] active:shadow-[0_1px_0_#17181C] flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full py-2 px-4 bg-[#FDFBF7] hover:bg-[#EAD7B0] text-[#000000] font-pixel text-[10px] uppercase tracking-wider border-2 border-[#000000] shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-none"
               >
                 <span>QUIT TO MENU</span>
               </button>

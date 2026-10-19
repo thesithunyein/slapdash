@@ -1,8 +1,8 @@
 import React from 'react';
-import { Trophy, X, Crown, Flame } from 'lucide-react';
+import { X, Crown } from 'lucide-react';
 import { LeaderboardEntry } from '../game/types.ts';
 import { sounds } from '../game/SoundEngine.ts';
-import { SlapDashMark } from './SlapDashLogo.tsx';
+import { SlapDashPixelMark } from './SlapDashLogo.tsx';
 
 interface LeaderboardModalProps {
   entries: LeaderboardEntry[];
@@ -16,52 +16,62 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   onClose,
 }) => {
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-[#17181C]/55 backdrop-blur-xs select-none pointer-events-auto">
-      <div className="w-full max-w-md bg-[#FDFBF7] border-3 border-[#17181C] rounded-3xl p-5 md:p-6 shadow-[0_8px_0_#17181C] flex flex-col relative max-h-[90dvh] overflow-hidden">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          sounds.playClick();
+          onClose();
+        }
+      }}
+      className="absolute inset-0 z-50 flex items-center justify-center p-3 md:p-4 bg-[#000000]/75 backdrop-blur-xs select-none pointer-events-auto touch-auto"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-[#181A24] border-4 border-[#000000] shadow-[6px_6px_0px_#000000] p-4 md:p-5 flex flex-col relative max-h-[90dvh] overflow-hidden text-[#FDFBF7] pointer-events-auto"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b-2 border-[#17181C]/15 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 shrink-0 drop-shadow-[0_2px_0_#17181C]">
-              <SlapDashMark className="w-full h-full" />
+        <div className="flex items-center justify-between pb-3 border-b-2 border-[#000000] shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 shrink-0">
+              <SlapDashPixelMark className="w-full h-full" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#17181C]/60">
-                <span>GLOBAL LEADERBOARD</span>
-                <span className="flex items-center gap-1 text-[9px] text-[#10B981] font-mono font-bold bg-[#DCFCE7] px-1.5 py-0.5 rounded-md border border-[#10B981]/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" /> LIVE API
-                </span>
+              <div className="text-[7px] md:text-[8px] font-pixel text-[#F6C445] uppercase tracking-wider">
+                WORLD HIGH SCORES
               </div>
-              <h3 className="font-game text-2xl text-[#17181C] tracking-wide leading-none">
-                TOP RUNNERS
+              <h3 className="font-pixel text-base md:text-xl text-[#FFFFFF] tracking-wide leading-none mt-0.5">
+                HALL OF FAME
               </h3>
             </div>
           </div>
 
           <button
-            onClick={() => {
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
               sounds.playClick();
               onClose();
             }}
             aria-label="Close"
-            className="w-9 h-9 rounded-xl bg-white hover:bg-[#EAD7B0] text-[#17181C] border-2 border-[#17181C] shadow-[0_2px_0_#17181C] active:translate-y-[1px] active:shadow-none flex items-center justify-center transition-all cursor-pointer"
+            className="w-8 h-8 bg-[#FF4757] hover:bg-[#E25B45] text-[#FFFFFF] border-2 border-[#000000] shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none flex items-center justify-center cursor-pointer transition-none pointer-events-auto touch-manipulation"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4 stroke-[3]" />
           </button>
         </div>
 
         {/* Player Best Callout */}
-        <div className="my-3 py-2 px-3.5 bg-[#FAF6ED] border-2 border-[#17181C] rounded-2xl flex items-center justify-between text-xs font-bold text-[#17181C] shadow-[0_2px_0_#17181C] shrink-0">
-          <div className="flex items-center gap-1.5">
-            <Crown className="w-4 h-4 text-[#F6C445]" />
-            <span className="font-game tracking-wider">SEASON 1 STANDINGS</span>
+        <div className="my-2.5 py-2 px-3 bg-[#000000] border-2 border-[#F6C445] flex items-center justify-between text-[8px] md:text-[9px] font-pixel text-[#FDFBF7] shrink-0">
+          <div className="flex items-center gap-1.5 text-[#F6C445]">
+            <Crown className="w-3.5 h-3.5" />
+            <span>SEASON 1</span>
           </div>
-          <span className="font-game text-[#24698F] text-sm">
+          <span className="text-[#38BDF8]">
             YOUR BEST: {playerScore.toLocaleString()}
           </span>
         </div>
 
         {/* Leaderboard Table List */}
-        <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-1">
+        <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 my-1">
           {entries.map((entry, idx) => {
             const rank = idx + 1;
             const isTop3 = rank <= 3;
@@ -70,57 +80,51 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             return (
               <div
                 key={entry.id}
-                className={`p-2.5 rounded-2xl border-2 border-[#17181C] flex items-center justify-between transition-all ${
+                className={`p-2 border-2 border-[#000000] flex items-center justify-between transition-none ${
                   isPlayer
-                    ? 'bg-[#EAD7B0] shadow-[0_3px_0_#17181C]'
+                    ? 'bg-[#F6C445] text-[#000000] shadow-[2px_2px_0px_#000000]'
                     : isTop3
-                    ? 'bg-[#FAF6ED] shadow-[0_2px_0_#17181C]'
-                    : 'bg-white shadow-[0_1px_0_#17181C]'
+                    ? 'bg-[#24698F] text-[#FFFFFF] shadow-[2px_2px_0px_#000000]'
+                    : 'bg-[#1E2333] text-[#FDFBF7] shadow-[1px_1px_0px_#000000]'
                 }`}
               >
                 {/* Rank & Runner Info */}
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 text-center font-game font-bold text-base">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 text-center font-pixel font-bold text-xs">
                     {rank === 1 ? (
-                      <span className="text-xl">🥇</span>
+                      <span className="text-[#F6C445]">1ST</span>
                     ) : rank === 2 ? (
-                      <span className="text-xl">🥈</span>
+                      <span className="text-[#E2E8F0]">2ND</span>
                     ) : rank === 3 ? (
-                      <span className="text-xl">🥉</span>
+                      <span className="text-[#F97316]">3RD</span>
                     ) : (
-                      <span className="text-[#17181C]/50 text-sm">#{rank}</span>
+                      <span className="opacity-60">#{rank}</span>
                     )}
                   </div>
 
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-[#17181C] tracking-wide">
+                      <span className="text-[8px] md:text-[9px] font-pixel truncate max-w-[120px] md:max-w-[150px]">
                         {entry.name}
                       </span>
                       {isPlayer && (
-                        <span className="px-1.5 py-0.2 rounded-md bg-[#24698F] text-white text-[9px] font-game tracking-wider">
+                        <span className="text-[6px] font-pixel bg-[#000000] text-[#FFFFFF] px-1 py-0.5">
                           YOU
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] text-[#17181C]/50 font-bold">
-                      <span>{entry.date}</span>
-                      <span>·</span>
-                      <span className="flex items-center gap-0.5 text-[#FF4757] font-black">
-                        <Flame className="w-2.5 h-2.5" />
-                        <span>{entry.maxCombo}x combo</span>
-                      </span>
-                    </div>
                   </div>
                 </div>
 
-                {/* Score */}
-                <div className="text-right">
-                  <span className="font-game text-base md:text-lg font-bold text-[#24698F] block leading-none">
+                {/* Score & Combo */}
+                <div className="flex items-center gap-2 font-pixel">
+                  {entry.maxCombo && entry.maxCombo > 1 && (
+                    <span className="text-[7px] text-[#FF4757]">
+                      {entry.maxCombo}x
+                    </span>
+                  )}
+                  <span className={`text-[10px] md:text-xs font-bold ${isPlayer ? 'text-[#000000]' : 'text-[#F6C445]'}`}>
                     {entry.score.toLocaleString()}
-                  </span>
-                  <span className="text-[9px] font-black text-[#17181C]/40 uppercase tracking-widest">
-                    PTS
                   </span>
                 </div>
               </div>
@@ -128,17 +132,10 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           })}
         </div>
 
-        {/* Footer Got It Button */}
-        <div className="pt-3 border-t-2 border-[#17181C]/15 shrink-0">
-          <button
-            onClick={() => {
-              sounds.playClick();
-              onClose();
-            }}
-            className="w-full py-2.5 rounded-xl bg-[#24698F] hover:bg-[#1B5575] text-white font-game text-sm tracking-wider border-2 border-[#17181C] shadow-[0_3px_0_#17181C] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
-          >
-            CLOSE
-          </button>
+        {/* Footer */}
+        <div className="pt-2 border-t-2 border-[#000000] flex items-center justify-between text-[7px] font-pixel text-[#FDFBF7]/60 shrink-0">
+          <span>RUN FAST · SLAP HARD</span>
+          <span className="text-[#10B981]">● GLOBAL LIVE</span>
         </div>
       </div>
     </div>

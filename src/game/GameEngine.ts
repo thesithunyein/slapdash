@@ -18,16 +18,17 @@ import {
   BYSTANDER_TEMPLATES,
   COMIC_WORDS,
   ROAD_WIDTH,
+  ROAD_LANES,
+  SIDEWALK_EDGES,
   SLAP_REACH,
   MOB_SAFE_DISTANCE,
 } from './constants.ts';
 import { sounds } from './SoundEngine.ts';
-import { IsometricRenderer } from './IsometricRenderer.ts';
+import { ThreeGameRenderer } from './ThreeGameRenderer.ts';
 
 export class GameEngine {
   private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
-  private renderer: IsometricRenderer;
+  private renderer: ThreeGameRenderer;
   private animFrameId: number | null = null;
   private lastTime: number = 0;
 
@@ -71,13 +72,19 @@ export class GameEngine {
     comboStreak: 0,
     maxCombo: 0,
     longestChaseEscape: 0,
+    stamina: 100,
+    maxStamina: 100,
+    chaserOnScreen: false,
+    chaserAlertTimer: 0,
+    mobDistance: 180,
   };
 
   // Callback to sync stats with React UI
   private onStatsUpdate?: (stats: GameStats, state: GameState) => void;
   public onHurtFlash?: () => void;
-  public paceMultiplier: number = 1.5;
+  public paceMultiplier: number = 1.0;
   private hitFreezeMs: number = 0;
+  private passiveRunTimer: number = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -86,10 +93,7 @@ export class GameEngine {
   ) {
     this.canvas = canvas;
     this.onHurtFlash = onHurtFlash;
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Could not get 2D canvas context');
-    this.ctx = context;
-    this.renderer = new IsometricRenderer(this.ctx);
+    this.renderer = new ThreeGameRenderer(this.canvas);
     this.onStatsUpdate = onStatsUpdate;
 
     this.loadHighScore();
@@ -133,6 +137,7 @@ export class GameEngine {
     if (this.player) {
       this.player.skin = skin;
     }
+    this.renderer.setSkin(skin);
   }
 
   public resize(width: number, height: number, dpr: number = 1): void {
@@ -144,14 +149,28 @@ export class GameEngine {
   public startGame(): void {
     this.initPlayer();
     this.bystanders = [];
-    this.chasers = [];
     this.obstacles = [];
     this.coins = [];
     this.powerups = [];
     this.particles = [];
     this.floatingTexts = [];
     this.shockwaves = [];
-    this.nextSpawnY = 250;
+    this.nextSpawnY = 280;
+
+    // Lead Officer / Inspector Chaser always following behind the runner
+    this.chasers = [
+      {
+        id: 9001,
+        x: 0,
+        y: this.player.y - 180, // far behind off-screen initially
+        speed: this.player.baseSpeed,
+        bodyColor: '#F4C29E',
+        shirtColor: '#1E3A8A', // Police Navy
+        angrySteamTimer: 100,
+        runCycle: 0,
+        animOffset: 0,
+      },
+    ];
 
     this.stats.score = 0;
     this.stats.slapsCount = 0;
@@ -162,10 +181,17 @@ export class GameEngine {
     this.stats.distanceRun = 0;
     this.stats.comboStreak = 0;
     this.stats.maxCombo = 0;
+    this.stats.stamina = 100;
+    this.stats.maxStamina = 100;
+    this.stats.chaserOnScreen = false;
+    this.stats.chaserAlertTimer = 0;
+    this.stats.mobDistance = 180;
+    this.stats.gameOverReason = undefined;
+    this.passiveRunTimer = 0;
 
-    // Pre-populate initial street with bystanders
-    for (let i = 0; i < 6; i++) {
-      this.spawnMarketSegment(300 + i * 160);
+    // Pre-populate initial street with bystanders and balanced obstacles
+    for (let i = 0; i < 4; i++) {
+      this.spawnMarketSegment(320 + i * 240);
     }
 
     this.state = 'PLAYING';
@@ -180,8 +206,27 @@ export class GameEngine {
     this.startGame();
   }
 
+  public resetToMenu(): void {
+    this.state = 'MENU';
+    this.initPlayer();
+    this.bystanders = [];
+    this.chasers = [];
+    this.obstacles = [];
+    this.coins = [];
+    this.powerups = [];
+    this.particles = [];
+    this.floatingTexts = [];
+    this.shockwaves = [];
+    this.nextSpawnY = 250;
+    for (let i = 0; i < 6; i++) {
+      this.spawnMarketSegment(250 + i * 160);
+    }
+    if (this.onStatsUpdate) this.onStatsUpdate(this.stats, this.state);
+  }
+
   private initPlayer(): void {
-    const calculatedBase = (4.8 + this.selectedSkin.speedBonus) * (this.paceMultiplier || 1.0);
+    // Faster running speed as requested (base 5.2 + skin bonus)
+    const calculatedBase = (5.2 + this.selectedSkin.speedBonus) * (this.paceMultiplier || 1.0);
     this.player = {
       x: 0,
       y: 0,
@@ -198,7 +243,12 @@ export class GameEngine {
       feverTime: 0,
       skin: this.selectedSkin,
       runCycle: 0,
+      stamina: 100,
     };
+    if (this.renderer) {
+      this.renderer.resetTrack(0);
+      this.renderer.resetCamera(0);
+    }
   }
 
   public requestSlap(): void {
@@ -247,10 +297,11 @@ export class GameEngine {
   };
 
   private updateMenu(dtFactor: number): void {
-    // Gentle idle stance and slow forward camera float
-    this.player.runCycle += 0.025 * dtFactor;
-    this.player.y += 0.4 * dtFactor;
-    if (this.player.y + 700 > this.nextSpawnY) {
+    // Active runner jog in Menu mode (matches live gameplay!)
+    this.player.speed = this.player.baseSpeed || 4.8;
+    this.player.runCycle += 0.12 * dtFactor;
+    this.player.y += this.player.speed * dtFactor;
+    if (this.player.y + 750 > this.nextSpawnY) {
       this.spawnMarketSegment(this.nextSpawnY);
       this.nextSpawnY += 160;
     }
@@ -278,7 +329,22 @@ export class GameEngine {
       }
     }
 
-    // 2. Slip on banana peel timer
+    // 2. Health / Stamina Depletion
+    // "Each time the player lands a slap, their health/stamina is replenished.
+    // If they stop slapping, their health will gradually deplete, eventually leading to a game over."
+    if (!this.stats.feverActive) {
+      // Depletes ~3.3% per second at ~60fps
+      p.stamina = Math.max(0, p.stamina - 0.055 * dtFactor);
+      this.stats.stamina = Math.round(p.stamina);
+      if (p.stamina <= 0) {
+        this.triggerGameOver('EXHAUSTED');
+        return;
+      }
+    } else {
+      this.stats.stamina = Math.round(p.stamina);
+    }
+
+    // 2a. Stumble / Slip timer
     if (p.slipTimer > 0) {
       p.slipTimer -= dtFactor;
     }
@@ -293,13 +359,29 @@ export class GameEngine {
       }
     }
 
-    // 3. Forward Speed calculation
-    const speedProgressBonus = Math.min(2.0, p.y / 8000);
+    // 3. Forward Speed calculation (faster base speed, gradually increases with distance)
+    const speedProgressBonus = Math.min(3.8, (p.y / 5000) * 1.5);
     let currentSpeed = (p.baseSpeed + speedProgressBonus);
     if (this.stats.feverActive) {
       currentSpeed *= 1.45; // Super turbo in Fever
     } else if (p.slipTimer > 0) {
-      currentSpeed *= 0.55; // Slow down during banana slip
+      currentSpeed *= 0.65; // Stumble slowdown
+    } else if (Math.abs(p.x) > 218) {
+      // Rough sidewalk curb friction only on very outer edges
+      currentSpeed *= 0.82;
+      if (Math.random() < 0.25) {
+        this.particles.push({
+          x: p.x + (Math.random() - 0.5) * 8,
+          y: p.y - 12,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: -1.0 - Math.random() * 2,
+          color: '#94A3B8',
+          size: 2.5 + Math.random() * 2,
+          life: 10,
+          maxLife: 10,
+          shape: 'cloud',
+        });
+      }
     }
     p.speed = currentSpeed;
     p.y += p.speed * dtFactor;
@@ -317,13 +399,13 @@ export class GameEngine {
       if (this.input.keys.right) moveInputX += 1;
     }
 
-    // Smooth, responsive lateral steering across 3 wide lanes
-    const lateralSpeed = 8.5;
+    // Smooth, responsive lateral steering across 5 spacious lanes
+    const lateralSpeed = 9.5;
     p.vx = moveInputX * lateralSpeed;
     p.x += p.vx * dtFactor;
 
-    // Clamp inside market road limits (-180 to 180)
-    const maxBound = ROAD_WIDTH / 2 - 20;
+    // Clamp inside grand road limits (-225 to 225)
+    const maxBound = ROAD_WIDTH / 2 - 25;
     if (p.x < -maxBound) p.x = -maxBound;
     if (p.x > maxBound) p.x = maxBound;
 
@@ -359,6 +441,7 @@ export class GameEngine {
         const dy = b.y - p.y;
         const dx = Math.abs(b.x - p.x);
         b.inStrikeRange = dy >= -25 && dy <= 65 && dx <= SLAP_REACH;
+
       } else {
         b.inStrikeRange = false;
         if (b.wobble > 0) {
@@ -375,46 +458,71 @@ export class GameEngine {
       }
     }
 
-    // 7. Update Angry Mob Chasers
-    let closestMobDist = 999;
-    const baseChaserSpeed = p.baseSpeed * (0.92 + (this.stats.chaosMultiplier * 0.025));
+    // 7. Update Subway Surfers Style Chaser Pursuit
+    // Rules from prompt:
+    // - Chaser/mob is always following behind the player.
+    // - If player successfully navigates past obstacles, they are NOT visible on screen (staying back ~180 units).
+    // - Hitting a single obstacle causes them to appear on-screen (~40 units behind, breathing down your neck!).
+    // - If they are visible on-screen and player hits a second obstacle -> BUSTED (caught)!
+    // - If player runs cleanly for 6 seconds without hitting an obstacle, chaser falls back off-screen again.
+    if (this.chasers.length > 0) {
+      const leadChaser = this.chasers[0];
 
-    for (const c of this.chasers) {
-      c.runCycle += 0.06 * dtFactor;
-      c.angrySteamTimer += 0.08 * dtFactor;
-
-      // Chaser rubber-band AI
-      const distToPlayer = p.y - c.y;
-      if (distToPlayer < closestMobDist) {
-        closestMobDist = distToPlayer;
-      }
-
-      // If chaser is far behind, sprint faster to keep excitement high
-      const rubberBand = distToPlayer > 180 ? 1.3 : 1.0;
-      c.speed = baseChaserSpeed * rubberBand;
-      c.y += c.speed * dtFactor;
-
-      // Steer laterally towards player's lane
-      const lateralDelta = p.x - c.x;
-      c.x += Math.sign(lateralDelta) * Math.min(Math.abs(lateralDelta), 2.2 * dtFactor);
-
-      // Check if caught by chaser!
-      if (!this.stats.feverActive && distToPlayer <= MOB_SAFE_DISTANCE) {
-        const lateralDist = Math.abs(p.x - c.x);
-        if (lateralDist < 30) {
-          this.triggerGameOver();
-          return;
+      // If chaser is currently visible on-screen:
+      if (this.stats.chaserOnScreen) {
+        this.stats.chaserAlertTimer -= dtFactor / 60;
+        if (this.stats.chaserAlertTimer <= 0) {
+          // Navigated past obstacles cleanly!
+          this.stats.chaserOnScreen = false;
+          this.stats.chaserAlertTimer = 0;
+          sounds.playEscaped();
+          this.addFloatingText(p.x, p.y + 25, 'ESCAPED CHASER! +150', '#10B981', 22);
+          this.stats.score += 150 * this.stats.chaosMultiplier;
         }
       }
-    }
 
-    this.stats.mobDistance = this.chasers.length > 0 ? Math.round(closestMobDist) : 999;
+      // Desired distance:
+      // When on-screen: 40 units (clearly visible right behind player's heels)
+      // When off-screen: 180 units (behind camera, completely off-screen)
+      const targetDist = this.stats.chaserOnScreen ? 40 : 180;
+      const currentDist = p.y - leadChaser.y;
+      const distDiff = currentDist - targetDist;
+
+      leadChaser.speed = p.speed + (distDiff * 0.14);
+      leadChaser.y += leadChaser.speed * dtFactor;
+      leadChaser.x += (p.x - leadChaser.x) * 0.16 * dtFactor;
+      leadChaser.runCycle += 0.08 * dtFactor;
+      leadChaser.angrySteamTimer += 0.08 * dtFactor;
+
+      // Other mob members follow tightly in a cluster
+      for (let i = 1; i < this.chasers.length; i++) {
+        const c = this.chasers[i];
+        c.runCycle += 0.07 * dtFactor;
+        const targetY = leadChaser.y - (i * 16);
+        c.y += (targetY - c.y) * 0.2 * dtFactor;
+        const flankOffset = i % 2 === 1 ? -22 : 22;
+        c.x += (leadChaser.x + flankOffset - c.x) * 0.14 * dtFactor;
+      }
+
+      this.stats.mobDistance = Math.round(p.y - leadChaser.y);
+    }
 
     // 8. Obstacle Collisions & Traps
     for (const obs of this.obstacles) {
       if (obs.type === 'barrel') {
-        obs.y -= (obs.rollSpeed ?? 1.6) * dtFactor;
+        obs.y -= (obs.rollSpeed ?? 1.8) * dtFactor;
         obs.rotation = (obs.rotation ?? 0) + 0.12 * dtFactor;
+        if (obs.vx) {
+          obs.x += obs.vx * dtFactor;
+          // Bounce off sidewalk curb barriers (-215 to 215)
+          if (obs.x < -215) {
+            obs.x = -215;
+            obs.vx = Math.abs(obs.vx);
+          } else if (obs.x > 215) {
+            obs.x = 215;
+            obs.vx = -Math.abs(obs.vx);
+          }
+        }
       }
 
       if (obs.hit) continue;
@@ -434,7 +542,7 @@ export class GameEngine {
       }
 
       // If player is in the air jumping over ground obstacles
-      if (p.z > 14 && obs.type !== 'barrier') {
+      if (p.z > 14 && obs.type !== 'barrier' && obs.type !== 'cafe_table' && obs.type !== 'planter' && obs.type !== 'hydrant') {
         if (dy < 18 && dx < 22) {
           obs.hit = true;
           this.stats.score += 80 * this.stats.chaosMultiplier;
@@ -443,41 +551,43 @@ export class GameEngine {
         continue;
       }
 
-      if (dy < 22 && dx < (obs.width / 2 + 12)) {
+      if (dy < 24 && dx < (obs.width / 2 + 14)) {
         obs.hit = true;
         if (this.stats.feverActive) {
-          // Ram through obstacle with explosive stars!
+          // Ram through obstacle with explosive stars in fever mode!
           sounds.playWhack();
           this.renderer.triggerShake(5);
           this.spawnParticleExplosion(obs.x, obs.y, '#FDE047', 12);
           this.addFloatingText(obs.x, obs.y, 'SMASH!', '#FDE047', 22);
           this.stats.score += 200 * this.stats.chaosMultiplier;
         } else {
-          if (obs.type === 'banana') {
-            sounds.playSlip();
-            this.onHurtFlash?.();
-            p.slipTimer = 28; // Spin slip!
-            this.renderer.triggerShake(4);
-            this.addFloatingText(p.x, p.y + 20, 'SLIP!', '#FACC15', 20);
-            this.stats.comboStreak = 0; // Combo reset
-          } else if (obs.type === 'barrel') {
+          // SUBWAY SURFERS TWO-HIT RULE:
+          if (this.stats.chaserOnScreen) {
+            // Hit a second obstacle in a row while chaser is on-screen!
             sounds.playWhack();
-            this.onHurtFlash?.();
-            this.renderer.triggerShake(6);
-            this.spawnParticleExplosion(obs.x, obs.y, '#78350F', 10);
-            this.addFloatingText(p.x, p.y + 20, 'BARREL CRUNCH!', '#EF4444', 20);
-            p.slipTimer = 30;
-            this.stats.comboStreak = 0;
+            this.renderer.triggerShake(14);
+            this.addFloatingText(p.x, p.y + 20, 'BUSTED! CAUGHT!', '#EF4444', 26);
+            this.triggerGameOver('BUSTED');
+            return;
           } else {
-            // Collision with crate / cart / watermelon / barrier
+            // First obstacle hit: Stumble & summon chaser onto screen!
+            this.stats.chaserOnScreen = true;
+            this.stats.chaserAlertTimer = 6.0; // 6 seconds to run cleanly to escape
+
+            // Instantly surge lead chaser close enough to appear right on screen behind player
+            if (this.chasers.length > 0) {
+              this.chasers[0].y = p.y - 42;
+              this.chasers[0].x = p.x;
+            }
+
             sounds.playWhack();
+            sounds.playPoliceWhistle();
             this.onHurtFlash?.();
-            this.renderer.triggerShake(7);
-            this.spawnParticleExplosion(obs.x, obs.y, '#EA580C', 10);
-            this.addFloatingText(p.x, p.y + 20, 'OOF!', '#EF4444', 22);
-            // Heavy stumble allows mob to catch up
-            p.slipTimer = 35;
+            this.renderer.triggerShake(9);
+            p.slipTimer = 25; // stumble slowdown
             this.stats.comboStreak = 0;
+            this.addFloatingText(p.x, p.y + 20, '⚠️ CHASER ALERT! 1 MORE HIT = BUSTED!', '#EF4444', 20);
+            this.spawnParticleExplosion(obs.x, obs.y, '#EF4444', 12, 'star');
           }
         }
       } else if (!obs.hit && !obs.nearMissChecked && obs.type !== 'ramp') {
@@ -563,19 +673,19 @@ export class GameEngine {
       }
     }
 
-    // 13. Infinite Market Street Spawning
+    // 13. Infinite Market Street Spawning (spaced generously so obstacles aren't too close)
     if (p.y + 700 > this.nextSpawnY) {
       this.spawnMarketSegment(this.nextSpawnY);
-      this.nextSpawnY += 160 + Math.random() * 40;
+      this.nextSpawnY += 240 + Math.random() * 40;
     }
 
-    // 14. Cleanup off-screen entities behind player
+    // 14. Cleanup off-screen entities behind player (lead chaser is always preserved)
     const cleanupY = p.y - 350;
     this.bystanders = this.bystanders.filter((b) => b.y > cleanupY);
     this.obstacles = this.obstacles.filter((o) => o.y > cleanupY);
     this.coins = this.coins.filter((c) => c.y > cleanupY);
     this.powerups = this.powerups.filter((pu) => pu.y > cleanupY);
-    this.chasers = this.chasers.filter((c) => c.y > cleanupY);
+    this.chasers = this.chasers.filter((c) => c.id === 9001 || c.y > cleanupY);
 
     // Sync stats with UI
     if (this.onStatsUpdate) {
@@ -593,6 +703,7 @@ export class GameEngine {
     p.slapCooldown = 10; // Rapid slap cooldown
     p.isSlapping = true;
     p.slapProgress = 0;
+    this.passiveRunTimer = 0;
 
     // Detect closest bystander in slap reach
     let hitBystander: Bystander | null = null;
@@ -678,29 +789,57 @@ export class GameEngine {
         this.stats.maxCombo = this.stats.comboStreak;
       }
 
+      // REPLENISH STAMINA / HEALTH:
+      p.stamina = Math.min(100, p.stamina + 35);
+      this.stats.stamina = Math.round(p.stamina);
+      sounds.playStaminaRefill();
+      this.addFloatingText(b.x, b.y + 70, '+35 STAMINA!', '#10B981', 20);
+
+      // Slapping also helps you pull away from chasing officer
+      if (this.stats.chaserOnScreen) {
+        this.stats.chaserAlertTimer = Math.max(0, this.stats.chaserAlertTimer - 1.2);
+      }
+
       this.addChaos(18); // Fills chaos meter
       const slapPoints = b.points * this.stats.chaosMultiplier;
       this.stats.score += slapPoints;
 
       // Add points floating popup
-      this.addFloatingText(b.x, b.y + 55, `+${slapPoints}`, '#10B981', 18);
+      this.addFloatingText(b.x, b.y + 52, `+${slapPoints}`, '#F59E0B', 18);
 
-      // Enraged bystander joins the angry mob! (Capped to max 6 for optimal performance and gameplay)
+      // Angry shout popup from slapped person!
+      const shouts = ['GET BACK HERE!', 'YOU SLAPPED ME!', 'HEY!', 'MY SHIRT!'];
+      const shout = shouts[Math.floor(Math.random() * shouts.length)];
+      this.addFloatingText(b.x, b.y + 40, shout, '#EF4444', 20);
+
+      // That EXACT slapped bystander turns furious and steps onto the road directly BEHIND the runner!
+      const slappedId = b.id;
+      const slappedBodyColor = b.bodyColor;
+      const slappedShirtColor = b.shirtColor;
+
       setTimeout(() => {
         if (this.state === 'PLAYING' && this.chasers.length < 6) {
+          // Remove the bystander from sidewalk so they don't remain standing there as a duplicate!
+          this.bystanders = this.bystanders.filter((item) => item.id !== slappedId);
+
+          // Spawn directly BEHIND the player on the road (not flanking on the side!)
+          const chaserSpawnY = this.player.y - (95 + this.chasers.length * 15);
+          const chaserSpawnX = this.player.x + (Math.random() * 20 - 10);
+
+          // Add the same person with their exact shirt & skin color as a chaser!
           this.chasers.push({
-            id: this.entityIdCounter++,
-            x: b.x,
-            y: b.y,
-            speed: p.baseSpeed * 0.95,
-            bodyColor: b.bodyColor,
-            shirtColor: b.shirtColor,
-            angrySteamTimer: 0,
-            runCycle: Math.random() * 10,
+            id: slappedId,
+            x: chaserSpawnX,
+            y: chaserSpawnY,
+            speed: p.baseSpeed * 0.94,
+            bodyColor: slappedBodyColor,
+            shirtColor: slappedShirtColor,
+            angrySteamTimer: 100,
+            runCycle: 0,
             animOffset: Math.random() * 5,
           });
         }
-      }, 350);
+      }, 240);
     } else {
       // Slapped thin air
       sounds.playWhoosh();
@@ -754,20 +893,25 @@ export class GameEngine {
   }
 
   /**
-   * Procedural Market Segment Generator
+   * Balanced 5-Lane Procedural Market Segment Generator
+   * - 5 lanes: [-200, -100, 0, 100, 200]
+   * - Obstacles in 2 to 3 lanes, always leaving 2 to 3 open escape routes
+   * - Left & right paths have more obstacles to balance proximity to slap targets
+   * - Coins spawn in open escape lanes
+   * - Zero yellow obstacles (banana peel completely removed)
    */
   private spawnMarketSegment(targetY: number): void {
-    // 3 distinct lanes for spacious, clean boulevard gameplay
-    const lanes = [-115, 0, 115];
+    const lanes = ROAD_LANES; // [-200, -100, 0, 100, 200]
+    const dist = this.stats.distanceRun;
 
-    // 1. Spawn 1-2 Bystanders along the sidewalks (just off the road edge)
-    const numBystanders = Math.random() > 0.25 ? 2 : 1;
+    // 1. Spawn Bystanders along left and right sidewalk platforms
+    // (Bystanders stand at -260 or +260, readily reachable for slaps when in lane -200 or +200)
+    const numBystanders = Math.random() > 0.35 ? 2 : 1;
     for (let i = 0; i < numBystanders; i++) {
       const template = BYSTANDER_TEMPLATES[Math.floor(Math.random() * BYSTANDER_TEMPLATES.length)];
-      // Sidewalk positions on left (-175 to -215) or right (175 to 215)
-      const side = (i === 0 ? (Math.random() > 0.5 ? 1 : -1) : -1);
-      const bx = side * (175 + Math.random() * 35);
-      const by = targetY + (Math.random() * 60 - 30);
+      const side = (i === 0 ? (Math.random() > 0.5 ? 1 : -1) : (Math.random() > 0.5 ? -1 : 1));
+      const bx = side * (260 + Math.random() * 12);
+      const by = targetY + (Math.random() * 50 - 25);
 
       this.bystanders.push({
         id: this.entityIdCounter++,
@@ -784,57 +928,96 @@ export class GameEngine {
       });
     }
 
-    // 2. Spawn Obstacles (Pick 1 of the 3 lanes, ensuring at least 1-2 lanes remain clear)
-    if (Math.random() > 0.2) {
-      const obstacleTypes: ('barrier' | 'banana' | 'watermelon' | 'crate' | 'cart' | 'barrel' | 'ramp')[] = [
-        'barrier',
-        'banana',
-        'watermelon',
-        'crate',
-        'barrel',
-        'ramp',
-        'barrel',
-      ];
+    // 2. Select 2 or 3 lanes for obstacles (strictly max 3 out of 5 lanes!)
+    let obstacleLaneCount: number;
+    if (dist < 80) {
+      obstacleLaneCount = 1;
+    } else if (dist < 260) {
+      obstacleLaneCount = 2;
+    } else {
+      obstacleLaneCount = Math.random() < 0.55 ? 2 : 3;
+    }
+
+    // Left and right paths have higher weight so the side routes aren't too easy!
+    // Lanes: -200 (left platform), -100 (mid-left), 0 (center), 100 (mid-right), 200 (right platform)
+    const laneWeights = [2.6, 2.0, 1.0, 2.0, 2.6];
+    const availableLaneIndices = [0, 1, 2, 3, 4];
+    const chosenLanes: number[] = [];
+
+    for (let o = 0; o < obstacleLaneCount; o++) {
+      let totalW = 0;
+      for (const idx of availableLaneIndices) totalW += laneWeights[idx];
+      let roll = Math.random() * totalW;
+      let selectedIdx = availableLaneIndices[0];
+      for (const idx of availableLaneIndices) {
+        roll -= laneWeights[idx];
+        if (roll <= 0) {
+          selectedIdx = idx;
+          break;
+        }
+      }
+      chosenLanes.push(lanes[selectedIdx]);
+      const removePos = availableLaneIndices.indexOf(selectedIdx);
+      if (removePos !== -1) availableLaneIndices.splice(removePos, 1);
+    }
+
+    const occupiedLanes = new Set<number>(chosenLanes);
+
+    // Obstacle types: crates, barriers, barrels, carts, and jump ramps (NO yellow banana!)
+    const obstacleTypes: ('crate' | 'barrier' | 'barrel' | 'cart' | 'ramp')[] = [
+      'crate',
+      'barrier',
+      'barrel',
+      'cart',
+      'ramp',
+    ];
+
+    for (let i = 0; i < chosenLanes.length; i++) {
+      const ox = chosenLanes[i];
       const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-      const chosenLane = lanes[Math.floor(Math.random() * lanes.length)];
-      const ox = chosenLane + (Math.random() * 20 - 10);
-      const oy = targetY + 40 + Math.random() * 40;
+      const oy = targetY + 30 + i * 25; // staggered slightly for dynamic view
 
       this.obstacles.push({
         id: this.entityIdCounter++,
         x: ox,
         y: oy,
         type,
-        width: type === 'barrier' ? 44 : type === 'ramp' ? 44 : type === 'cart' ? 48 : 32,
+        width: type === 'barrier' ? 44 : type === 'ramp' ? 44 : type === 'cart' ? 46 : 34,
         height: 26,
         hit: false,
-        rotation: type === 'banana' ? Math.random() * Math.PI : 0,
-        rollSpeed: type === 'barrel' ? 1.4 + Math.random() * 0.8 : 0,
+        rollSpeed: type === 'barrel' ? 1.5 + Math.random() * 0.4 : 0,
+        vx: 0, // Barrels roll straight down their own lane — fair & telegraphed
       });
     }
 
-    // 3. Spawn Gold Coins (in trails of 3 along one open lane)
-    if (Math.random() > 0.35) {
-      const coinLane = lanes[Math.floor(Math.random() * lanes.length)];
-      for (let c = 0; c < 3; c++) {
-        this.coins.push({
-          id: this.entityIdCounter++,
-          x: coinLane,
-          y: targetY + c * 32,
-          collected: false,
-          bobPhase: c * 0.4,
-        });
+    // 3. Gold Coins mark the open escape routes!
+    const openLanes = lanes.filter((l) => !occupiedLanes.has(l));
+    if (openLanes.length > 0) {
+      const numCoinLanes = Math.min(openLanes.length, Math.random() > 0.4 ? 2 : 1);
+      const shuffledOpen = [...openLanes].sort(() => Math.random() - 0.5);
+
+      for (let cl = 0; cl < numCoinLanes; cl++) {
+        const coinLane = shuffledOpen[cl];
+        for (let c = 0; c < 3; c++) {
+          this.coins.push({
+            id: this.entityIdCounter++,
+            x: coinLane,
+            y: targetY + c * 32,
+            collected: false,
+            bobPhase: c * 0.4,
+          });
+        }
       }
     }
 
     // 4. Occasional Powerup (Soda / Soap)
     if (Math.random() > 0.82) {
       const puType = Math.random() > 0.5 ? 'soda' : 'soap';
-      const puLane = lanes[Math.floor(Math.random() * lanes.length)];
+      const puLane = openLanes.length > 0 ? openLanes[0] : lanes[2];
       this.powerups.push({
         id: this.entityIdCounter++,
         x: puLane,
-        y: targetY + 80,
+        y: targetY + 110,
         type: puType,
         collected: false,
         bobPhase: 0,
@@ -887,8 +1070,9 @@ export class GameEngine {
     });
   }
 
-  private triggerGameOver(): void {
+  private triggerGameOver(reason: 'BUSTED' | 'EXHAUSTED' | 'COLLISION' = 'BUSTED'): void {
     this.state = 'GAMEOVER';
+    this.stats.gameOverReason = reason;
     sounds.stopArcadeBeat();
     sounds.playBusted();
     this.renderer.triggerShake(12);
@@ -954,5 +1138,6 @@ export class GameEngine {
       cancelAnimationFrame(this.animFrameId);
     }
     sounds.stopArcadeBeat();
+    this.renderer.destroy();
   }
 }

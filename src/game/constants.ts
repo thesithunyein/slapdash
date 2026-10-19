@@ -34,6 +34,17 @@ export const CHARACTER_SKINS: CharacterSkin[] = [
     speedBonus: 0.15,
     cost: 350,
   },
+  {
+    id: 'cyber_boxer',
+    name: 'Cyber Brawler',
+    tagline: 'High-voltage electric violet & neon cyan street boxer',
+    bodyColor: '#A3684B',
+    shirtColor: '#8B5CF6',
+    pantsColor: '#06B6D4',
+    hat: 'headband',
+    speedBonus: 0.2,
+    cost: 500,
+  },
 ];
 
 export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
@@ -104,6 +115,8 @@ export const BYSTANDER_TEMPLATES: BystanderTemplate[] = [
 
 export const COMIC_WORDS = ['SLAP!', 'POW!', 'WHACK!', 'BONK!', 'SMACK!', 'BAM!', 'KAPOW!'];
 
-export const ROAD_WIDTH = 400; // Spacious 3-lane boulevard (-200 to 200)
-export const SLAP_REACH = 110; // Extended reach distance for comfortable slap hitbox
+export const ROAD_WIDTH = 500; // Grand 5-lane boulevard (-250 to 250)
+export const ROAD_LANES = [-200, -100, 0, 100, 200]; // 5 cleanly aligned, spacious lanes
+export const SIDEWALK_EDGES = [-225, 225]; // Curb edge hazards
+export const SLAP_REACH = 125; // Extended reach distance for comfortable slap hitbox
 export const MOB_SAFE_DISTANCE = 45; // Minimum distance before mob catches player
