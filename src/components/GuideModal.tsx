@@ -57,6 +57,15 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
           {/* Action Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div className="p-2.5 bg-[#1E2333] border-2 border-[#000000] shadow-[2px_2px_0px_#000000]">
+              <div className="text-[10px] text-[#F6C445] mb-1">
+                ▶ OPENING MEGA SLAP
+              </div>
+              <p className="text-[8px] text-[#FDFBF7]/80 leading-relaxed font-ui">
+                Every run starts with a massive slap to the smug guy in the middle of the road! Hit SLAP or Space to land the blow and trigger the chase.
+              </p>
+            </div>
+
+            <div className="p-2.5 bg-[#1E2333] border-2 border-[#000000] shadow-[2px_2px_0px_#000000]">
               <div className="text-[10px] text-[#10B981] mb-1">
                 ▶ SLAP FOR STAMINA
               </div>
@@ -76,19 +85,10 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
 
             <div className="p-2.5 bg-[#1E2333] border-2 border-[#000000] shadow-[2px_2px_0px_#000000]">
               <div className="text-[10px] text-[#38BDF8] mb-1">
-                ▶ 5 LANES & ESCAPES
+                ▶ 5 LANES WITH AUTO-ALIGN
               </div>
               <p className="text-[8px] text-[#FDFBF7]/80 leading-relaxed font-ui">
-                5 road tracks. Obstacles block 2-3 lanes, while coins mark the open escape routes. Side paths have more obstacles but hold bystanders!
-              </p>
-            </div>
-
-            <div className="p-2.5 bg-[#1E2333] border-2 border-[#000000] shadow-[2px_2px_0px_#000000]">
-              <div className="text-[10px] text-[#F6C445] mb-1">
-                ▶ ACCELERATING SPEED
-              </div>
-              <p className="text-[8px] text-[#FDFBF7]/80 leading-relaxed font-ui">
-                Slightly faster base speed that increases with distance. Chain slaps to charge Chaos and trigger FEVER 16x invincible turbo!
+                Steer left or right to squarely land in the center of any of the 5 lanes. Easily grab lines of coins and cleanly dodge barricades!
               </p>
             </div>
           </div>
@@ -100,17 +100,17 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
             </span>
             <div className="space-y-1.5 text-[7px] sm:text-[8px]">
               <div className="flex items-center justify-between py-1 border-b border-[#333333]">
-                <span className="text-[#FDFBF7]/80">Steer / Dodge</span>
+                <span className="text-[#FDFBF7]/80">5-Lane Steer</span>
                 <div className="flex items-center gap-1 text-[#F6C445]">
-                  <span className="text-[#38BDF8]">Swipe / D-Pad</span>
-                  <span className="opacity-50">or A/D</span>
+                  <span className="text-[#38BDF8]">Swipe / ◀ ▶ Buttons</span>
+                  <span className="opacity-50">or A/D / Arrows</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-between py-1 border-b border-[#333333]">
-                <span className="text-[#FDFBF7]/80">Slap & Recharge</span>
+                <span className="text-[#FDFBF7]/80">Slap & Kickoff</span>
                 <div className="flex items-center gap-1 text-[#FF4757]">
-                  <span className="text-[#FF4757]">Tap Road / SLAP!</span>
+                  <span className="text-[#FF4757]">Tap Screen / SLAP!</span>
                   <span className="opacity-50">or Space</span>
                 </div>
               </div>

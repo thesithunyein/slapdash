@@ -5,10 +5,16 @@ import { Hand } from 'lucide-react';
 interface TouchControlsProps {
   input: InputState;
   onSlap: () => void;
+  onShiftLane?: (dir: -1 | 1) => void;
   isPaused?: boolean;
 }
 
-export const TouchControls: React.FC<TouchControlsProps> = ({ input, onSlap, isPaused }) => {
+export const TouchControls: React.FC<TouchControlsProps> = ({
+  input,
+  onSlap,
+  onShiftLane,
+  isPaused,
+}) => {
   const joystickBaseRef = useRef<HTMLDivElement | null>(null);
   const [knobOffset, setKnobOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isJoystickActive, setIsJoystickActive] = useState<boolean>(false);
@@ -102,41 +108,73 @@ export const TouchControls: React.FC<TouchControlsProps> = ({ input, onSlap, isP
 
   return (
     <div className="absolute inset-x-0 bottom-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] px-3 sm:px-4 md:px-8 pointer-events-none z-30 flex items-end justify-between select-none">
-      {/* Left: Ergonomic Touch Joystick with Visual D-Pad */}
+      {/* Left: Ergonomic Touch Steering with 5-Lane Tap Buttons & Joystick */}
       <div className="flex flex-col items-center gap-1 pointer-events-auto">
-        <div
-          ref={joystickBaseRef}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          aria-label="Steer joystick"
-          className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 bg-[#181A24]/90 border-3 border-[#000000] shadow-[3px_3px_0px_#000000] relative flex items-center justify-center touch-none cursor-grab active:cursor-grabbing select-none"
-        >
-          {/* Retro Pixel Directional Indicators */}
-          <div className="absolute top-1 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">▲</div>
-          <div className="absolute bottom-1 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">▼</div>
-          <div className="absolute left-1.5 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">◀</div>
-          <div className="absolute right-1.5 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">▶</div>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {onShiftLane && (
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onShiftLane(-1);
+              }}
+              aria-label="Shift Left Lane"
+              className="w-10 h-10 sm:w-12 sm:h-12 bg-[#181A24] border-2 sm:border-3 border-[#000000] shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none text-[#F6C445] font-pixel text-sm font-bold flex items-center justify-center cursor-pointer select-none"
+            >
+              ◀
+            </button>
+          )}
 
-          {/* Center Pixel Crosshair */}
-          <div className="absolute inset-x-2.5 h-[2px] bg-[#000000] pointer-events-none opacity-40" />
-          <div className="absolute inset-y-2.5 w-[2px] bg-[#000000] pointer-events-none opacity-40" />
-
-          {/* Chunky Pixel Thumb Knob */}
           <div
-            className={`w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 bg-[#24698F] border-2 border-[#000000] shadow-[2px_2px_0px_#000000] flex items-center justify-center transition-transform duration-75 ${
-              isJoystickActive ? 'bg-[#38BDF8] scale-105' : ''
-            }`}
-            style={{
-              transform: `translate(${knobOffset.x}px, ${knobOffset.y}px)`,
-            }}
+            ref={joystickBaseRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            aria-label="Steer joystick"
+            className="w-18 h-18 sm:w-22 sm:h-22 md:w-26 md:h-26 bg-[#181A24]/90 border-3 border-[#000000] shadow-[3px_3px_0px_#000000] relative flex items-center justify-center touch-none cursor-grab active:cursor-grabbing select-none"
           >
-            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#FFFFFF] border border-[#000000]" />
+            {/* Retro Pixel Directional Indicators */}
+            <div className="absolute top-1 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">▲</div>
+            <div className="absolute bottom-1 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">▼</div>
+            <div className="absolute left-1.5 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">◀</div>
+            <div className="absolute right-1.5 text-[7px] sm:text-[8px] font-pixel text-[#F6C445]/60 pointer-events-none">▶</div>
+
+            {/* Center Pixel Crosshair */}
+            <div className="absolute inset-x-2.5 h-[2px] bg-[#000000] pointer-events-none opacity-40" />
+            <div className="absolute inset-y-2.5 w-[2px] bg-[#000000] pointer-events-none opacity-40" />
+
+            {/* Chunky Pixel Thumb Knob */}
+            <div
+              className={`w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 bg-[#24698F] border-2 border-[#000000] shadow-[2px_2px_0px_#000000] flex items-center justify-center transition-transform duration-75 ${
+                isJoystickActive ? 'bg-[#38BDF8] scale-105' : ''
+              }`}
+              style={{
+                transform: `translate(${knobOffset.x}px, ${knobOffset.y}px)`,
+              }}
+            >
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#FFFFFF] border border-[#000000]" />
+            </div>
           </div>
+
+          {onShiftLane && (
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onShiftLane(1);
+              }}
+              aria-label="Shift Right Lane"
+              className="w-10 h-10 sm:w-12 sm:h-12 bg-[#181A24] border-2 sm:border-3 border-[#000000] shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none text-[#F6C445] font-pixel text-sm font-bold flex items-center justify-center cursor-pointer select-none"
+            >
+              ▶
+            </button>
+          )}
         </div>
         <span className="text-[6px] sm:text-[7px] font-pixel text-[#FFFFFF]/60 tracking-wider">
-          STEER
+          5-LANE STEER
         </span>
       </div>
 

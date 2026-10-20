@@ -33,32 +33,72 @@ let globalLeaderboard: LeaderboardRecord[] = [
   { id: 'rec-8', name: 'CHIBI_BRAWLER', score: 9800, maxCombo: 10, date: '5d ago', skinId: 'cyber_boxer' },
 ];
 
-// GET /api/leaderboard - Returns official global standings
+// In-memory lightweight gameplay analytics
+interface AnalyticsSummary {
+  runsStarted: number;
+  runsCompleted: number;
+  totalScoreLogged: number;
+  bustedFailures: number;
+  exhaustedFailures: number;
+  stageClears: number;
+}
+const analyticsData: AnalyticsSummary = {
+  runsStarted: 0,
+  runsCompleted: 0,
+  totalScoreLogged: 0,
+  bustedFailures: 0,
+  exhaustedFailures: 0,
+  stageClears: 0,
+};
+
+// GET /api/leaderboard - Returns official global standings and tournament status
 app.get('/api/leaderboard', (_req, res) => {
   const sorted = [...globalLeaderboard].sort((a, b) => b.score - a.score).slice(0, 20);
+  
+  // Weekly Tournament metadata (resets every Sunday midnight UTC)
+  const now = new Date();
+  const dayOfWeek = now.getUTCDay(); // 0 is Sunday
+  const daysUntilSunday = (7 - dayOfWeek) % 7 || 7;
+  const resetDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + daysUntilSunday, 23, 59, 59));
+  const hoursRemaining = Math.max(1, Math.round((resetDate.getTime() - now.getTime()) / (1000 * 60 * 60)));
+
   res.json({
     status: 'ok',
     totalEntries: globalLeaderboard.length,
     entries: sorted,
+    tournament: {
+      season: 'Season 1: Grand Bazaar Blitz',
+      endsInHours: hoursRemaining,
+      topReward: '500 Coins + Crown Trophy',
+      activeParticipants: globalLeaderboard.length + 142,
+    },
     updatedAt: new Date().toISOString(),
   });
 });
 
-// POST /api/leaderboard - Verify run, calculate official global rank, and register entry
+// POST /api/leaderboard - Validates run, registers entry, and calculates gap to next player
 app.post('/api/leaderboard', (req, res) => {
   const { name, score, maxCombo, skinId } = req.body;
-  if (typeof score !== 'number' || score <= 0) {
-    return res.status(400).json({ error: 'Valid score is required' });
+  
+  // Validate score integrity: positive integer, capped at reasonable limit
+  if (typeof score !== 'number' || isNaN(score) || score <= 0 || score > 5000000) {
+    return res.status(400).json({ error: 'Valid score between 1 and 5,000,000 is required' });
   }
 
-  const cleanName = (name && typeof name === 'string' ? name.trim().slice(0, 16) : '') || 'YOU (CHAMPION)';
+  // Validate maxCombo integrity
+  const safeCombo = typeof maxCombo === 'number' && !isNaN(maxCombo) && maxCombo >= 0 && maxCombo <= 250 
+    ? Math.floor(maxCombo) 
+    : 0;
+
+  const cleanName = (typeof name === 'string' ? name.trim().slice(0, 16).replace(/[^\w\s-]/g, '') : '') || 'YOU (CHAMPION)';
+  
   const newRecord: LeaderboardRecord = {
-    id: `run-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: `run-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
     name: cleanName,
-    score,
-    maxCombo: typeof maxCombo === 'number' ? maxCombo : 0,
+    score: Math.floor(score),
+    maxCombo: safeCombo,
     date: 'Just Now',
-    skinId: skinId || 'classic',
+    skinId: typeof skinId === 'string' ? skinId.slice(0, 32) : 'speedy_dash',
     isPlayer: true,
   };
 
@@ -69,13 +109,61 @@ app.post('/api/leaderboard', (req, res) => {
   const rank = globalLeaderboard.findIndex((e) => e.id === newRecord.id) + 1;
   const top20 = globalLeaderboard.slice(0, 20);
 
+  // Calculate score needed to surpass player above
+  let nextPlayerAbove: { name: string; score: number; scoreToSurpass: number } | null = null;
+  if (rank > 1 && globalLeaderboard[rank - 2]) {
+    const higherPlayer = globalLeaderboard[rank - 2];
+    nextPlayerAbove = {
+      name: higherPlayer.name,
+      score: higherPlayer.score,
+      scoreToSurpass: higherPlayer.score - newRecord.score + 1,
+    };
+  }
+
+  // Update in-memory telemetry
+  analyticsData.runsCompleted++;
+  analyticsData.totalScoreLogged += newRecord.score;
+
   res.json({
     status: 'ok',
     rank,
     totalEntries: globalLeaderboard.length,
     newRecord,
     entries: top20,
+    nextPlayerAbove,
   });
+});
+
+// GET /api/daily-schedule - Synchronized UTC reset schedule for online players
+app.get('/api/daily-schedule', (_req, res) => {
+  const now = new Date();
+  const todayKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+  
+  // Next reset is tomorrow at 00:00:00 UTC
+  const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+  const msUntilReset = tomorrow.getTime() - now.getTime();
+  const hoursUntilReset = Math.floor(msUntilReset / (1000 * 60 * 60));
+  const minutesUntilReset = Math.floor((msUntilReset % (1000 * 60 * 60)) / (1000 * 60));
+
+  res.json({
+    status: 'ok',
+    todayKey,
+    hoursUntilReset,
+    minutesUntilReset,
+    resetTimeFormatted: `${hoursUntilReset}h ${minutesUntilReset}m`,
+  });
+});
+
+// POST /api/analytics - Safe, privacy-friendly gameplay telemetry
+app.post('/api/analytics', (req, res) => {
+  const { event, reason } = req.body || {};
+  if (event === 'run_start') analyticsData.runsStarted++;
+  if (event === 'stage_clear') analyticsData.stageClears++;
+  if (event === 'game_over') {
+    if (reason === 'BUSTED') analyticsData.bustedFailures++;
+    else if (reason === 'EXHAUSTED') analyticsData.exhaustedFailures++;
+  }
+  res.json({ status: 'ok', totalRunsTracked: analyticsData.runsStarted });
 });
 
 import http from 'http';

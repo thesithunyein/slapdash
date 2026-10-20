@@ -14,14 +14,14 @@
 ---
 
 ### 4. Short Game Description
-**SlapDash** is a fast-paced, high-energy 2.5D arcade runner built with a custom HTML5 Canvas engine and synthesized Web Audio. Players sprint down a vibrant, sunlit boulevard lined with Parisian facades and travertine pavers, slapping comical bystanders with cartoon impact while dodging crazy hazards (rolling barrels, 360-spin banana peels, boost launch ramps, fruit crates). Each slap lands with tactile comic punchlines, knocking off accessories (chef hats, sunglasses, selfie phones, flying fish) and charging the **Chaos Meter** from 1x up to a 16x **FEVER RUN**. Slapped pedestrians join an enraged pursuer mob that sprints relentlessly behind the player with hilarious steam-puff animations.
+**SlapDash** is a fast-paced, high-energy 3D / 2.5D arcade runner built with a custom Three.js WebGL engine and synthesized Web Audio. Players sprint down a vibrant, sunlit boulevard lined with Parisian facades and travertine pavers, slapping comical bystanders with cartoon impact while dodging crazy hazards (rolling barrels, boost launch ramps, fruit crates, market pushcarts). Each slap lands with tactile comic punchlines, knocking off accessories (chef hats, sunglasses, selfie phones, flying fish), replenishing stamina, and charging the **Chaos Meter** from 1x up to a 16x **FEVER RUN**. Slapped pedestrians join an enraged pursuer mob that sprints relentlessly behind the player with hilarious steam-puff animations.
 
 ---
 
 ### 5. How to Open and Play the Game
 1. Open the hosted playable HTTPS game link in any modern web browser on PC or Mobile.
 2. No installation, plugins, or account login are required.
-3. On the Start Screen, select your unlocked runner skin (or unlock new ones with collected coins).
+3. On the Start Screen, select your unlocked runner skin (or unlock new ones with collected coins) and choose Stage Mode or Endless Mode.
 4. Tap or click **PLAY NOW** to start running immediately.
 
 ---
@@ -42,22 +42,25 @@
 
 ### 8. Controls and Gameplay Instructions
 #### Mobile Controls:
-- **Steer**: Virtual ergonomic thumb joystick in the lower-left corner, or swipe/drag horizontally anywhere on the road.
-- **Slap**: Large tactile emerald **SLAP!** button in the lower-right corner, or quick tap anywhere on screen.
+- **Steer**: Virtual ergonomic thumb joystick in the lower-left corner, quick lane buttons (◀ ▶), or swipe left/right.
+- **Jump / Vault**: Tap the emerald **JUMP** button in the lower-right or swipe up anywhere on screen to vault over crates and rolling barrels.
+- **Slap**: Large tactile crimson **SLAP!** button in the lower-right corner, or quick tap anywhere on screen.
 - **Haptics**: Native vibration feedback on slap impacts (supported Android & mobile browsers).
 
 #### Desktop PC Controls:
 - **Steer**: `A` / `D` or `ArrowLeft` / `ArrowRight` keys, or click-and-drag horizontally with mouse.
+- **Jump / Vault**: Press `W` or `ArrowUp` to jump over low obstacles.
 - **Slap**: Press `Spacebar` or **Left-Click** anywhere on the screen.
 - **Pause**: Press `P`, `Escape`, or click the top-right Pause button in the HUD.
 
 #### Gameplay Mechanics & Scoring:
-- **Slap Bystanders**: Approach bystanders and hit SLAP within reach to score points and knock their hats/items into the air.
-- **Chaos Multiplier**: Consecutive slaps fill the flaming Chaos capsule, escalating the score multiplier: `1x` → `2x` → `4x` → `8x`.
-- **FEVER RUN (16x)**: Filling the gauge to 100% unleashes invulnerable supersonic sprint speed, sparkling gold auras, and smashing through all obstacles for massive bonus points!
+- **Slap Bystanders**: Approach bystanders and hit SLAP within reach to score points, replenish stamina, and knock accessories flying.
+- **Jump & Dodge**: Leap over crates, barrels, and pushcarts for `LEAP OVER! +80` bonus points, or launch off boost ramps for aerial vaults.
+- **Subway Surfers Chaser Rule**: Hitting 1 obstacle alerts the chasing officer onto your screen for 6 seconds. Hit a 2nd obstacle in a row while alerted = Busted! Run cleanly to escape.
+- **Chaos Multiplier**: Consecutive slaps escalate the score multiplier: `1x` → `2x` → `4x` → `8x`.
+- **FEVER RUN (16x)**: Filling the gauge to 100% unleashes invulnerable supersonic sprint speed and obstacle smashing.
 - **Dynamic Procedural Beat**: Built-in audio tempo dynamically increases from 110 BPM to 165 BPM as Chaos rises.
-- **Avoid Obstacles & Mob**: Steer clear of rolling barrels, market carts, and banana peels. Slips and crashes slow you down, allowing the angry mob to catch up and trigger a comic dogpile.
-- **Collect Coins & Powerups**: Grab floating gold medallions to spend in the Runner Locker. Pick up Soda Cans (turbo boost) and Soap Bars (frictionless slipstream).
+- **Collect Coins & Powerups**: Grab floating gold medallions to spend in the Runner Wardrobe (6 distinct skins). Pick up Turbo Soda and Soap Bars.
 
 ---
 
@@ -70,7 +73,7 @@
 - **Runtime Framework**: React 18 & TypeScript
 - **Styling**: Tailwind CSS
 - **Iconography**: Lucide React (standalone SVGs for HUD & UI buttons)
-- **Engine**: Custom lightweight 2.5D isometric HTML5 Canvas renderer with Z-depth sorting
+- **Engine**: Three.js WebGL 3D renderer & custom isometric camera system
 - **Audio Engine**: 100% native Web Audio API procedural synthesizer (zero audio sample dependencies)
 
 ---
@@ -78,7 +81,7 @@
 ### 11. Asset Credit Summary
 - **Code & Logic**: 100% custom-written during the competition period.
 - **Audio**: 100% procedural synthesized audio created natively in code via Web Audio oscillators, filters, and gain envelopes. No third-party audio files used.
-- **Graphics & Visuals**: 100% procedurally drawn vector art, gradients, shadows, and isometric projection inside the HTML5 Canvas. No third-party copyrighted art used.
+- **Graphics & Visuals**: 100% procedurally modeled 3D voxel geometry, flat-shaded arcade materials, and dynamic lighting. No third-party copyrighted art used.
 
 ---
 

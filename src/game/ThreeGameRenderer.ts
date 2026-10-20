@@ -10,6 +10,7 @@ import {
   FloatingText,
   Shockwave,
   CharacterSkin,
+  IntroSlapState,
 } from './types.ts';
 import { ROAD_WIDTH } from './constants.ts';
 
@@ -23,7 +24,6 @@ export class ThreeGameRenderer {
   private renderer: THREE.WebGLRenderer;
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
-
   private width: number = 800;
   private height: number = 600;
   private dpr: number = 1;
@@ -54,6 +54,12 @@ export class ThreeGameRenderer {
   private playerShadow: THREE.Mesh;
   private megaSlapGlove: THREE.Mesh;
   private currentSkin?: CharacterSkin;
+
+  // Introductory Cinematic Smug Victim
+  private introVictimGroup!: THREE.Group;
+  private introVictimHead!: THREE.Mesh;
+  private introVictimTorso!: THREE.Mesh;
+  private introSunglassesMesh!: THREE.Mesh;
 
   // Entity Meshes Maps
   private bystanderMeshes: Map<number, THREE.Group> = new Map();
@@ -143,6 +149,9 @@ export class ThreeGameRenderer {
     this.playerShadow = charBuild.shadow;
     this.megaSlapGlove = charBuild.megaSlapGlove;
     this.scene.add(this.playerGroup);
+
+    // 9. Build 3D Voxel Intro Smug Victim in middle of road
+    this.createIntroVictimMesh();
   }
 
   private initMaterials(): void {
@@ -854,6 +863,118 @@ export class ThreeGameRenderer {
     }
   }
 
+  /**
+   * Procedural 3D Voxel Intro Victim (Smug Rival positioned in middle of road)
+   */
+  private createIntroVictimMesh(): void {
+    this.introVictimGroup = new THREE.Group();
+    this.introVictimGroup.visible = false;
+
+    // Contact shadow
+    const shadowGeo = new THREE.PlaneGeometry(1.8, 1.8);
+    shadowGeo.rotateX(-Math.PI / 2);
+    const shadow = new THREE.Mesh(shadowGeo, this.materials['shadow']);
+    shadow.position.y = 0.02;
+    this.introVictimGroup.add(shadow);
+
+    const suitMat = new THREE.MeshStandardMaterial({ color: 0x7c3aed, roughness: 0.5, flatShading: true });
+    const shirtMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, flatShading: true });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xf2be9b, roughness: 0.6, flatShading: true });
+    const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, flatShading: true });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.2, metalness: 0.8, flatShading: true });
+
+    // Torso with slick open suit jacket and white shirt
+    const torsoGeo = new THREE.BoxGeometry(0.86, 1.05, 0.54);
+    this.introVictimTorso = new THREE.Mesh(torsoGeo, suitMat);
+    this.introVictimTorso.position.y = 1.38;
+    this.introVictimTorso.castShadow = true;
+    this.introVictimGroup.add(this.introVictimTorso);
+
+    // White shirt inset
+    const shirtMesh = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.72, 0.05), shirtMat);
+    shirtMesh.position.set(0, 0.16, -0.28);
+    this.introVictimTorso.add(shirtMesh);
+
+    // Gold Chain across chest
+    const chainMesh = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.06), goldMat);
+    chainMesh.position.set(0, 0.22, -0.29);
+    this.introVictimTorso.add(chainMesh);
+
+    // Head
+    const headGeo = new THREE.BoxGeometry(0.74, 0.74, 0.74);
+    this.introVictimHead = new THREE.Mesh(headGeo, skinMat);
+    this.introVictimHead.position.y = 2.24;
+    this.introVictimHead.castShadow = true;
+
+    // Slick Pompadour Hair
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0x171717, roughness: 0.7, flatShading: true });
+    const pompMesh = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.28, 0.82), hairMat);
+    pompMesh.position.set(0, 0.42, 0);
+    this.introVictimHead.add(pompMesh);
+
+    // Smug Smirking Mouth
+    const smirkGeo = new THREE.BoxGeometry(0.24, 0.08, 0.05);
+    const smirkMesh = new THREE.Mesh(smirkGeo, new THREE.MeshBasicMaterial({ color: 0x000000 }));
+    smirkMesh.position.set(0.04, -0.16, -0.38);
+    smirkMesh.rotation.z = -0.12;
+    this.introVictimHead.add(smirkMesh);
+
+    // Big Comical Sunglasses
+    const glassesGroup = new THREE.Group();
+    const frameGeo = new THREE.BoxGeometry(0.68, 0.22, 0.08);
+    const glassesFrame = new THREE.Mesh(frameGeo, new THREE.MeshBasicMaterial({ color: 0x09090b }));
+    glassesGroup.add(glassesFrame);
+
+    const glintGeo = new THREE.BoxGeometry(0.14, 0.08, 0.09);
+    const glint = new THREE.Mesh(glintGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    glint.position.set(-0.16, 0.04, 0.01);
+    glassesGroup.add(glint);
+
+    glassesGroup.position.set(0, 0.06, -0.4);
+    this.introVictimHead.add(glassesGroup);
+    this.introVictimGroup.add(this.introVictimHead);
+
+    // Standalone flying sunglasses for knockout flight
+    const flyingGlassesGeo = new THREE.BoxGeometry(0.72, 0.24, 0.08);
+    this.introSunglassesMesh = new THREE.Mesh(flyingGlassesGeo, new THREE.MeshBasicMaterial({ color: 0x09090b }));
+    this.introSunglassesMesh.visible = false;
+    this.scene.add(this.introSunglassesMesh);
+
+    // Arms in smug pose (hands on hips)
+    const armGeo = new THREE.BoxGeometry(0.24, 0.75, 0.24);
+    armGeo.translate(0, -0.32, 0);
+
+    const leftArm = new THREE.Group();
+    leftArm.position.set(-0.54, 1.75, 0);
+    leftArm.rotation.z = 0.4;
+    leftArm.rotation.x = -0.2;
+    leftArm.add(new THREE.Mesh(armGeo, suitMat));
+    this.introVictimGroup.add(leftArm);
+
+    const rightArm = new THREE.Group();
+    rightArm.position.set(0.54, 1.75, 0);
+    rightArm.rotation.z = -0.4;
+    rightArm.rotation.x = -0.2;
+    rightArm.add(new THREE.Mesh(armGeo, suitMat));
+    this.introVictimGroup.add(rightArm);
+
+    // Legs
+    const legGeo = new THREE.BoxGeometry(0.3, 0.9, 0.3);
+    legGeo.translate(0, -0.42, 0);
+
+    const leftLeg = new THREE.Group();
+    leftLeg.position.set(-0.24, 0.9, 0);
+    leftLeg.add(new THREE.Mesh(legGeo, pantsMat));
+    this.introVictimGroup.add(leftLeg);
+
+    const rightLeg = new THREE.Group();
+    rightLeg.position.set(0.24, 0.9, 0);
+    rightLeg.add(new THREE.Mesh(legGeo, pantsMat));
+    this.introVictimGroup.add(rightLeg);
+
+    this.scene.add(this.introVictimGroup);
+  }
+
   public resize(width: number, height: number, _dpr: number = 1): void {
     this.width = width;
     this.height = height;
@@ -900,7 +1021,8 @@ export class ThreeGameRenderer {
     _shockwaves: Shockwave[],
     _chaosMultiplier: number,
     feverActive: boolean,
-    _mobDistance: number
+    _mobDistance: number,
+    introState?: IntroSlapState | null
   ): void {
     if (this.hitFreeze > 0) {
       this.hitFreeze--;
@@ -934,108 +1056,227 @@ export class ThreeGameRenderer {
     const shadowScale = Math.max(0.4, 1.0 - py * 0.2);
     this.playerShadow.scale.set(shadowScale, shadowScale, shadowScale);
 
-    // 3. Dynamic Athletic Running & Slap Animations
-    // 3. Dynamic Athletic Running Animations (Natural running stride, not walking)
-    const spd = player.speed && player.speed > 0.1 ? player.speed : 4.8;
-    const runFreq = 8.6 + Math.min(2.0, Math.max(0, spd - 4.5) * 0.35);
-    const isMoving = spd > 0.5;
+    // 3. Cinematic Introductory Slap Choreography vs Live Gameplay
+    if (introState) {
+      this.introVictimGroup.visible = true;
+      const vx = introState.victimX * SCALE_X;
+      const vz = -introState.victimY * SCALE_Y;
+      const vy = introState.victimZ;
+      this.introVictimGroup.position.set(vx, vy, vz);
 
-    if (isMoving && !player.isSlapping) {
-      const runCycle = elapsedTime * runFreq;
-      const legSwing = Math.sin(runCycle);
-      const armSwing = Math.sin(runCycle);
-
-      // Athletic running stride with high back kick
-      this.playerLeftLeg.rotation.x = legSwing * 1.05;
-      this.playerRightLeg.rotation.x = -legSwing * 1.05;
-
-      // Sprinter arms pumping with bent elbows opposite to legs
-      this.playerLeftArm.rotation.x = -armSwing * 0.95;
-      this.playerRightArm.rotation.x = armSwing * 0.95;
-      this.playerLeftArm.rotation.z = -0.16 - armSwing * 0.05;
-      this.playerRightArm.rotation.z = 0.16 - armSwing * 0.05;
-
-      // Forward athletic sprinter lean (leaning forward into the run towards -Z)
-      this.playerGroup.rotation.x = -0.20;
-
-      // Footfall vertical spring bounce (peaks with every step)
-      const bounce = Math.abs(Math.sin(runCycle)) * 0.12;
-      this.playerTorso.position.y = 1.38 + bounce;
-      this.playerHead.position.y = 2.24 + bounce;
-      if (this.playerHatGroup) {
-        this.playerHatGroup.position.y = 2.24 + bounce;
+      if (introState.sunglassesActive) {
+        this.introSunglassesMesh.visible = true;
+        this.introSunglassesMesh.position.set(vx, introState.sunglassesY, vz - 0.4);
+        this.introSunglassesMesh.rotation.x = introState.sunglassesRot;
+        this.introSunglassesMesh.rotation.y = introState.sunglassesRot * 1.5;
+      } else {
+        this.introSunglassesMesh.visible = false;
       }
 
-      // Dynamic shoulder roll and banking into turn
-      this.playerTorso.rotation.y = -Math.sin(runCycle) * 0.08;
-      this.playerGroup.rotation.y = -(player.vx || 0) * 0.05;
-      this.playerGroup.rotation.z = -(player.vx || 0) * 0.08;
-    }
+      const isPortrait = this.camera.aspect < 0.88;
 
-    // Dynamic 3D Voxel SLAP! Glove
-    if (player.isSlapping) {
-      const slapProgress = player.slapProgress;
-      const isLeft = player.slapHand === 'left';
-      const slapArm = isLeft ? this.playerLeftArm : this.playerRightArm;
-      const otherArm = isLeft ? this.playerRightArm : this.playerLeftArm;
+      if (introState.phase === 'WAITING_FOR_SLAP') {
+        this.introVictimGroup.rotation.set(0, Math.PI, 0); // Face player squarely
+        this.introVictimGroup.position.y = vy + Math.sin(elapsedTime * 3) * 0.03; // idle breathing
+        this.playerGroup.position.set(0, 0, 0);
+        this.playerGroup.rotation.set(0, 0, 0);
+        this.playerLeftArm.rotation.set(0, 0, -0.15);
+        this.playerRightArm.rotation.set(0, 0, 0.15);
+        this.playerLeftLeg.rotation.set(0, 0, 0);
+        this.playerRightLeg.rotation.set(0, 0, 0);
+        this.playerTorso.position.set(0, 1.38, 0);
+        this.playerHead.position.set(0, 2.24, 0);
 
-      // Whip swing motion
-      const swingAngle = Math.sin(slapProgress * Math.PI) * 2.2;
-      slapArm.rotation.x = -0.6 - swingAngle;
-      slapArm.rotation.y = (isLeft ? -1 : 1) * swingAngle * 1.1;
-      slapArm.rotation.z = (isLeft ? -1 : 1) * 0.7;
-      otherArm.rotation.x = 0.6;
+        this.megaSlapGlove.visible = true;
+        this.megaSlapGlove.position.set(0.85, 1.45, -0.4);
+        this.megaSlapGlove.scale.set(1.1, 1.1, 1.1);
 
-      // Display oversized Giant Voxel Slap Glove!
-      this.megaSlapGlove.visible = true;
-      this.megaSlapGlove.position.set(isLeft ? -0.85 : 0.85, 1.45, -0.6);
-      this.megaSlapGlove.rotation.y = isLeft ? -0.4 : 0.4;
-      const sc = 1 + Math.sin(slapProgress * Math.PI) * 0.6;
-      this.megaSlapGlove.scale.set(sc, sc, sc);
+        // Dramatic 3/4 Action Over-The-Shoulder Camera Angle
+        const camX = isPortrait ? 2.0 : 2.8;
+        const camY = isPortrait ? 2.4 : 2.2;
+        const camZ = isPortrait ? 4.2 : 3.8;
+        this.camera.position.set(camX, camY, camZ);
+        this.camera.lookAt(0, 1.7, -1.2);
+
+      } else if (introState.phase === 'WINDUP') {
+        this.introVictimGroup.rotation.set(0, Math.PI, 0);
+        // Victim leans head back in sudden panic
+        this.introVictimHead.rotation.x = -0.32;
+
+        // Player torso coils backward into massive windup
+        this.playerTorso.rotation.y = 0.55;
+        this.playerRightArm.rotation.x = -1.8;
+        this.playerRightArm.rotation.y = -0.85;
+        this.playerLeftArm.rotation.x = 0.6;
+
+        this.megaSlapGlove.visible = true;
+        this.megaSlapGlove.position.set(0.95, 1.7, 0.3);
+        const swell = 1.3 + Math.sin(elapsedTime * 20) * 0.3;
+        this.megaSlapGlove.scale.set(swell, swell, swell);
+
+        // Zoom in tighter for punchy comic tension
+        this.camera.position.set(isPortrait ? 1.6 : 2.2, 2.0, 2.9);
+        this.camera.lookAt(0, 1.7, -1.0);
+
+      } else if (introState.phase === 'IMPACT') {
+        this.introVictimGroup.rotation.set(0.2, Math.PI - 0.25, 0.35);
+        this.introVictimHead.rotation.set(0.4, -0.5, 0.3);
+
+        // Player lunges forward in instantaneous slap contact
+        this.playerTorso.rotation.y = -0.45;
+        this.playerRightArm.rotation.x = 0.4;
+        this.playerRightArm.rotation.y = 1.35;
+        this.playerRightArm.rotation.z = 0.3;
+
+        this.megaSlapGlove.visible = true;
+        this.megaSlapGlove.position.set(0.25, 1.8, -1.4);
+        this.megaSlapGlove.scale.set(1.9, 1.9, 1.9);
+
+        // Comic Screen Shake on Impact
+        let camX = (isPortrait ? 1.6 : 2.2) + (Math.random() - 0.5) * 0.9;
+        let camY = 2.0 + (Math.random() - 0.5) * 0.9;
+        this.camera.position.set(camX, camY, 2.9);
+        this.camera.lookAt(0, 1.7, -1.0);
+
+      } else if (introState.phase === 'KNOCKOUT') {
+        // Victim spins backward down the road
+        this.introVictimGroup.rotation.set(
+          introState.victimRotationZ,
+          Math.PI + introState.victimRotationY,
+          introState.victimRotationZ
+        );
+        this.megaSlapGlove.visible = false;
+
+        // Follow camera gradually sweeps back
+        this.camera.position.set(1.6, 3.2, 5.4);
+        this.camera.lookAt(0, 2.0, vz);
+
+      } else if (introState.phase === 'TRANSITION') {
+        this.introVictimGroup.visible = false;
+        this.introSunglassesMesh.visible = false;
+        this.megaSlapGlove.visible = false;
+
+        // Smooth camera lerp from close-up to standard runner follow camera
+        const t = Math.min(1.0, Math.max(0, introState.cameraT));
+        const startCam = new THREE.Vector3(1.6, 3.2, 5.4);
+        const endCam = new THREE.Vector3(
+          px * (isPortrait ? 0.28 : 0.42),
+          (isPortrait ? 7.6 : 6.4) + py * 0.35,
+          pz + (isPortrait ? 13.8 : 12.0)
+        );
+        this.camera.position.lerpVectors(startCam, endCam, t);
+
+        const startLook = new THREE.Vector3(0, 2.0, -4);
+        const endLook = new THREE.Vector3(px * 0.2, 2.2 + py * 0.5, pz - 14);
+        const currentLook = new THREE.Vector3().lerpVectors(startLook, endLook, t);
+        this.camera.lookAt(currentLook);
+      }
+
     } else {
-      this.megaSlapGlove.visible = false;
-    }
+      // Standard gameplay running animations
+      this.introVictimGroup.visible = false;
+      this.introSunglassesMesh.visible = false;
 
-    // 4. Infinite Looping Boulevard Track Segments with Auto-Recovery
-    let maxZ = -Infinity;
-    let minZ = Infinity;
-    this.roadSegments.forEach((s) => {
-      if (s.position.z > maxZ) maxZ = s.position.z;
-      if (s.position.z < minZ) minZ = s.position.z;
-    });
+      const spd = player.speed && player.speed > 0.1 ? player.speed : 4.8;
+      const runFreq = 8.6 + Math.min(2.0, Math.max(0, spd - 4.5) * 0.35);
+      const isMoving = spd > 0.5;
 
-    // If segments ever become desynced from current player position (e.g. game restart or fast menu transition)
-    if (maxZ < pz - this.segmentLength * 0.5 || minZ > pz + this.segmentLength * 2) {
-      this.resetTrack(pz);
-    } else {
-      this.roadSegments.forEach((seg) => {
-        if (seg.position.z > pz + this.segmentLength * 1.2) {
-          let currentMinZ = pz;
-          this.roadSegments.forEach((s) => {
-            if (s.position.z < currentMinZ) currentMinZ = s.position.z;
-          });
-          seg.position.z = currentMinZ - this.segmentLength;
+      if (isMoving && !player.isSlapping) {
+        const runCycle = elapsedTime * runFreq;
+        const legSwing = Math.sin(runCycle);
+        const armSwing = Math.sin(runCycle);
+
+        // Athletic running stride with high back kick
+        this.playerLeftLeg.rotation.x = legSwing * 1.05;
+        this.playerRightLeg.rotation.x = -legSwing * 1.05;
+
+        // Sprinter arms pumping with bent elbows opposite to legs
+        this.playerLeftArm.rotation.x = -armSwing * 0.95;
+        this.playerRightArm.rotation.x = armSwing * 0.95;
+        this.playerLeftArm.rotation.z = -0.16 - armSwing * 0.05;
+        this.playerRightArm.rotation.z = 0.16 - armSwing * 0.05;
+
+        // Forward athletic sprinter lean (leaning forward into the run towards -Z)
+        this.playerGroup.rotation.x = -0.20;
+
+        // Footfall vertical spring bounce (peaks with every step)
+        const bounce = Math.abs(Math.sin(runCycle)) * 0.12;
+        this.playerTorso.position.y = 1.38 + bounce;
+        this.playerHead.position.y = 2.24 + bounce;
+        if (this.playerHatGroup) {
+          this.playerHatGroup.position.y = 2.24 + bounce;
         }
+
+        // Dynamic shoulder roll and banking into turn
+        this.playerTorso.rotation.y = -Math.sin(runCycle) * 0.08;
+        this.playerGroup.rotation.y = -(player.vx || 0) * 0.05;
+        this.playerGroup.rotation.z = -(player.vx || 0) * 0.08;
+      }
+
+      // Dynamic 3D Voxel SLAP! Glove
+      if (player.isSlapping) {
+        const slapProgress = player.slapProgress;
+        const isLeft = player.slapHand === 'left';
+        const slapArm = isLeft ? this.playerLeftArm : this.playerRightArm;
+        const otherArm = isLeft ? this.playerRightArm : this.playerLeftArm;
+
+        // Whip swing motion
+        const swingAngle = Math.sin(slapProgress * Math.PI) * 2.2;
+        slapArm.rotation.x = -0.6 - swingAngle;
+        slapArm.rotation.y = (isLeft ? -1 : 1) * swingAngle * 1.1;
+        slapArm.rotation.z = (isLeft ? -1 : 1) * 0.7;
+        otherArm.rotation.x = 0.6;
+
+        // Display oversized Giant Voxel Slap Glove!
+        this.megaSlapGlove.visible = true;
+        this.megaSlapGlove.position.set(isLeft ? -0.85 : 0.85, 1.45, -0.6);
+        this.megaSlapGlove.rotation.y = isLeft ? -0.4 : 0.4;
+        const sc = 1 + Math.sin(slapProgress * Math.PI) * 0.6;
+        this.megaSlapGlove.scale.set(sc, sc, sc);
+      } else {
+        this.megaSlapGlove.visible = false;
+      }
+
+      // 4. Infinite Looping Boulevard Track Segments with Auto-Recovery
+      let maxZ = -Infinity;
+      let minZ = Infinity;
+      this.roadSegments.forEach((s) => {
+        if (s.position.z > maxZ) maxZ = s.position.z;
+        if (s.position.z < minZ) minZ = s.position.z;
       });
+
+      if (maxZ < pz - this.segmentLength * 0.5 || minZ > pz + this.segmentLength * 2) {
+        this.resetTrack(pz);
+      } else {
+        this.roadSegments.forEach((seg) => {
+          if (seg.position.z > pz + this.segmentLength * 1.2) {
+            let currentMinZ = pz;
+            this.roadSegments.forEach((s) => {
+              if (s.position.z < currentMinZ) currentMinZ = s.position.z;
+            });
+            seg.position.z = currentMinZ - this.segmentLength;
+          }
+        });
+      }
+
+      // 5. Follow Camera (Adaptive framing for mobile portrait vs desktop landscape)
+      const isPortrait = this.camera.aspect < 0.88;
+      let targetCamX = px * (isPortrait ? 0.28 : 0.42);
+      let targetCamY = (isPortrait ? 7.6 : 6.4) + py * 0.35;
+      let targetCamZ = pz + (isPortrait ? 13.8 : 12.0);
+
+      // Apply Screen Shake
+      if (this.screenShake > 0.01) {
+        targetCamX += (Math.random() - 0.5) * this.screenShake;
+        targetCamY += (Math.random() - 0.5) * this.screenShake;
+        this.screenShake *= 0.88;
+      }
+
+      this.camera.position.x += (targetCamX - this.camera.position.x) * 0.14;
+      this.camera.position.y += (targetCamY - this.camera.position.y) * 0.14;
+      this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.16;
+      this.camera.lookAt(px * 0.2, 2.2 + py * 0.5, pz - 14);
     }
-
-    // 5. Follow Camera (Adaptive framing for mobile portrait vs desktop landscape)
-    const isPortrait = this.camera.aspect < 0.88;
-    let targetCamX = px * (isPortrait ? 0.28 : 0.42);
-    let targetCamY = (isPortrait ? 7.6 : 6.4) + py * 0.35;
-    let targetCamZ = pz + (isPortrait ? 13.8 : 12.0);
-
-    // Apply Screen Shake
-    if (this.screenShake > 0.01) {
-      targetCamX += (Math.random() - 0.5) * this.screenShake;
-      targetCamY += (Math.random() - 0.5) * this.screenShake;
-      this.screenShake *= 0.88;
-    }
-
-    this.camera.position.x += (targetCamX - this.camera.position.x) * 0.14;
-    this.camera.position.y += (targetCamY - this.camera.position.y) * 0.14;
-    this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.16;
-    this.camera.lookAt(px * 0.2, 2.2 + py * 0.5, pz - 14);
 
     // Track sunlight along road
     this.dirLight.position.set(px + 16, 32, pz + 22);

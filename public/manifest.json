@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "SlapDash - Market Chaos Runner",
+  "short_name": "SlapDash",
+  "description": "A fast, hilarious 2.5D arcade runner where you slap quirky market pedestrians, dodge crazy obstacles, charge the Chaos Meter, and escape the enraged chasing mob!",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#181A24",
+  "background_color": "#181A24",
+  "categories": ["games", "arcade", "action"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

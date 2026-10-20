@@ -1,4 +1,21 @@
-export type GameState = 'MENU' | 'PLAYING' | 'PAUSED' | 'GAMEOVER';
+export type GameState = 'MENU' | 'INTRO_SLAP' | 'PLAYING' | 'PAUSED' | 'GAMEOVER';
+
+export interface IntroSlapState {
+  phase: 'WAITING_FOR_SLAP' | 'WINDUP' | 'IMPACT' | 'KNOCKOUT' | 'TRANSITION';
+  victimX: number;
+  victimY: number;
+  victimZ: number;
+  victimRotationY: number;
+  victimRotationZ: number;
+  victimKnockbackVx: number;
+  victimKnockbackVy: number;
+  sunglassesY: number;
+  sunglassesVy: number;
+  sunglassesRot: number;
+  sunglassesActive: boolean;
+  timer: number;
+  cameraT: number;
+}
 
 export interface CharacterSkin {
   id: string;

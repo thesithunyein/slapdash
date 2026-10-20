@@ -224,6 +224,111 @@ class SoundEngine {
   }
 
   /**
+   * Dramatic comic wind-up riser for the intro mega slap
+   */
+  public playWindup(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(720, t + 0.38);
+
+    gain.gain.setValueAtTime(0.05, t);
+    gain.gain.linearRampToValueAtTime(0.35, t + 0.35);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.39);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.4);
+  }
+
+  /**
+   * Massive, thunderous introductory SLAP impact
+   */
+  public playMegaSlap(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+
+    // 1. Explosive noise crack
+    const bufferSize = Math.floor(ctx.sampleRate * 0.2);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.04));
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.setValueAtTime(500, t);
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.9, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noise.start(t);
+
+    // 2. Sub-bass comic wallop thump
+    const sub = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    sub.type = 'triangle';
+    sub.frequency.setValueAtTime(260, t);
+    sub.frequency.exponentialRampToValueAtTime(40, t + 0.28);
+    subGain.gain.setValueAtTime(0.85, t);
+    subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+    sub.connect(subGain);
+    subGain.connect(ctx.destination);
+    sub.start(t);
+    sub.stop(t + 0.29);
+
+    // 3. Comic twang / boing
+    const twang = ctx.createOscillator();
+    const twangGain = ctx.createGain();
+    twang.type = 'sawtooth';
+    twang.frequency.setValueAtTime(380, t);
+    twang.frequency.exponentialRampToValueAtTime(950, t + 0.25);
+    twangGain.gain.setValueAtTime(0.25, t);
+    twangGain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    twang.connect(twangGain);
+    twangGain.connect(ctx.destination);
+    twang.start(t);
+    twang.stop(t + 0.26);
+  }
+
+  /**
+   * Crisp swoosh when stepping squarely into a lane
+   */
+  public playLaneShift(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(420, t);
+    osc.frequency.exponentialRampToValueAtTime(680, t + 0.08);
+
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.09);
+  }
+
+  /**
    * Slide whistle / slip sound (banana peel)
    */
   public playSlip(): void {

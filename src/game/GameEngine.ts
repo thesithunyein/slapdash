@@ -12,6 +12,7 @@ import {
   GameStats,
   CharacterSkin,
   Shockwave,
+  IntroSlapState,
 } from './types.ts';
 import {
   CHARACTER_SKINS,
@@ -35,6 +36,15 @@ export class GameEngine {
   // Game States
   public state: GameState = 'MENU';
   public selectedSkin: CharacterSkin = CHARACTER_SKINS[0];
+
+  // Discrete 5-Lane System (0: -200, 1: -100, 2: 0, 3: 100, 4: 200)
+  public currentLane: number = 2; // Center lane
+  public targetLane: number = 2;
+  private keyLeftCooldown: number = 0;
+  private keyRightCooldown: number = 0;
+
+  // Cinematic Introductory Slap State
+  public introState: IntroSlapState | null = null;
 
   // Entities
   public player!: Player;
@@ -146,7 +156,20 @@ export class GameEngine {
     this.renderer.resize(width, height, dpr);
   }
 
+  public shiftLane(direction: -1 | 1): void {
+    if (this.state !== 'PLAYING') return;
+    const nextLane = Math.max(0, Math.min(4, this.targetLane + direction));
+    if (nextLane !== this.targetLane) {
+      this.targetLane = nextLane;
+      sounds.playLaneShift();
+    }
+  }
+
   public startGame(): void {
+    this.startIntroSlapSequence();
+  }
+
+  public startIntroSlapSequence(): void {
     this.initPlayer();
     this.bystanders = [];
     this.obstacles = [];
@@ -155,22 +178,7 @@ export class GameEngine {
     this.particles = [];
     this.floatingTexts = [];
     this.shockwaves = [];
-    this.nextSpawnY = 280;
-
-    // Lead Officer / Inspector Chaser always following behind the runner
-    this.chasers = [
-      {
-        id: 9001,
-        x: 0,
-        y: this.player.y - 180, // far behind off-screen initially
-        speed: this.player.baseSpeed,
-        bodyColor: '#F4C29E',
-        shirtColor: '#1E3A8A', // Police Navy
-        angrySteamTimer: 100,
-        runCycle: 0,
-        animOffset: 0,
-      },
-    ];
+    this.chasers = [];
 
     this.stats.score = 0;
     this.stats.slapsCount = 0;
@@ -189,25 +197,54 @@ export class GameEngine {
     this.stats.gameOverReason = undefined;
     this.passiveRunTimer = 0;
 
-    // Pre-populate initial street with bystanders and balanced obstacles
+    // Start road spawning ahead past y = 350 so intro scene has a clear open boulevard
+    this.nextSpawnY = 360;
     for (let i = 0; i < 4; i++) {
-      this.spawnMarketSegment(320 + i * 240);
+      this.spawnMarketSegment(360 + i * 240);
     }
 
-    this.state = 'PLAYING';
-    sounds.startArcadeBeat();
-    sounds.updateBeatChaos(1);
+    this.state = 'INTRO_SLAP';
+    this.introState = {
+      phase: 'WAITING_FOR_SLAP',
+      victimX: 0, // Positioned squarely in the middle of the road!
+      victimY: 38, // In front of player
+      victimZ: 0,
+      victimRotationY: 0,
+      victimRotationZ: 0,
+      victimKnockbackVx: 0,
+      victimKnockbackVy: 0,
+      sunglassesY: 2.1,
+      sunglassesVy: 0,
+      sunglassesRot: 0,
+      sunglassesActive: false,
+      timer: 0,
+      cameraT: 0,
+    };
+
+    if (this.renderer) {
+      this.renderer.resetTrack(0);
+      this.renderer.resetCamera(0);
+    }
 
     if (this.onStatsUpdate) this.onStatsUpdate(this.stats, this.state);
     this.lastTime = performance.now();
   }
 
+  public triggerIntroSlap(): void {
+    if (this.state === 'INTRO_SLAP' && this.introState && this.introState.phase === 'WAITING_FOR_SLAP') {
+      this.introState.phase = 'WINDUP';
+      this.introState.timer = 0;
+      sounds.playWindup();
+    }
+  }
+
   public restartGame(): void {
-    this.startGame();
+    this.startIntroSlapSequence();
   }
 
   public resetToMenu(): void {
     this.state = 'MENU';
+    this.introState = null;
     this.initPlayer();
     this.bystanders = [];
     this.chasers = [];
@@ -225,10 +262,12 @@ export class GameEngine {
   }
 
   private initPlayer(): void {
-    // Faster running speed as requested (base 5.2 + skin bonus)
+    // 5-Lane Centering: Always squarely aligned in center lane (Lane 2 = 0)
+    this.currentLane = 2;
+    this.targetLane = 2;
     const calculatedBase = (5.2 + this.selectedSkin.speedBonus) * (this.paceMultiplier || 1.0);
     this.player = {
-      x: 0,
+      x: ROAD_LANES[2], // 0 - Center of road
       y: 0,
       z: 0,
       vx: 0,
@@ -252,6 +291,10 @@ export class GameEngine {
   }
 
   public requestSlap(): void {
+    if (this.state === 'INTRO_SLAP') {
+      this.triggerIntroSlap();
+      return;
+    }
     this.input.slapRequested = true;
   }
 
@@ -287,6 +330,8 @@ export class GameEngine {
 
     if (this.state === 'PLAYING') {
       this.update(dt / 16.666); // Normalized to ~60fps
+    } else if (this.state === 'INTRO_SLAP') {
+      this.updateIntroSlap(dt / 16.666, dt);
     } else if (this.state === 'MENU') {
       this.updateMenu(dt / 16.666);
     }
@@ -295,6 +340,107 @@ export class GameEngine {
 
     this.animFrameId = requestAnimationFrame(this.loop);
   };
+
+  private updateIntroSlap(dtFactor: number, dt: number): void {
+    const s = this.introState;
+    if (!s) return;
+    s.timer += dt;
+
+    // Keep particles and floating texts alive during intro
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const pt = this.particles[i];
+      pt.x += pt.vx * dtFactor;
+      pt.y += pt.vy * dtFactor;
+      pt.life -= dtFactor;
+      if (pt.life <= 0) this.particles.splice(i, 1);
+    }
+    for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+      const ft = this.floatingTexts[i];
+      ft.y += (ft.vy ?? 1.5) * dtFactor;
+      ft.life -= dtFactor;
+      if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+    }
+
+    if (s.phase === 'WAITING_FOR_SLAP') {
+      // Automatic slap trigger if player takes more than 2.4s
+      if (s.timer > 2400) {
+        this.triggerIntroSlap();
+      }
+      if (this.input.slapRequested || this.input.keys.slap) {
+        this.input.slapRequested = false;
+        this.triggerIntroSlap();
+      }
+    } else if (s.phase === 'WINDUP') {
+      if (s.timer >= 380) {
+        // Wind-up finishes -> Impact moment!
+        s.phase = 'IMPACT';
+        s.timer = 0;
+        sounds.playMegaSlap();
+        this.renderer.triggerShake(18);
+        this.hitFreezeMs = 70; // 70ms visceral hit-stop!
+        this.addFloatingText(0, 38, '💥 KA-POW! MEGA SLAP!', '#EF4444', 32);
+        this.spawnParticleExplosion(0, 38, '#F59E0B', 20, 'star');
+        this.spawnParticleExplosion(0, 38, '#EF4444', 16, 'sparkle');
+      }
+    } else if (s.phase === 'IMPACT') {
+      if (s.timer >= 180) {
+        // Knockout flight begins
+        s.phase = 'KNOCKOUT';
+        s.timer = 0;
+        s.sunglassesActive = true;
+        s.sunglassesVy = 0.35;
+        s.victimKnockbackVy = 8.5; // Hurtles backward down boulevard!
+        s.victimZ = 0.5;
+        sounds.playPoliceWhistle();
+        this.addFloatingText(0, 52, '😱 MY FACE! POLICE!!', '#38BDF8', 22);
+      }
+    } else if (s.phase === 'KNOCKOUT') {
+      // Victim spins backward down the road
+      s.victimY += s.victimKnockbackVy * dtFactor;
+      s.victimKnockbackVy *= 0.94;
+      s.victimRotationY += 0.3 * dtFactor;
+      s.victimRotationZ += 0.16 * dtFactor;
+      s.sunglassesY += s.sunglassesVy * dtFactor;
+      s.sunglassesVy -= 0.018 * dtFactor;
+      s.sunglassesRot += 0.28 * dtFactor;
+
+      if (s.timer >= 750) {
+        s.phase = 'TRANSITION';
+        s.timer = 0;
+        this.player.speed = this.player.baseSpeed;
+      }
+    } else if (s.phase === 'TRANSITION') {
+      s.cameraT = Math.min(1.0, s.timer / 400);
+      // Player accelerates smoothly into running sprint
+      this.player.y += this.player.speed * dtFactor;
+      this.player.runCycle += 0.05 * this.player.speed * dtFactor;
+
+      if (s.timer >= 400) {
+        // Gameplay running phase begins!
+        this.state = 'PLAYING';
+        this.introState = null;
+        sounds.startArcadeBeat();
+        sounds.updateBeatChaos(1);
+
+        // Spawn pursuing lead officer
+        this.chasers = [
+          {
+            id: 9001,
+            x: 0,
+            y: this.player.y - 75,
+            speed: this.player.baseSpeed * 0.96,
+            bodyColor: '#F4C29E',
+            shirtColor: '#1E3A8A',
+            angrySteamTimer: 100,
+            runCycle: 0,
+            animOffset: 0,
+          },
+        ];
+        this.addFloatingText(this.player.x, this.player.y + 30, '🏃 SPRINT! ESCAPE THE MOB!', '#10B981', 24);
+        if (this.onStatsUpdate) this.onStatsUpdate(this.stats, this.state);
+      }
+    }
+  }
 
   private updateMenu(dtFactor: number): void {
     // Active runner jog in Menu mode (matches live gameplay!)
@@ -305,7 +451,7 @@ export class GameEngine {
       this.spawnMarketSegment(this.nextSpawnY);
       this.nextSpawnY += 160;
     }
-  };
+  }
 
   private update(dtFactor: number): void {
     const p = this.player;
@@ -390,24 +536,60 @@ export class GameEngine {
     // Run cycle animation
     p.runCycle += 0.05 * p.speed * dtFactor;
 
-    // 4. Lateral Steering (Keyboard or Touch Joystick)
-    let moveInputX = 0;
+    // 4. Five-Lane Steering & Snap-To-Center Alignment (Always squarely in center of lane)
     if (this.input.joystick.active) {
-      moveInputX = this.input.joystick.x;
+      if (this.input.joystick.x < -0.45) {
+        if (this.keyLeftCooldown <= 0) {
+          this.shiftLane(-1);
+          this.keyLeftCooldown = 14;
+        } else {
+          this.keyLeftCooldown -= dtFactor;
+        }
+      } else if (this.input.joystick.x > 0.45) {
+        if (this.keyRightCooldown <= 0) {
+          this.shiftLane(1);
+          this.keyRightCooldown = 14;
+        } else {
+          this.keyRightCooldown -= dtFactor;
+        }
+      } else {
+        this.keyLeftCooldown = 0;
+        this.keyRightCooldown = 0;
+      }
     } else {
-      if (this.input.keys.left) moveInputX -= 1;
-      if (this.input.keys.right) moveInputX += 1;
+      if (this.input.keys.left) {
+        if (this.keyLeftCooldown <= 0) {
+          this.shiftLane(-1);
+          this.keyLeftCooldown = 14;
+        } else {
+          this.keyLeftCooldown -= dtFactor;
+        }
+      } else {
+        this.keyLeftCooldown = 0;
+      }
+
+      if (this.input.keys.right) {
+        if (this.keyRightCooldown <= 0) {
+          this.shiftLane(1);
+          this.keyRightCooldown = 14;
+        } else {
+          this.keyRightCooldown -= dtFactor;
+        }
+      } else {
+        this.keyRightCooldown = 0;
+      }
     }
 
-    // Smooth, responsive lateral steering across 5 spacious lanes
-    const lateralSpeed = 9.5;
-    p.vx = moveInputX * lateralSpeed;
-    p.x += p.vx * dtFactor;
-
-    // Clamp inside grand road limits (-225 to 225)
-    const maxBound = ROAD_WIDTH / 2 - 25;
-    if (p.x < -maxBound) p.x = -maxBound;
-    if (p.x > maxBound) p.x = maxBound;
+    // Snappy, silky interpolation towards targetLane center (Always lands squarely in center!)
+    const targetX = ROAD_LANES[this.targetLane];
+    const diff = targetX - p.x;
+    const snapSpeed = 0.32;
+    p.x += diff * Math.min(1.0, snapSpeed * dtFactor);
+    if (Math.abs(p.x - targetX) < 1.0) {
+      p.x = targetX;
+      this.currentLane = this.targetLane;
+    }
+    p.vx = diff * 0.18; // Dynamic banking lean in 3D
 
     // 5. Slap Action Logic
     if (p.slapCooldown > 0) {
@@ -1129,7 +1311,8 @@ export class GameEngine {
       this.shockwaves,
       this.stats.chaosMultiplier,
       this.stats.feverActive,
-      mobDistance
+      mobDistance,
+      this.introState
     );
   }
 
