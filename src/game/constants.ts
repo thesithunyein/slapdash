@@ -45,6 +45,28 @@ export const CHARACTER_SKINS: CharacterSkin[] = [
     speedBonus: 0.2,
     cost: 500,
   },
+  {
+    id: 'retro_runner',
+    name: 'Pixel Hero',
+    tagline: 'Radical 80s arcade legend in radiant synthwave colors',
+    bodyColor: '#F8C8B8',
+    shirtColor: '#EC4899',
+    pantsColor: '#3B82F6',
+    hat: 'cap',
+    speedBonus: 0.22,
+    cost: 750,
+  },
+  {
+    id: 'shadow_phantom',
+    name: 'Midnight Shinobi',
+    tagline: 'Stealth shadow acrobat with obsidian hood and crimson sash',
+    bodyColor: '#DE9C78',
+    shirtColor: '#0F172A',
+    pantsColor: '#181A24',
+    hat: 'headband',
+    speedBonus: 0.25,
+    cost: 1000,
+  },
 ];
 
 export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
@@ -115,8 +137,8 @@ export const BYSTANDER_TEMPLATES: BystanderTemplate[] = [
 
 export const COMIC_WORDS = ['SLAP!', 'POW!', 'WHACK!', 'BONK!', 'SMACK!', 'BAM!', 'KAPOW!'];
 
-export const ROAD_WIDTH = 500; // Grand 5-lane boulevard (-250 to 250)
-export const ROAD_LANES = [-200, -100, 0, 100, 200]; // 5 cleanly aligned, spacious lanes
-export const SIDEWALK_EDGES = [-225, 225]; // Curb edge hazards
-export const SLAP_REACH = 125; // Extended reach distance for comfortable slap hitbox
+export const ROAD_WIDTH = 280; // Fast 3-lane market road (-140 to 140)
+export const ROAD_LANES = [-90, 0, 90]; // 3 cleanly aligned lanes: Left (-90), Center (0), Right (90)
+export const SIDEWALK_EDGES = [-140, 140]; // Curb edge hazards
+export const SLAP_REACH = 110; // Comfortable reach to slap pedestrians from outer lanes
 export const MOB_SAFE_DISTANCE = 45; // Minimum distance before mob catches player

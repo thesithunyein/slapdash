@@ -7,12 +7,19 @@ import { SlapDashPixelMark } from './SlapDashLogo.tsx';
 interface LeaderboardModalProps {
   entries: LeaderboardEntry[];
   playerScore: number;
+  tournament?: {
+    season: string;
+    endsInHours: number;
+    topReward: string;
+    activeParticipants: number;
+  };
   onClose: () => void;
 }
 
 export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   entries,
   playerScore,
+  tournament,
   onClose,
 }) => {
   return (
@@ -59,15 +66,23 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           </button>
         </div>
 
-        {/* Player Best Callout */}
-        <div className="my-2.5 py-2 px-3 bg-[#000000] border-2 border-[#F6C445] flex items-center justify-between text-[8px] md:text-[9px] font-pixel text-[#FDFBF7] shrink-0">
-          <div className="flex items-center gap-1.5 text-[#F6C445]">
-            <Crown className="w-3.5 h-3.5" />
-            <span>SEASON 1</span>
+        {/* Tournament & Player Best Callout */}
+        <div className="my-2.5 p-2 bg-[#000000] border-2 border-[#F6C445] flex flex-col gap-1 text-[8px] md:text-[9px] font-pixel text-[#FDFBF7] shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[#F6C445]">
+              <Crown className="w-3.5 h-3.5" />
+              <span>{tournament?.season || 'SEASON 1'}</span>
+            </div>
+            <span className="text-[#38BDF8]">
+              YOUR BEST: {playerScore.toLocaleString()}
+            </span>
           </div>
-          <span className="text-[#38BDF8]">
-            YOUR BEST: {playerScore.toLocaleString()}
-          </span>
+          {tournament && (
+            <div className="flex items-center justify-between text-[7px] text-[#94A3B8] border-t border-white/10 pt-1">
+              <span>PRIZE: {tournament.topReward}</span>
+              <span className="text-[#10B981]">ENDS IN {tournament.endsInHours}H</span>
+            </div>
+          )}
         </div>
 
         {/* Leaderboard Table List */}

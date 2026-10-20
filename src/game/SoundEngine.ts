@@ -36,6 +36,10 @@ class SoundEngine {
     }
   }
 
+  private masterVolume: number = 0.85;
+  private sfxVolume: number = 1.0;
+  private bgmVolume: number = 0.7;
+
   private initContext(): AudioContext | null {
     if (!this.ctx && typeof window !== 'undefined') {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -53,6 +57,16 @@ class SoundEngine {
     return this.isMuted;
   }
 
+  public setMuted(muted: boolean): void {
+    this.isMuted = muted;
+    try {
+      localStorage.setItem('slap_run_muted', String(this.isMuted));
+    } catch {}
+    if (this.isMuted && this.bgGain) {
+      this.bgGain.gain.setValueAtTime(0, this.ctx?.currentTime || 0);
+    }
+  }
+
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted;
     try {
@@ -66,8 +80,28 @@ class SoundEngine {
     return this.isMuted;
   }
 
+  public setVolumes(master: number, sfx: number, bgm: number): void {
+    this.masterVolume = Math.max(0, Math.min(1, master));
+    this.sfxVolume = Math.max(0, Math.min(1, sfx));
+    this.bgmVolume = Math.max(0, Math.min(1, bgm));
+    if (this.bgGain && !this.isMuted) {
+      this.bgGain.gain.setValueAtTime(this.masterVolume * this.bgmVolume * 0.25, this.ctx?.currentTime || 0);
+    }
+  }
+
+  public getEffectiveSfxVolume(): number {
+    return this.isMuted ? 0 : this.masterVolume * this.sfxVolume;
+  }
+
   /**
-   * Crisp, punchy cartoon SLAP sound (noise burst + punch envelope)
+  /**
+   * Authentic, natural, crisp human SLAP sound.
+   * Carefully crafted with realistic physical foley acoustics:
+   * 1. Ultra-sharp skin contact snap/crack (bandpass at 3000Hz, steep exponential drop)
+   * 2. Natural micro-flam secondary transient (palm heel landing 3.5ms after fingertips)
+   * 3. Flesh & air-compression mid body smack (bandpass at 1250Hz)
+   * 4. Acoustic muscle/cheek damping thud (fast 220Hz -> 85Hz pitch drop)
+   * Without electronic arcade chimes or synthetic laser sweeps.
    */
   public playSlap(comboLevel: number = 1): void {
     if (this.isMuted) return;
@@ -75,69 +109,119 @@ class SoundEngine {
     if (!ctx) return;
 
     const t = ctx.currentTime;
+    const sfxVol = this.getEffectiveSfxVolume();
+    if (sfxVol <= 0) return;
 
-    // 1. Noise burst for the "crack/smack"
-    const bufferSize = ctx.sampleRate * 0.08;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.02));
+    // Slight organic punch variation with combo while keeping 100% natural timbre
+    const intensity = Math.min(1.3, 0.95 + comboLevel * 0.03);
+
+    // Master bus for this slap instance
+    const slapBus = ctx.createGain();
+    slapBus.gain.setValueAtTime(sfxVol * intensity, t);
+    slapBus.connect(ctx.destination);
+
+    // -------------------------------------------------------------
+    // LAYER 1: Sharp Skin Contact Snap / Crack (Fingertips on skin)
+    // -------------------------------------------------------------
+    const snapLen = Math.floor(ctx.sampleRate * 0.035);
+    const snapBuf = ctx.createBuffer(1, snapLen, ctx.sampleRate);
+    const snapData = snapBuf.getChannelData(0);
+    for (let i = 0; i < snapLen; i++) {
+      snapData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.004));
     }
+    const snapSource = ctx.createBufferSource();
+    snapSource.buffer = snapBuf;
 
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
+    const snapFilter = ctx.createBiquadFilter();
+    snapFilter.type = 'bandpass';
+    snapFilter.frequency.setValueAtTime(3000, t);
+    snapFilter.Q.setValueAtTime(2.4, t);
 
-    // Highpass filter for crispness
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'highpass';
-    filter.frequency.setValueAtTime(800, t);
+    const snapGain = ctx.createGain();
+    snapGain.gain.setValueAtTime(0.9, t);
+    snapGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
 
-    const noiseGain = ctx.createGain();
-    const vol = Math.min(0.8, 0.45 + comboLevel * 0.05);
-    noiseGain.gain.setValueAtTime(vol, t);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    snapSource.connect(snapFilter);
+    snapFilter.connect(snapGain);
+    snapGain.connect(slapBus);
+    snapSource.start(t);
 
-    noise.connect(filter);
-    filter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    noise.start(t);
-
-    // 2. Tonal "thump"
-    const osc = ctx.createOscillator();
-    const oscGain = ctx.createGain();
-    osc.type = 'triangle';
-    const baseFreq = 220 + Math.min(200, comboLevel * 25);
-    osc.frequency.setValueAtTime(baseFreq, t);
-    osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
-
-    oscGain.gain.setValueAtTime(0.5, t);
-    oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-
-    osc.connect(oscGain);
-    oscGain.connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.11);
-
-    // 3. Arcade Combo Musical Pitch Chime (Scales musically with combo streak)
-    if (comboLevel > 0) {
-      const chime = ctx.createOscillator();
-      const chimeGain = ctx.createGain();
-      chime.type = 'sine';
-      // Climbs musically in semitones (A4 = 440Hz base up to 18 semitones)
-      const semitone = Math.min(18, comboLevel);
-      const chimeFreq = 440 * Math.pow(2, semitone / 12);
-      chime.frequency.setValueAtTime(chimeFreq, t);
-      chime.frequency.exponentialRampToValueAtTime(chimeFreq * 1.35, t + 0.12);
-
-      const chimeVol = Math.min(0.32, 0.12 + comboLevel * 0.02);
-      chimeGain.gain.setValueAtTime(chimeVol, t);
-      chimeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-
-      chime.connect(chimeGain);
-      chimeGain.connect(ctx.destination);
-      chime.start(t);
-      chime.stop(t + 0.13);
+    // -------------------------------------------------------------
+    // LAYER 2: Micro-Flam Palm Heel Contact (Lands ~3.5ms after fingertips)
+    // -------------------------------------------------------------
+    const flamDelay = 0.0035;
+    const flamLen = Math.floor(ctx.sampleRate * 0.03);
+    const flamBuf = ctx.createBuffer(1, flamLen, ctx.sampleRate);
+    const flamData = flamBuf.getChannelData(0);
+    for (let i = 0; i < flamLen; i++) {
+      flamData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.006));
     }
+    const flamSource = ctx.createBufferSource();
+    flamSource.buffer = flamBuf;
+
+    const flamFilter = ctx.createBiquadFilter();
+    flamFilter.type = 'bandpass';
+    flamFilter.frequency.setValueAtTime(2100, t + flamDelay);
+    flamFilter.Q.setValueAtTime(1.8, t + flamDelay);
+
+    const flamGain = ctx.createGain();
+    flamGain.gain.setValueAtTime(0.75, t + flamDelay);
+    flamGain.gain.exponentialRampToValueAtTime(0.001, t + flamDelay + 0.026);
+
+    flamSource.connect(flamFilter);
+    flamFilter.connect(flamGain);
+    flamGain.connect(slapBus);
+    flamSource.start(t + flamDelay);
+
+    // -------------------------------------------------------------
+    // LAYER 3: Flesh & Air-Compression Mid Body Smack
+    // -------------------------------------------------------------
+    const bodyLen = Math.floor(ctx.sampleRate * 0.045);
+    const bodyBuf = ctx.createBuffer(1, bodyLen, ctx.sampleRate);
+    const bodyData = bodyBuf.getChannelData(0);
+    for (let i = 0; i < bodyLen; i++) {
+      bodyData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.010));
+    }
+    const bodySource = ctx.createBufferSource();
+    bodySource.buffer = bodyBuf;
+
+    const bodyFilter = ctx.createBiquadFilter();
+    bodyFilter.type = 'bandpass';
+    bodyFilter.frequency.setValueAtTime(1250, t);
+    bodyFilter.Q.setValueAtTime(1.5, t);
+
+    const bodyGain = ctx.createGain();
+    bodyGain.gain.setValueAtTime(0.7, t);
+    bodyGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+
+    bodySource.connect(bodyFilter);
+    bodyFilter.connect(bodyGain);
+    bodyGain.connect(slapBus);
+    bodySource.start(t);
+
+    // -------------------------------------------------------------
+    // LAYER 4: Acoustic Flesh / Cheek Damping Thud
+    // -------------------------------------------------------------
+    const thudOsc = ctx.createOscillator();
+    const thudGain = ctx.createGain();
+    thudOsc.type = 'sine';
+    thudOsc.frequency.setValueAtTime(220, t);
+    thudOsc.frequency.exponentialRampToValueAtTime(85, t + 0.03);
+
+    thudGain.gain.setValueAtTime(0.65, t);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+
+    thudOsc.connect(thudGain);
+    thudGain.connect(slapBus);
+    thudOsc.start(t);
+    thudOsc.stop(t + 0.048);
+
+    // Auto-cleanup
+    setTimeout(() => {
+      try {
+        slapBus.disconnect();
+      } catch {}
+    }, 150);
   }
 
   /**
@@ -221,111 +305,6 @@ class SoundEngine {
     filter.connect(gain);
     gain.connect(ctx.destination);
     noise.start(t);
-  }
-
-  /**
-   * Dramatic comic wind-up riser for the intro mega slap
-   */
-  public playWindup(): void {
-    if (this.isMuted) return;
-    const ctx = this.initContext();
-    if (!ctx) return;
-    const t = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(180, t);
-    osc.frequency.exponentialRampToValueAtTime(720, t + 0.38);
-
-    gain.gain.setValueAtTime(0.05, t);
-    gain.gain.linearRampToValueAtTime(0.35, t + 0.35);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.39);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.4);
-  }
-
-  /**
-   * Massive, thunderous introductory SLAP impact
-   */
-  public playMegaSlap(): void {
-    if (this.isMuted) return;
-    const ctx = this.initContext();
-    if (!ctx) return;
-    const t = ctx.currentTime;
-
-    // 1. Explosive noise crack
-    const bufferSize = Math.floor(ctx.sampleRate * 0.2);
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.04));
-    }
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'highpass';
-    filter.frequency.setValueAtTime(500, t);
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.9, t);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    noise.connect(filter);
-    filter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    noise.start(t);
-
-    // 2. Sub-bass comic wallop thump
-    const sub = ctx.createOscillator();
-    const subGain = ctx.createGain();
-    sub.type = 'triangle';
-    sub.frequency.setValueAtTime(260, t);
-    sub.frequency.exponentialRampToValueAtTime(40, t + 0.28);
-    subGain.gain.setValueAtTime(0.85, t);
-    subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
-    sub.connect(subGain);
-    subGain.connect(ctx.destination);
-    sub.start(t);
-    sub.stop(t + 0.29);
-
-    // 3. Comic twang / boing
-    const twang = ctx.createOscillator();
-    const twangGain = ctx.createGain();
-    twang.type = 'sawtooth';
-    twang.frequency.setValueAtTime(380, t);
-    twang.frequency.exponentialRampToValueAtTime(950, t + 0.25);
-    twangGain.gain.setValueAtTime(0.25, t);
-    twangGain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    twang.connect(twangGain);
-    twangGain.connect(ctx.destination);
-    twang.start(t);
-    twang.stop(t + 0.26);
-  }
-
-  /**
-   * Crisp swoosh when stepping squarely into a lane
-   */
-  public playLaneShift(): void {
-    if (this.isMuted) return;
-    const ctx = this.initContext();
-    if (!ctx) return;
-    const t = ctx.currentTime;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(420, t);
-    osc.frequency.exponentialRampToValueAtTime(680, t + 0.08);
-
-    gain.gain.setValueAtTime(0.12, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.09);
   }
 
   /**
@@ -654,6 +633,7 @@ class SoundEngine {
   }
 
   private step = 0;
+  private bassNotes = [110, 110, 130.81, 146.83, 110, 164.81, 146.83, 130.81]; // A2, A2, C3, D3, A2, E3, D3, C3
   private scheduleNextBeat(): void {
     if (!this.isBeatRunning) return;
 
@@ -661,46 +641,90 @@ class SoundEngine {
       const ctx = this.initContext();
       if (ctx) {
         const t = ctx.currentTime;
-        // Kick on 0 and 2, hihat on 1 and 3
-        if (this.step % 2 === 0) {
-          // Soft arcade kick
+        const bgmVol = this.masterVolume * this.bgmVolume;
+
+        // 1. Drum Rhythm (Kick on 0 & 4, Snare/Clap on 2 & 6, Hihat on odd steps)
+        if (this.step % 4 === 0) {
+          // Punchy arcade kick
           const kick = ctx.createOscillator();
           const kickGain = ctx.createGain();
           kick.type = 'sine';
-          kick.frequency.setValueAtTime(120, t);
-          kick.frequency.exponentialRampToValueAtTime(45, t + 0.08);
+          kick.frequency.setValueAtTime(140, t);
+          kick.frequency.exponentialRampToValueAtTime(42, t + 0.08);
 
-          kickGain.gain.setValueAtTime(0.12, t);
-          kickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+          kickGain.gain.setValueAtTime(0.18 * bgmVol, t);
+          kickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
 
           kick.connect(kickGain);
           kickGain.connect(ctx.destination);
           kick.start(t);
-          kick.stop(t + 0.09);
+          kick.stop(t + 0.1);
+        } else if (this.step % 4 === 2) {
+          // Retro snare clap
+          const snareSize = Math.floor(ctx.sampleRate * 0.06);
+          const buf = ctx.createBuffer(1, snareSize, ctx.sampleRate);
+          const d = buf.getChannelData(0);
+          for (let i = 0; i < snareSize; i++) d[i] = (Math.random() * 2 - 1) * 0.4;
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          const sFilter = ctx.createBiquadFilter();
+          sFilter.type = 'bandpass';
+          sFilter.frequency.setValueAtTime(1800, t);
+          const sGain = ctx.createGain();
+          sGain.gain.setValueAtTime(0.12 * bgmVol, t);
+          sGain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+
+          src.connect(sFilter);
+          sFilter.connect(sGain);
+          sGain.connect(ctx.destination);
+          src.start(t);
         } else {
           // Soft hihat
-          const hatSize = ctx.sampleRate * 0.025;
+          const hatSize = Math.floor(ctx.sampleRate * 0.02);
           const buf = ctx.createBuffer(1, hatSize, ctx.sampleRate);
           const d = buf.getChannelData(0);
-          for (let i = 0; i < hatSize; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
+          for (let i = 0; i < hatSize; i++) d[i] = (Math.random() * 2 - 1) * 0.25;
           const src = ctx.createBufferSource();
           src.buffer = buf;
           const hFilter = ctx.createBiquadFilter();
           hFilter.type = 'highpass';
-          hFilter.frequency.setValueAtTime(6000, t);
+          hFilter.frequency.setValueAtTime(6500, t);
           const hGain = ctx.createGain();
-          hGain.gain.setValueAtTime(0.04, t);
-          hGain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+          hGain.gain.setValueAtTime(0.05 * bgmVol, t);
+          hGain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
 
           src.connect(hFilter);
           hFilter.connect(hGain);
           hGain.connect(ctx.destination);
           src.start(t);
         }
+
+        // 2. Energetic 8-Bit Synth Bassline!
+        const bassFreq = this.bassNotes[this.step % this.bassNotes.length];
+        const bassOsc = ctx.createOscillator();
+        const bassFilter = ctx.createBiquadFilter();
+        const bassGain = ctx.createGain();
+
+        bassOsc.type = 'sawtooth';
+        bassOsc.frequency.setValueAtTime(bassFreq, t);
+
+        bassFilter.type = 'lowpass';
+        bassFilter.frequency.setValueAtTime(500, t);
+        bassFilter.frequency.exponentialRampToValueAtTime(180, t + 0.12);
+        bassFilter.Q.setValueAtTime(4.0, t);
+
+        bassGain.gain.setValueAtTime(0.14 * bgmVol, t);
+        bassGain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+
+        bassOsc.connect(bassFilter);
+        bassFilter.connect(bassGain);
+        bassGain.connect(ctx.destination);
+        bassOsc.start(t);
+        bassOsc.stop(t + 0.12);
       }
     }
 
-    this.step = (this.step + 1) % 4;
+    this.step = (this.step + 1) % 8;
     const intervalMs = (60 / this.tempo) * 1000 * 0.5; // Eighth notes
     this.beatInterval = window.setTimeout(() => this.scheduleNextBeat(), intervalMs);
   }
@@ -755,6 +779,181 @@ class SoundEngine {
       gain.connect(ctx.destination);
       osc.start(st);
       osc.stop(st + 0.26);
+    });
+  }
+
+  /**
+   * Dramatic rising comic wind-up pitch for intro slap
+   */
+  public playIntroWindup(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(140, t);
+    osc.frequency.exponentialRampToValueAtTime(720, t + 0.9);
+
+    gain.gain.setValueAtTime(0.01, t);
+    gain.gain.linearRampToValueAtTime(0.28, t + 0.85);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.95);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.95);
+  }
+
+  /**
+   * Colossal mega slap impact sound for the introductory blow (heavy sub punch + crack + comic boom)
+   */
+  public playMegaSlap(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const sfxVol = this.getEffectiveSfxVolume();
+    if (sfxVol <= 0) return;
+
+    const bus = ctx.createGain();
+    bus.gain.setValueAtTime(sfxVol, t);
+    bus.connect(ctx.destination);
+
+    // 1. Heavy Sub-Bass Impact Boom
+    const subOsc = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(170, t);
+    subOsc.frequency.exponentialRampToValueAtTime(30, t + 0.45);
+    subGain.gain.setValueAtTime(0.9, t);
+    subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    subOsc.connect(subGain);
+    subGain.connect(bus);
+    subOsc.start(t);
+    subOsc.stop(t + 0.52);
+
+    // 2. High-Frequency Authentic Slap Crack Noise (Fingertips & skin contact)
+    const bufferSize = Math.floor(ctx.sampleRate * 0.06);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.006));
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(2800, t);
+    filter.Q.setValueAtTime(2.2, t);
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.95, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(bus);
+    noise.start(t);
+
+    // 3. Flesh & Air Compression Smack Body
+    const midFilter = ctx.createBiquadFilter();
+    midFilter.type = 'bandpass';
+    midFilter.frequency.setValueAtTime(1300, t);
+    midFilter.Q.setValueAtTime(1.5, t);
+
+    const midSource = ctx.createBufferSource();
+    midSource.buffer = buffer;
+    const midGain = ctx.createGain();
+    midGain.gain.setValueAtTime(0.85, t);
+    midGain.gain.exponentialRampToValueAtTime(0.001, t + 0.065);
+
+    midSource.connect(midFilter);
+    midFilter.connect(midGain);
+    midGain.connect(bus);
+    midSource.start(t + 0.0035);
+
+    setTimeout(() => {
+      try { bus.disconnect(); } catch {}
+    }, 550);
+  }
+
+  /**
+   * Triumphant level up arpeggio
+   */
+  public playLevelUp(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const notes = [261.63, 329.63, 392.0, 523.25, 659.25, 783.99]; // C4, E4, G4, C5, E5, G5
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.07);
+      gain.gain.setValueAtTime(0.3, t + idx * 0.07);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.07 + 0.22);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t + idx * 0.07);
+      osc.stop(t + idx * 0.07 + 0.24);
+    });
+  }
+
+  /**
+   * Glorious stage clear victory fanfare
+   */
+  public playStageClear(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const chords = [
+      { f: [523.25, 659.25], delay: 0, dur: 0.18 },
+      { f: [587.33, 698.46], delay: 0.16, dur: 0.18 },
+      { f: [659.25, 783.99], delay: 0.32, dur: 0.22 },
+      { f: [783.99, 1046.5], delay: 0.52, dur: 0.6 },
+    ];
+    chords.forEach((chord) => {
+      chord.f.forEach((freq) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t + chord.delay);
+        gain.gain.setValueAtTime(0.35, t + chord.delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + chord.delay + chord.dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t + chord.delay);
+        osc.stop(t + chord.delay + chord.dur + 0.05);
+      });
+    });
+  }
+
+  /**
+   * Golden achievement unlocked chime
+   */
+  public playAchievement(): void {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const chimeFreqs = [587.33, 880.0, 1174.66, 1760.0];
+    chimeFreqs.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.08);
+      gain.gain.setValueAtTime(0.28, t + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.08 + 0.45);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t + idx * 0.08);
+      osc.stop(t + idx * 0.08 + 0.48);
     });
   }
 }

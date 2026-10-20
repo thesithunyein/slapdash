@@ -12,7 +12,8 @@ import {
   GameStats,
   CharacterSkin,
   Shockwave,
-  IntroSlapState,
+  IntroState,
+  IntroVictim,
 } from './types.ts';
 import {
   CHARACTER_SKINS,
@@ -26,6 +27,10 @@ import {
 } from './constants.ts';
 import { sounds } from './SoundEngine.ts';
 import { ThreeGameRenderer } from './ThreeGameRenderer.ts';
+import { LevelDefinition, getLevel, calculateLevelStars, saveLevelResult, loadLevelProgress } from './levels.ts';
+import { MapDefinition, GAME_MAPS, getMapById } from './maps.ts';
+import { Achievement, evaluateAchievements, loadAchievementStorage } from './achievements.ts';
+import { loadSettings } from './settings.ts';
 
 export class GameEngine {
   private canvas: HTMLCanvasElement;
@@ -37,14 +42,16 @@ export class GameEngine {
   public state: GameState = 'MENU';
   public selectedSkin: CharacterSkin = CHARACTER_SKINS[0];
 
-  // Discrete 5-Lane System (0: -200, 1: -100, 2: 0, 3: 100, 4: 200)
-  public currentLane: number = 2; // Center lane
-  public targetLane: number = 2;
-  private keyLeftCooldown: number = 0;
-  private keyRightCooldown: number = 0;
-
-  // Cinematic Introductory Slap State
-  public introState: IntroSlapState | null = null;
+  // Level & Map System
+  public currentLevel: number = 1;
+  public isLevelMode: boolean = false;
+  public currentMap: MapDefinition = GAME_MAPS[0];
+  public currentLevelDef?: LevelDefinition;
+  public boostJumpsCount: number = 0;
+  public nearMissesCount: number = 0;
+  public escapedCount: number = 0;
+  public onAchievementUnlocked?: (achievement: Achievement) => void;
+  public onLevelCompleted?: (level: number, stars: number, score: number, coinsEarned: number) => void;
 
   // Entities
   public player!: Player;
@@ -60,6 +67,18 @@ export class GameEngine {
   // Procedural Spawning
   private nextSpawnY: number = 300;
   private entityIdCounter: number = 1;
+
+  // 3-Lane Alignment (Left: index 0 = -90, Center: index 1 = 0, Right: index 2 = 90)
+  public currentLaneIndex: number = 1; // Always lands squarely in center of lane!
+  private joystickLaneChanged: boolean = false;
+
+  // Opening Cinematic Mega Slap Sequence
+  public introState: IntroState = {
+    active: false,
+    phase: 'DONE',
+    timer: 0,
+    victim: null,
+  };
 
   // Input
   public input: InputState = {
@@ -87,6 +106,12 @@ export class GameEngine {
     chaserOnScreen: false,
     chaserAlertTimer: 0,
     mobDistance: 180,
+    currentLevel: 1,
+    isLevelMode: false,
+    currentMapId: 'market',
+    boostJumpsCount: 0,
+    nearMissesCount: 0,
+    escapedCount: 0,
   };
 
   // Callback to sync stats with React UI
@@ -105,6 +130,9 @@ export class GameEngine {
     this.onHurtFlash = onHurtFlash;
     this.renderer = new ThreeGameRenderer(this.canvas);
     this.onStatsUpdate = onStatsUpdate;
+
+    const currentSettings = loadSettings();
+    this.renderer.setCharacterFocus(currentSettings.characterFocus !== 'classic');
 
     this.loadHighScore();
     this.initPlayer();
@@ -150,27 +178,75 @@ export class GameEngine {
     this.renderer.setSkin(skin);
   }
 
+  public setLevel(levelNumber: number, isLevelMode: boolean = true): void {
+    this.currentLevel = Math.max(1, levelNumber);
+    this.isLevelMode = isLevelMode;
+    this.currentLevelDef = getLevel(this.currentLevel);
+    const targetMap = getMapById(this.currentLevelDef.mapId);
+    this.setMap(targetMap);
+    this.stats.currentLevel = this.currentLevel;
+    this.stats.isLevelMode = isLevelMode;
+    this.stats.levelTargetDistance = this.currentLevelDef.targetDistance;
+    this.stats.levelTargetSlaps = this.currentLevelDef.targetSlaps;
+    this.stats.levelTargetCoins = this.currentLevelDef.targetCoins;
+    this.stats.levelTitle = this.currentLevelDef.title;
+    this.stats.levelComplete = false;
+    this.stats.levelStars = 0;
+  }
+
+  public setMap(map: MapDefinition): void {
+    this.currentMap = map;
+    this.stats.currentMapId = map.id;
+    this.renderer.setMap(map);
+  }
+
+  public triggerAchievementCheck(extra: { rampHit?: boolean; nearMissHit?: boolean; escapedHit?: boolean } = {}): void {
+    const progress = loadLevelProgress();
+    let totalStars = 0;
+    Object.values(progress.levelStars).forEach((s) => {
+      totalStars += s;
+    });
+    let skinsCount = 1;
+    try {
+      const s = localStorage.getItem('slap_run_unlocked_skins');
+      if (s) skinsCount = JSON.parse(s).length;
+    } catch {}
+
+    const unlocked = evaluateAchievements(this.stats, {
+      unlockedLevel: progress.unlockedLevel,
+      totalStars,
+      unlockedSkinsCount: skinsCount,
+      currentMapId: this.currentMap.id,
+      ...extra,
+    });
+
+    for (const ach of unlocked) {
+      sounds.playAchievement();
+      this.addFloatingText(this.player.x, this.player.y + 55, `🏆 ${ach.title}!`, '#FDE047', 24);
+      this.onAchievementUnlocked?.(ach);
+    }
+  }
+
   public resize(width: number, height: number, dpr: number = 1): void {
     this.canvas.width = width * dpr;
     this.canvas.height = height * dpr;
     this.renderer.resize(width, height, dpr);
   }
 
-  public shiftLane(direction: -1 | 1): void {
-    if (this.state !== 'PLAYING') return;
-    const nextLane = Math.max(0, Math.min(4, this.targetLane + direction));
-    if (nextLane !== this.targetLane) {
-      this.targetLane = nextLane;
-      sounds.playLaneShift();
+  public setCharacterFocus(enabled: boolean): void {
+    if (this.renderer) {
+      this.renderer.setCharacterFocus(enabled);
     }
   }
 
   public startGame(): void {
-    this.startIntroSlapSequence();
-  }
-
-  public startIntroSlapSequence(): void {
     this.initPlayer();
+    this.currentLaneIndex = 1; // Squarely in center lane (0)
+    this.stats.currentLane = 1;
+    this.player.x = 0;
+    this.player.y = 0;
+    this.player.z = 0;
+
     this.bystanders = [];
     this.obstacles = [];
     this.coins = [];
@@ -178,7 +254,22 @@ export class GameEngine {
     this.particles = [];
     this.floatingTexts = [];
     this.shockwaves = [];
-    this.chasers = [];
+    this.nextSpawnY = 280;
+
+    // Lead Officer / Inspector Chaser following behind
+    this.chasers = [
+      {
+        id: 9001,
+        x: 0,
+        y: this.player.y - 180, // far behind off-screen initially
+        speed: this.player.baseSpeed,
+        bodyColor: '#F4C29E',
+        shirtColor: '#1E3A8A', // Police Navy
+        angrySteamTimer: 100,
+        runCycle: 0,
+        animOffset: 0,
+      },
+    ];
 
     this.stats.score = 0;
     this.stats.slapsCount = 0;
@@ -196,55 +287,81 @@ export class GameEngine {
     this.stats.mobDistance = 180;
     this.stats.gameOverReason = undefined;
     this.passiveRunTimer = 0;
+    this.boostJumpsCount = 0;
+    this.nearMissesCount = 0;
+    this.escapedCount = 0;
+    this.stats.boostJumpsCount = 0;
+    this.stats.nearMissesCount = 0;
+    this.stats.escapedCount = 0;
+    this.stats.levelComplete = false;
+    this.stats.levelStars = 0;
+    this.stats.currentLevel = this.currentLevel;
+    this.stats.isLevelMode = this.isLevelMode;
+    this.stats.currentMapId = this.currentMap.id;
 
-    // Start road spawning ahead past y = 350 so intro scene has a clear open boulevard
-    this.nextSpawnY = 360;
-    for (let i = 0; i < 4; i++) {
-      this.spawnMarketSegment(360 + i * 240);
+    if (this.isLevelMode) {
+      this.currentLevelDef = getLevel(this.currentLevel);
+      this.stats.levelTargetDistance = this.currentLevelDef.targetDistance;
+      this.stats.levelTargetSlaps = this.currentLevelDef.targetSlaps;
+      this.stats.levelTargetCoins = this.currentLevelDef.targetCoins;
+      this.stats.levelTitle = this.currentLevelDef.title;
+      const targetMap = getMapById(this.currentLevelDef.mapId);
+      this.setMap(targetMap);
     }
 
-    this.state = 'INTRO_SLAP';
+    // Pre-populate initial street with bystanders and balanced 3-lane obstacles
+    for (let i = 0; i < 4; i++) {
+      this.spawnMarketSegment(320 + i * 240);
+    }
+
+    // Initialize Intro Cinematic Slap Sequence: target positioned squarely in the middle of the road!
     this.introState = {
-      phase: 'WAITING_FOR_SLAP',
-      victimX: 0, // Positioned squarely in the middle of the road!
-      victimY: 38, // In front of player
-      victimZ: 0,
-      victimRotationY: 0,
-      victimRotationZ: 0,
-      victimKnockbackVx: 0,
-      victimKnockbackVy: 0,
-      sunglassesY: 2.1,
-      sunglassesVy: 0,
-      sunglassesRot: 0,
-      sunglassesActive: false,
+      active: true,
+      phase: 'WINDUP',
       timer: 0,
-      cameraT: 0,
+      victim: {
+        x: 0, // Middle of the road
+        y: 30, // Right in front of the player
+        z: 0,
+        vx: 0,
+        vy: 0,
+        vz: 0,
+        rotationX: 0,
+        rotationY: 0,
+        rotationZ: 0,
+        slapped: false,
+        glassesFlew: false,
+        hatFlew: false,
+        name: 'THE MARKET BOSS',
+        title: 'Bazaar Boss',
+      },
     };
 
-    if (this.renderer) {
-      this.renderer.resetTrack(0);
-      this.renderer.resetCamera(0);
-    }
+    this.stats.introActive = true;
+    this.stats.introPhase = 'WINDUP';
+    sounds.playIntroWindup();
+
+    this.state = 'PLAYING';
 
     if (this.onStatsUpdate) this.onStatsUpdate(this.stats, this.state);
     this.lastTime = performance.now();
   }
 
-  public triggerIntroSlap(): void {
-    if (this.state === 'INTRO_SLAP' && this.introState && this.introState.phase === 'WAITING_FOR_SLAP') {
-      this.introState.phase = 'WINDUP';
-      this.introState.timer = 0;
-      sounds.playWindup();
-    }
-  }
-
   public restartGame(): void {
-    this.startIntroSlapSequence();
+    this.startGame();
   }
 
   public resetToMenu(): void {
     this.state = 'MENU';
-    this.introState = null;
+    this.introState = {
+      active: false,
+      phase: 'DONE',
+      timer: 0,
+      victim: null,
+    };
+    this.stats.introActive = false;
+    this.stats.introPhase = 'DONE';
+    sounds.stopArcadeBeat();
     this.initPlayer();
     this.bystanders = [];
     this.chasers = [];
@@ -261,13 +378,98 @@ export class GameEngine {
     if (this.onStatsUpdate) this.onStatsUpdate(this.stats, this.state);
   }
 
+  /**
+   * Snappy 3-Lane Switcher: character always lands squarely in the center of a lane!
+   * Regardless of which of the three lanes you move into, character aligns squarely with the lane center.
+   */
+  public changeLane(direction: -1 | 1): void {
+    if (this.introState.active) return;
+    const newIndex = Math.max(0, Math.min(ROAD_LANES.length - 1, this.currentLaneIndex + direction));
+    if (newIndex !== this.currentLaneIndex) {
+      this.currentLaneIndex = newIndex;
+      this.stats.currentLane = this.currentLaneIndex;
+      sounds.playWhoosh();
+    }
+  }
+
+  /**
+   * Triggers the opening mega slap immediately if user taps or presses Space during windup
+   */
+  public triggerIntroSlapNow(): void {
+    if (this.introState.active && this.introState.phase === 'WINDUP') {
+      this.executeIntroSlap();
+    }
+  }
+
+  /**
+   * Execute the colossal introductory slap on the boss positioned in the middle of the road
+   */
+  public executeIntroSlap(): void {
+    if (!this.introState.active || this.introState.phase !== 'WINDUP' || !this.introState.victim) return;
+
+    this.introState.phase = 'SLAP_IMPACT';
+    const v = this.introState.victim;
+    v.slapped = true;
+    this.player.isSlapping = true;
+    this.player.slapProgress = 0.5;
+    this.player.slapHand = 'right';
+
+    // Massive impact physics: victim flies backwards and launches into the sky
+    v.vx = (Math.random() - 0.5) * 6;
+    v.vy = 26; // flies forward down the road
+    v.vz = 22; // launches high up
+    v.rotationX = 8.5;
+    v.rotationY = 4.2;
+    v.rotationZ = 12.0;
+    v.glassesFlew = true;
+    v.hatFlew = true;
+
+    // Tactical hit-stop frame freeze & massive screen shake!
+    this.hitFreezeMs = 90;
+    this.renderer.triggerShake(24);
+    this.renderer.triggerHitFreeze(3);
+
+    // Audio impact
+    sounds.playMegaSlap();
+
+    // Mobile haptic feedback
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate([60, 40, 80]);
+      } catch {}
+    }
+
+    // Colossal comic popups & particles
+    this.addFloatingText(0, 45, 'MEGA SLAP!!', '#FFFDF0', 36);
+    this.addFloatingText(0, 75, '+500 OPENING BONUS!', '#10B981', 22);
+    this.spawnParticleExplosion(0, 32, '#F59E0B', 24, 'star');
+    this.spawnParticleExplosion(0, 32, '#EC4899', 16, 'sparkle');
+    this.spawnConfettiShower(0, 35);
+
+    this.shockwaves.push({
+      x: 0,
+      y: 32,
+      radius: 12,
+      maxRadius: 75,
+      color: '#EC4899',
+      lineWidth: 4.5,
+      life: 20,
+      maxLife: 20,
+    });
+
+    this.stats.score += 500;
+    this.stats.slapsCount += 1;
+    this.stats.comboStreak = 1;
+    this.stats.stamina = 100;
+    this.stats.introPhase = 'SLAP_IMPACT';
+    if (this.onStatsUpdate) this.onStatsUpdate(this.stats, this.state);
+  }
+
   private initPlayer(): void {
-    // 5-Lane Centering: Always squarely aligned in center lane (Lane 2 = 0)
-    this.currentLane = 2;
-    this.targetLane = 2;
+    // Faster running speed as requested (base 5.2 + skin bonus)
     const calculatedBase = (5.2 + this.selectedSkin.speedBonus) * (this.paceMultiplier || 1.0);
     this.player = {
-      x: ROAD_LANES[2], // 0 - Center of road
+      x: 0,
       y: 0,
       z: 0,
       vx: 0,
@@ -291,11 +493,25 @@ export class GameEngine {
   }
 
   public requestSlap(): void {
-    if (this.state === 'INTRO_SLAP') {
-      this.triggerIntroSlap();
-      return;
-    }
     this.input.slapRequested = true;
+  }
+
+  public requestJump(): void {
+    if (this.introState.active || this.state !== 'PLAYING') return;
+    const p = this.player;
+    if (!p) return;
+    if (p.z <= 0.6 && p.vz <= 0.2) {
+      p.vz = 7.2;
+      sounds.playJump();
+      this.spawnParticleExplosion(p.x, p.y, '#E2E8F0', 6, 'cloud');
+    }
+  }
+
+  public applySettings(settings: any): void {
+    if (!this.renderer) return;
+    this.renderer.setShakeEnabled(settings.cameraShake);
+    this.renderer.setReducedMotion(Boolean(settings.reducedMotion));
+    this.renderer.setCharacterFocus(settings.characterFocus !== 'classic');
   }
 
   public pauseGame(): void {
@@ -330,8 +546,6 @@ export class GameEngine {
 
     if (this.state === 'PLAYING') {
       this.update(dt / 16.666); // Normalized to ~60fps
-    } else if (this.state === 'INTRO_SLAP') {
-      this.updateIntroSlap(dt / 16.666, dt);
     } else if (this.state === 'MENU') {
       this.updateMenu(dt / 16.666);
     }
@@ -340,107 +554,6 @@ export class GameEngine {
 
     this.animFrameId = requestAnimationFrame(this.loop);
   };
-
-  private updateIntroSlap(dtFactor: number, dt: number): void {
-    const s = this.introState;
-    if (!s) return;
-    s.timer += dt;
-
-    // Keep particles and floating texts alive during intro
-    for (let i = this.particles.length - 1; i >= 0; i--) {
-      const pt = this.particles[i];
-      pt.x += pt.vx * dtFactor;
-      pt.y += pt.vy * dtFactor;
-      pt.life -= dtFactor;
-      if (pt.life <= 0) this.particles.splice(i, 1);
-    }
-    for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
-      const ft = this.floatingTexts[i];
-      ft.y += (ft.vy ?? 1.5) * dtFactor;
-      ft.life -= dtFactor;
-      if (ft.life <= 0) this.floatingTexts.splice(i, 1);
-    }
-
-    if (s.phase === 'WAITING_FOR_SLAP') {
-      // Automatic slap trigger if player takes more than 2.4s
-      if (s.timer > 2400) {
-        this.triggerIntroSlap();
-      }
-      if (this.input.slapRequested || this.input.keys.slap) {
-        this.input.slapRequested = false;
-        this.triggerIntroSlap();
-      }
-    } else if (s.phase === 'WINDUP') {
-      if (s.timer >= 380) {
-        // Wind-up finishes -> Impact moment!
-        s.phase = 'IMPACT';
-        s.timer = 0;
-        sounds.playMegaSlap();
-        this.renderer.triggerShake(18);
-        this.hitFreezeMs = 70; // 70ms visceral hit-stop!
-        this.addFloatingText(0, 38, '💥 KA-POW! MEGA SLAP!', '#EF4444', 32);
-        this.spawnParticleExplosion(0, 38, '#F59E0B', 20, 'star');
-        this.spawnParticleExplosion(0, 38, '#EF4444', 16, 'sparkle');
-      }
-    } else if (s.phase === 'IMPACT') {
-      if (s.timer >= 180) {
-        // Knockout flight begins
-        s.phase = 'KNOCKOUT';
-        s.timer = 0;
-        s.sunglassesActive = true;
-        s.sunglassesVy = 0.35;
-        s.victimKnockbackVy = 8.5; // Hurtles backward down boulevard!
-        s.victimZ = 0.5;
-        sounds.playPoliceWhistle();
-        this.addFloatingText(0, 52, '😱 MY FACE! POLICE!!', '#38BDF8', 22);
-      }
-    } else if (s.phase === 'KNOCKOUT') {
-      // Victim spins backward down the road
-      s.victimY += s.victimKnockbackVy * dtFactor;
-      s.victimKnockbackVy *= 0.94;
-      s.victimRotationY += 0.3 * dtFactor;
-      s.victimRotationZ += 0.16 * dtFactor;
-      s.sunglassesY += s.sunglassesVy * dtFactor;
-      s.sunglassesVy -= 0.018 * dtFactor;
-      s.sunglassesRot += 0.28 * dtFactor;
-
-      if (s.timer >= 750) {
-        s.phase = 'TRANSITION';
-        s.timer = 0;
-        this.player.speed = this.player.baseSpeed;
-      }
-    } else if (s.phase === 'TRANSITION') {
-      s.cameraT = Math.min(1.0, s.timer / 400);
-      // Player accelerates smoothly into running sprint
-      this.player.y += this.player.speed * dtFactor;
-      this.player.runCycle += 0.05 * this.player.speed * dtFactor;
-
-      if (s.timer >= 400) {
-        // Gameplay running phase begins!
-        this.state = 'PLAYING';
-        this.introState = null;
-        sounds.startArcadeBeat();
-        sounds.updateBeatChaos(1);
-
-        // Spawn pursuing lead officer
-        this.chasers = [
-          {
-            id: 9001,
-            x: 0,
-            y: this.player.y - 75,
-            speed: this.player.baseSpeed * 0.96,
-            bodyColor: '#F4C29E',
-            shirtColor: '#1E3A8A',
-            angrySteamTimer: 100,
-            runCycle: 0,
-            animOffset: 0,
-          },
-        ];
-        this.addFloatingText(this.player.x, this.player.y + 30, '🏃 SPRINT! ESCAPE THE MOB!', '#10B981', 24);
-        if (this.onStatsUpdate) this.onStatsUpdate(this.stats, this.state);
-      }
-    }
-  }
 
   private updateMenu(dtFactor: number): void {
     // Active runner jog in Menu mode (matches live gameplay!)
@@ -451,10 +564,18 @@ export class GameEngine {
       this.spawnMarketSegment(this.nextSpawnY);
       this.nextSpawnY += 160;
     }
-  }
+  };
 
   private update(dtFactor: number): void {
     const p = this.player;
+
+    // 0. Introductory Cinematic Slap Sequence (Opening mega slap in middle of road)
+    if (this.introState.active) {
+      this.updateIntroSequence(dtFactor);
+      this.updateParticlesAndTexts(dtFactor);
+      if (this.onStatsUpdate) this.onStatsUpdate(this.stats, this.state);
+      return;
+    }
 
     // 1. Fever Run Timer
     if (p.feverTime > 0) {
@@ -512,22 +633,9 @@ export class GameEngine {
       currentSpeed *= 1.45; // Super turbo in Fever
     } else if (p.slipTimer > 0) {
       currentSpeed *= 0.65; // Stumble slowdown
-    } else if (Math.abs(p.x) > 218) {
-      // Rough sidewalk curb friction only on very outer edges
-      currentSpeed *= 0.82;
-      if (Math.random() < 0.25) {
-        this.particles.push({
-          x: p.x + (Math.random() - 0.5) * 8,
-          y: p.y - 12,
-          vx: (Math.random() - 0.5) * 1.5,
-          vy: -1.0 - Math.random() * 2,
-          color: '#94A3B8',
-          size: 2.5 + Math.random() * 2,
-          life: 10,
-          maxLife: 10,
-          shape: 'cloud',
-        });
-      }
+    } else if (Math.abs(p.x) > 125) {
+      // Rough sidewalk curb friction on outer edges
+      currentSpeed *= 0.88;
     }
     p.speed = currentSpeed;
     p.y += p.speed * dtFactor;
@@ -536,60 +644,36 @@ export class GameEngine {
     // Run cycle animation
     p.runCycle += 0.05 * p.speed * dtFactor;
 
-    // 4. Five-Lane Steering & Snap-To-Center Alignment (Always squarely in center of lane)
+    // 4. Snappy 3-Lane Alignment (Left: -90, Center: 0, Right: +90)
+    // "when you move your character left or right, they should always land squarely in the center of a lane."
     if (this.input.joystick.active) {
-      if (this.input.joystick.x < -0.45) {
-        if (this.keyLeftCooldown <= 0) {
-          this.shiftLane(-1);
-          this.keyLeftCooldown = 14;
-        } else {
-          this.keyLeftCooldown -= dtFactor;
+      if (Math.abs(this.input.joystick.x) > 0.35) {
+        if (!this.joystickLaneChanged) {
+          this.changeLane(this.input.joystick.x > 0 ? 1 : -1);
+          this.joystickLaneChanged = true;
         }
-      } else if (this.input.joystick.x > 0.45) {
-        if (this.keyRightCooldown <= 0) {
-          this.shiftLane(1);
-          this.keyRightCooldown = 14;
-        } else {
-          this.keyRightCooldown -= dtFactor;
-        }
-      } else {
-        this.keyLeftCooldown = 0;
-        this.keyRightCooldown = 0;
+      } else if (Math.abs(this.input.joystick.x) < 0.15) {
+        this.joystickLaneChanged = false;
       }
     } else {
-      if (this.input.keys.left) {
-        if (this.keyLeftCooldown <= 0) {
-          this.shiftLane(-1);
-          this.keyLeftCooldown = 14;
-        } else {
-          this.keyLeftCooldown -= dtFactor;
-        }
-      } else {
-        this.keyLeftCooldown = 0;
-      }
-
-      if (this.input.keys.right) {
-        if (this.keyRightCooldown <= 0) {
-          this.shiftLane(1);
-          this.keyRightCooldown = 14;
-        } else {
-          this.keyRightCooldown -= dtFactor;
-        }
-      } else {
-        this.keyRightCooldown = 0;
-      }
+      this.joystickLaneChanged = false;
     }
 
-    // Snappy, silky interpolation towards targetLane center (Always lands squarely in center!)
-    const targetX = ROAD_LANES[this.targetLane];
+    // Smooth snappy glide ensuring character always lands squarely in the center of the lane
+    const targetX = ROAD_LANES[this.currentLaneIndex];
     const diff = targetX - p.x;
-    const snapSpeed = 0.32;
-    p.x += diff * Math.min(1.0, snapSpeed * dtFactor);
-    if (Math.abs(p.x - targetX) < 1.0) {
+    if (Math.abs(diff) > 0.4) {
+      p.vx = diff * 12.0;
+      p.x += diff * Math.min(1.0, 0.28 * dtFactor);
+    } else {
       p.x = targetX;
-      this.currentLane = this.targetLane;
+      p.vx = 0;
     }
-    p.vx = diff * 0.18; // Dynamic banking lean in 3D
+
+    // Clamp inside 3-lane road limits (-125 to 125)
+    const maxBound = ROAD_WIDTH / 2 - 15;
+    if (p.x < -maxBound) p.x = -maxBound;
+    if (p.x > maxBound) p.x = maxBound;
 
     // 5. Slap Action Logic
     if (p.slapCooldown > 0) {
@@ -657,22 +741,27 @@ export class GameEngine {
           // Navigated past obstacles cleanly!
           this.stats.chaserOnScreen = false;
           this.stats.chaserAlertTimer = 0;
+          this.escapedCount++;
+          this.stats.escapedCount = this.escapedCount;
           sounds.playEscaped();
           this.addFloatingText(p.x, p.y + 25, 'ESCAPED CHASER! +150', '#10B981', 22);
           this.stats.score += 150 * this.stats.chaosMultiplier;
+          this.triggerAchievementCheck({ escapedHit: true });
         }
       }
 
       // Desired distance:
-      // When on-screen: 40 units (clearly visible right behind player's heels)
-      // When off-screen: 180 units (behind camera, completely off-screen)
-      const targetDist = this.stats.chaserOnScreen ? 40 : 180;
+      // When on-screen: 72 units (visible behind player without blocking screen or player view!)
+      // When off-screen: 220 units (completely behind camera)
+      const targetDist = this.stats.chaserOnScreen ? 72 : 220;
       const currentDist = p.y - leadChaser.y;
       const distDiff = currentDist - targetDist;
 
-      leadChaser.speed = p.speed + (distDiff * 0.14);
+      leadChaser.speed = p.speed + (distDiff * 0.12);
       leadChaser.y += leadChaser.speed * dtFactor;
-      leadChaser.x += (p.x - leadChaser.x) * 0.16 * dtFactor;
+      // Flank to the side so chaser doesn't run directly in the camera line of sight to player:
+      const flankTargetX = p.x + (p.x >= 0 ? -38 : 38);
+      leadChaser.x += (flankTargetX - leadChaser.x) * 0.12 * dtFactor;
       leadChaser.runCycle += 0.08 * dtFactor;
       leadChaser.angrySteamTimer += 0.08 * dtFactor;
 
@@ -717,23 +806,28 @@ export class GameEngine {
         sounds.playJump();
         p.vz = 8.5; // High launch jump!
         this.renderer.triggerShake(3);
+        this.boostJumpsCount++;
+        this.stats.boostJumpsCount = this.boostJumpsCount;
         this.stats.score += 150 * this.stats.chaosMultiplier;
         this.addFloatingText(p.x, p.y + 20, 'BOOST JUMP!', '#10B981', 24);
         this.spawnParticleExplosion(obs.x, obs.y, '#34D399', 10, 'sparkle');
+        this.triggerAchievementCheck({ rampHit: true });
         continue;
       }
 
-      // If player is in the air jumping over ground obstacles
-      if (p.z > 14 && obs.type !== 'barrier' && obs.type !== 'cafe_table' && obs.type !== 'planter' && obs.type !== 'hydrant') {
-        if (dy < 18 && dx < 22) {
+      // If player is in the air jumping over ground obstacles (crates, barrels, carts)
+      if (p.z > 7.5 && obs.type !== 'barrier') {
+        if (dy < 22 && dx < (obs.width / 2 + 10)) {
           obs.hit = true;
           this.stats.score += 80 * this.stats.chaosMultiplier;
+          sounds.playJump();
           this.addFloatingText(p.x, p.y + 25, 'LEAP OVER! +80', '#10B981', 18);
+          this.spawnParticleExplosion(p.x, p.y, '#34D399', 6, 'sparkle');
         }
         continue;
       }
 
-      if (dy < 24 && dx < (obs.width / 2 + 14)) {
+      if (dy < 20 && dx < (obs.width / 2 + 8)) {
         obs.hit = true;
         if (this.stats.feverActive) {
           // Ram through obstacle with explosive stars in fever mode!
@@ -777,9 +871,12 @@ export class GameEngine {
         const obsHalfW = obs.width / 2;
         if (dy < 24 && dx >= (obsHalfW + 12) && dx <= (obsHalfW + 36)) {
           obs.nearMissChecked = true;
+          this.nearMissesCount++;
+          this.stats.nearMissesCount = this.nearMissesCount;
           this.stats.score += 50 * this.stats.chaosMultiplier;
           this.addFloatingText(p.x, p.y + 35, 'CLOSE CALL! +50', '#38BDF8', 16);
           sounds.playNearMiss();
+          this.triggerAchievementCheck({ nearMissHit: true });
         }
       }
     }
@@ -797,6 +894,7 @@ export class GameEngine {
         this.stats.score += 50 * this.stats.chaosMultiplier;
         sounds.playCoin();
         this.spawnParticleExplosion(c.x, c.y, '#F59E0B', 8, 'sparkle');
+        this.triggerAchievementCheck();
       }
     }
 
@@ -823,42 +921,13 @@ export class GameEngine {
       }
     }
 
-    // 11. Update Particles
-    for (let i = this.particles.length - 1; i >= 0; i--) {
-      const pt = this.particles[i];
-      pt.x += pt.vx * dtFactor;
-      pt.y += pt.vy * dtFactor;
-      pt.life -= dtFactor;
-      if (pt.life <= 0) {
-        this.particles.splice(i, 1);
-      }
-    }
-
-    // 12. Update Floating Text Popups
-    for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
-      const ft = this.floatingTexts[i];
-      ft.y += (ft.vy ?? 1.5) * dtFactor;
-      ft.life -= dtFactor;
-      ft.scale = Math.min(1.2, ft.scale + 0.02 * dtFactor);
-      if (ft.life <= 0) {
-        this.floatingTexts.splice(i, 1);
-      }
-    }
-
-    // 12b. Update Expanding Shockwaves
-    for (let i = this.shockwaves.length - 1; i >= 0; i--) {
-      const sw = this.shockwaves[i];
-      sw.radius += (sw.maxRadius - sw.radius) * 0.22 * dtFactor;
-      sw.life -= dtFactor;
-      if (sw.life <= 0) {
-        this.shockwaves.splice(i, 1);
-      }
-    }
+    // 11-12. Update Particles, Popups, and Shockwaves
+    this.updateParticlesAndTexts(dtFactor);
 
     // 13. Infinite Market Street Spawning (spaced generously so obstacles aren't too close)
     if (p.y + 700 > this.nextSpawnY) {
       this.spawnMarketSegment(this.nextSpawnY);
-      this.nextSpawnY += 240 + Math.random() * 40;
+      this.nextSpawnY += 260 + Math.random() * 40;
     }
 
     // 14. Cleanup off-screen entities behind player (lead chaser is always preserved)
@@ -869,9 +938,126 @@ export class GameEngine {
     this.powerups = this.powerups.filter((pu) => pu.y > cleanupY);
     this.chasers = this.chasers.filter((c) => c.id === 9001 || c.y > cleanupY);
 
+    // 15. Level Progression & Milestone Goals
+    if (this.isLevelMode && !this.stats.levelComplete && this.currentLevelDef) {
+      const evaluation = calculateLevelStars(this.currentLevelDef, this.stats, { boostJumps: this.boostJumpsCount });
+      if (evaluation.cleared) {
+        this.stats.levelComplete = true;
+        this.stats.levelStars = evaluation.stars;
+        this.stats.coins += this.currentLevelDef.coinReward;
+        this.stats.totalCoinsCollected += this.currentLevelDef.coinReward;
+        sounds.playStageClear();
+        this.addFloatingText(p.x, p.y + 40, 'STAGE CLEARED! ' + '⭐'.repeat(evaluation.stars), '#F59E0B', 30);
+        this.addFloatingText(p.x, p.y + 65, `+${this.currentLevelDef.coinReward} LEVEL BONUS!`, '#10B981', 22);
+        this.spawnConfettiShower(p.x, p.y + 35);
+        saveLevelResult(this.currentLevel, evaluation.stars, this.stats.score);
+        this.onLevelCompleted?.(this.currentLevel, evaluation.stars, this.stats.score, this.currentLevelDef.coinReward);
+        this.triggerAchievementCheck();
+      }
+    } else if (!this.isLevelMode) {
+      // Endless Mode Dynamic Level Scaling
+      const endlessLevel = Math.max(1, Math.floor(1 + this.stats.distanceRun / 120 + this.stats.slapsCount / 5));
+      if (endlessLevel > this.currentLevel) {
+        this.currentLevel = endlessLevel;
+        this.stats.currentLevel = endlessLevel;
+        sounds.playLevelUp();
+        this.addFloatingText(p.x, p.y + 40, `LEVEL UP! LV. ${endlessLevel}`, '#F59E0B', 28);
+        this.spawnConfettiShower(p.x, p.y + 30);
+        this.triggerAchievementCheck();
+      }
+    }
+
     // Sync stats with UI
     if (this.onStatsUpdate) {
       this.onStatsUpdate(this.stats, this.state);
+    }
+  }
+
+  /**
+   * Automatic animation of opening cinematic slap sequence
+   */
+  private updateIntroSequence(dtFactor: number): void {
+    this.introState.timer += 16.66 * dtFactor;
+    const v = this.introState.victim;
+
+    if (this.introState.phase === 'WINDUP') {
+      // Automatic animation: After 950ms, unleash the massive blow!
+      // Or if the player hits Space or taps, execute immediately!
+      if (this.introState.timer >= 950 || this.input.slapRequested || this.input.keys.slap) {
+        this.input.slapRequested = false;
+        this.input.keys.slap = false;
+        this.executeIntroSlap();
+      }
+    } else if (this.introState.phase === 'SLAP_IMPACT' || this.introState.phase === 'BLAST_OFF') {
+      if (v) {
+        v.x += v.vx * dtFactor;
+        v.y += v.vy * dtFactor;
+        v.z += v.vz * dtFactor;
+        v.vz -= 0.65 * dtFactor; // gravity pulls him down
+        v.rotationX += 0.12 * dtFactor;
+        v.rotationY += 0.08 * dtFactor;
+        v.rotationZ += 0.15 * dtFactor;
+      }
+
+      // Progress player slap swing
+      if (this.player.isSlapping) {
+        this.player.slapProgress += 0.10 * dtFactor;
+        if (this.player.slapProgress >= 1) {
+          this.player.isSlapping = false;
+          this.player.slapProgress = 0;
+        }
+      }
+
+      // After 1700ms, the victim is blasted away, alarm sounds, and running begins!
+      if (this.introState.timer >= 1700) {
+        this.introState.active = false;
+        this.introState.phase = 'DONE';
+        this.stats.introActive = false;
+        this.stats.introPhase = 'DONE';
+
+        sounds.startArcadeBeat();
+        sounds.updateBeatChaos(1);
+
+        this.addFloatingText(0, 50, 'RUN FOR YOUR LIFE!', '#EF4444', 28);
+        this.stats.chaserOnScreen = true;
+        this.stats.chaserAlertTimer = 5;
+
+        if (this.onStatsUpdate) this.onStatsUpdate(this.stats, this.state);
+      }
+    }
+  }
+
+  /**
+   * Shared particle, shockwave, and floating text physics update
+   */
+  private updateParticlesAndTexts(dtFactor: number): void {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const pt = this.particles[i];
+      pt.x += pt.vx * dtFactor;
+      pt.y += pt.vy * dtFactor;
+      pt.life -= dtFactor;
+      if (pt.life <= 0) {
+        this.particles.splice(i, 1);
+      }
+    }
+
+    for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+      const ft = this.floatingTexts[i];
+      ft.y += (ft.vy ?? 1.5) * dtFactor;
+      ft.life -= dtFactor;
+      ft.scale = Math.min(1.2, ft.scale + 0.02 * dtFactor);
+      if (ft.life <= 0) {
+        this.floatingTexts.splice(i, 1);
+      }
+    }
+
+    for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+      const sw = this.shockwaves[i];
+      sw.radius += (sw.maxRadius - sw.radius) * 0.22 * dtFactor;
+      sw.life -= dtFactor;
+      if (sw.life <= 0) {
+        this.shockwaves.splice(i, 1);
+      }
     }
   }
 
@@ -985,6 +1171,7 @@ export class GameEngine {
       this.addChaos(18); // Fills chaos meter
       const slapPoints = b.points * this.stats.chaosMultiplier;
       this.stats.score += slapPoints;
+      this.triggerAchievementCheck();
 
       // Add points floating popup
       this.addFloatingText(b.x, b.y + 52, `+${slapPoints}`, '#F59E0B', 18);
@@ -1075,24 +1262,24 @@ export class GameEngine {
   }
 
   /**
-   * Balanced 5-Lane Procedural Market Segment Generator
-   * - 5 lanes: [-200, -100, 0, 100, 200]
-   * - Obstacles in 2 to 3 lanes, always leaving 2 to 3 open escape routes
+   * Balanced 3-Lane Procedural Market Segment Generator
+   * - 3 lanes: [-90, 0, 90] (Left: -90, Center: 0, Right: 90)
+   * - Obstacles in 1 or 2 lanes, ALWAYS leaving at least 1 open escape route
    * - Left & right paths have more obstacles to balance proximity to slap targets
-   * - Coins spawn in open escape lanes
+   * - Coins spawn squarely in open escape lanes
    * - Zero yellow obstacles (banana peel completely removed)
    */
   private spawnMarketSegment(targetY: number): void {
-    const lanes = ROAD_LANES; // [-200, -100, 0, 100, 200]
+    const lanes = ROAD_LANES; // [-90, 0, 90]
     const dist = this.stats.distanceRun;
 
     // 1. Spawn Bystanders along left and right sidewalk platforms
-    // (Bystanders stand at -260 or +260, readily reachable for slaps when in lane -200 or +200)
+    // (Bystanders stand at -155 or +155, easily slappable when player is in lane -90 or +90)
     const numBystanders = Math.random() > 0.35 ? 2 : 1;
     for (let i = 0; i < numBystanders; i++) {
       const template = BYSTANDER_TEMPLATES[Math.floor(Math.random() * BYSTANDER_TEMPLATES.length)];
       const side = (i === 0 ? (Math.random() > 0.5 ? 1 : -1) : (Math.random() > 0.5 ? -1 : 1));
-      const bx = side * (260 + Math.random() * 12);
+      const bx = side * (155 + Math.random() * 8);
       const by = targetY + (Math.random() * 50 - 25);
 
       this.bystanders.push({
@@ -1110,20 +1297,22 @@ export class GameEngine {
       });
     }
 
-    // 2. Select 2 or 3 lanes for obstacles (strictly max 3 out of 5 lanes!)
-    let obstacleLaneCount: number;
-    if (dist < 80) {
+    // 2. Dynamic Fair Difficulty Progression based on distance run
+    // - Phase 1 (0-180m): Gentle learning curve - strictly 1 obstacle per segment, 2 open lanes
+    // - Phase 2 (180-500m): 1 or 2 obstacles, varied patterns
+    // - Phase 3 (500m+): Dynamic challenging obstacle combinations (never impassable!)
+    let obstacleLaneCount = 1;
+    if (dist < 180) {
       obstacleLaneCount = 1;
-    } else if (dist < 260) {
-      obstacleLaneCount = 2;
+    } else if (dist < 500) {
+      obstacleLaneCount = Math.random() < 0.65 ? 1 : 2;
     } else {
-      obstacleLaneCount = Math.random() < 0.55 ? 2 : 3;
+      obstacleLaneCount = Math.random() < 0.35 ? 1 : 2;
     }
 
-    // Left and right paths have higher weight so the side routes aren't too easy!
-    // Lanes: -200 (left platform), -100 (mid-left), 0 (center), 100 (mid-right), 200 (right platform)
-    const laneWeights = [2.6, 2.0, 1.0, 2.0, 2.6];
-    const availableLaneIndices = [0, 1, 2, 3, 4];
+    // Balanced lane weights so all 3 lanes feel exciting and open
+    const laneWeights = [1.5, 1.0, 1.5];
+    const availableLaneIndices = [0, 1, 2];
     const chosenLanes: number[] = [];
 
     for (let o = 0; o < obstacleLaneCount; o++) {
@@ -1145,7 +1334,7 @@ export class GameEngine {
 
     const occupiedLanes = new Set<number>(chosenLanes);
 
-    // Obstacle types: crates, barriers, barrels, carts, and jump ramps (NO yellow banana!)
+    // Obstacle types: crates, barriers, barrels, carts, and jump ramps
     const obstacleTypes: ('crate' | 'barrier' | 'barrel' | 'cart' | 'ramp')[] = [
       'crate',
       'barrier',
@@ -1157,25 +1346,39 @@ export class GameEngine {
     for (let i = 0; i < chosenLanes.length; i++) {
       const ox = chosenLanes[i];
       const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-      const oy = targetY + 30 + i * 25; // staggered slightly for dynamic view
+      const oy = targetY + 45 + i * 20;
+
+      let width = 30;
+      let height = 22;
+      if (type === 'barrier') {
+        width = 38;
+      } else if (type === 'ramp') {
+        width = 42;
+        height = 26;
+      } else if (type === 'cart') {
+        width = 38;
+        height = 24;
+      } else if (type === 'barrel') {
+        width = 28;
+      }
 
       this.obstacles.push({
         id: this.entityIdCounter++,
         x: ox,
         y: oy,
         type,
-        width: type === 'barrier' ? 44 : type === 'ramp' ? 44 : type === 'cart' ? 46 : 34,
-        height: 26,
+        width,
+        height,
         hit: false,
-        rollSpeed: type === 'barrel' ? 1.5 + Math.random() * 0.4 : 0,
-        vx: 0, // Barrels roll straight down their own lane — fair & telegraphed
+        rollSpeed: type === 'barrel' ? 1.4 + Math.random() * 0.3 : 0,
+        vx: 0, // Barrels roll straight down their own lane squarely
       });
     }
 
-    // 3. Gold Coins mark the open escape routes!
+    // 3. Gold Coins mark the open escape routes squarely!
     const openLanes = lanes.filter((l) => !occupiedLanes.has(l));
     if (openLanes.length > 0) {
-      const numCoinLanes = Math.min(openLanes.length, Math.random() > 0.4 ? 2 : 1);
+      const numCoinLanes = Math.min(openLanes.length, Math.random() > 0.45 ? 2 : 1);
       const shuffledOpen = [...openLanes].sort(() => Math.random() - 0.5);
 
       for (let cl = 0; cl < numCoinLanes; cl++) {
@@ -1195,7 +1398,7 @@ export class GameEngine {
     // 4. Occasional Powerup (Soda / Soap)
     if (Math.random() > 0.82) {
       const puType = Math.random() > 0.5 ? 'soda' : 'soap';
-      const puLane = openLanes.length > 0 ? openLanes[0] : lanes[2];
+      const puLane = openLanes.length > 0 ? openLanes[0] : lanes[1];
       this.powerups.push({
         id: this.entityIdCounter++,
         x: puLane,
@@ -1312,7 +1515,9 @@ export class GameEngine {
       this.stats.chaosMultiplier,
       this.stats.feverActive,
       mobDistance,
-      this.introState
+      this.introState.victim,
+      this.introState.active,
+      this.introState.phase
     );
   }
 

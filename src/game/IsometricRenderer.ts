@@ -488,10 +488,10 @@ export class IsometricRenderer {
     ctx.lineTo(rightEdgeFar.x, rightEdgeFar.y);
     ctx.stroke();
 
-    // 6. 4 Clean White Dashed Lane Dividers (Separating the 5 lanes evenly)
-    // Lanes: [-200, -100, 0, 100, 200]
-    // Dividers: [-150, -50, 50, 150]
-    const laneDividers = [-150, -50, 50, 150];
+    // 6. Clean White Dashed Lane Dividers for 3 lanes
+    // Lanes: [-90, 0, 90]
+    // Dividers: [-45, 45]
+    const laneDividers = [-45, 45];
     const dashLength = 40;
     const dashGap = 44;
     const cycle = dashLength + dashGap;
@@ -1295,9 +1295,7 @@ export class IsometricRenderer {
       ctx.rotate(angle);
     }
 
-    // Dynamic steering lean when swerving left or right
-    const steerAngle = Math.max(-0.24, Math.min(0.24, player.vx * 0.026));
-    ctx.rotate(steerAngle);
+    // The entire body moves as a single, solid unit in any direction without steering lean or sway
 
     // 1. UNDERFOOT HERO NEON HALO & GROUND LANE CHEVRON
     const shadowScale = Math.max(0.4, 1 - (player.z / 120));
@@ -1307,20 +1305,7 @@ export class IsometricRenderer {
     ctx.ellipse(0, 4 * s + (player.z * 0.3 * s), 25 * s * shadowScale, 10 * s * shadowScale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Pulsing Neon Emerald Ground Halo (guarantees player is always instantly spotted)
-    const haloPulse = (24 + Math.sin(this.time * 6) * 3) * s;
-    ctx.strokeStyle = fever ? 'rgba(253, 224, 71, 0.85)' : 'rgba(16, 185, 129, 0.85)';
-    ctx.lineWidth = 2.6 * s;
-    ctx.beginPath();
-    ctx.ellipse(0, 4 * s + (player.z * 0.3 * s), haloPulse, haloPulse * 0.42, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Crisp inner white ring
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-    ctx.lineWidth = 1.2 * s;
-    ctx.beginPath();
-    ctx.ellipse(0, 4 * s + (player.z * 0.3 * s), haloPulse * 0.75, haloPulse * 0.32, 0, 0, Math.PI * 2);
-    ctx.stroke();
+    // Clean ground shadow without distracting circular rings
 
     // Forward Direction Neon Chevron (shows exact lane alignment)
     ctx.fillStyle = fever ? '#F59E0B' : '#10B981';

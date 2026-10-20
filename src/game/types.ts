@@ -1,21 +1,4 @@
-export type GameState = 'MENU' | 'INTRO_SLAP' | 'PLAYING' | 'PAUSED' | 'GAMEOVER';
-
-export interface IntroSlapState {
-  phase: 'WAITING_FOR_SLAP' | 'WINDUP' | 'IMPACT' | 'KNOCKOUT' | 'TRANSITION';
-  victimX: number;
-  victimY: number;
-  victimZ: number;
-  victimRotationY: number;
-  victimRotationZ: number;
-  victimKnockbackVx: number;
-  victimKnockbackVy: number;
-  sunglassesY: number;
-  sunglassesVy: number;
-  sunglassesRot: number;
-  sunglassesActive: boolean;
-  timer: number;
-  cameraT: number;
-}
+export type GameState = 'MENU' | 'PLAYING' | 'PAUSED' | 'GAMEOVER';
 
 export interface CharacterSkin {
   id: string;
@@ -72,6 +55,30 @@ export interface Bystander {
     vy: number;
     rotation: number;
   };
+}
+
+export interface IntroVictim {
+  x: number; // Center of road (0)
+  y: number; // In front of player (32)
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+  slapped: boolean;
+  glassesFlew: boolean;
+  hatFlew: boolean;
+  name: string;
+  title: string;
+}
+
+export interface IntroState {
+  active: boolean;
+  phase: 'WINDUP' | 'SLAP_IMPACT' | 'BLAST_OFF' | 'DONE';
+  timer: number;
+  victim: IntroVictim | null;
 }
 
 export interface Chaser {
@@ -210,9 +217,28 @@ export interface GameStats {
   longestChaseEscape: number;
   mobDistance?: number;
   globalRank?: number;
+  globalRankPending?: boolean;
+  globalRankConfirmed?: boolean;
+  nextPlayerAbove?: { name: string; score: number; scoreToSurpass: number } | null;
+  leaderboardError?: boolean;
   stamina: number; // 0 to 100, depletes unless slapping pedestrians
   maxStamina: number;
   chaserOnScreen: boolean; // Subway Surfers police chase indicator (true if stumbled)
   chaserAlertTimer: number; // time left before chaser falls off-screen
   gameOverReason?: 'BUSTED' | 'EXHAUSTED' | 'COLLISION';
+  introActive?: boolean;
+  introPhase?: 'WINDUP' | 'SLAP_IMPACT' | 'BLAST_OFF' | 'DONE';
+  currentLane?: number;
+  currentLevel: number;
+  isLevelMode?: boolean;
+  levelTargetDistance?: number;
+  levelTargetSlaps?: number;
+  levelTargetCoins?: number;
+  levelTitle?: string;
+  levelComplete?: boolean;
+  levelStars?: number;
+  currentMapId: string;
+  boostJumpsCount: number;
+  nearMissesCount: number;
+  escapedCount: number;
 }
