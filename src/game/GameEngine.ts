@@ -14,6 +14,7 @@ import {
   Shockwave,
   IntroState,
   IntroVictim,
+  ObstacleType,
 } from './types.ts';
 import {
   CHARACTER_SKINS,
@@ -30,7 +31,7 @@ import { ThreeGameRenderer } from './ThreeGameRenderer.ts';
 import { LevelDefinition, getLevel, calculateLevelStars, saveLevelResult, loadLevelProgress } from './levels.ts';
 import { MapDefinition, GAME_MAPS, getMapById } from './maps.ts';
 import { Achievement, evaluateAchievements, loadAchievementStorage } from './achievements.ts';
-import { loadSettings } from './settings.ts';
+import { GameSettings, loadSettings } from './settings.ts';
 
 export class GameEngine {
   private canvas: HTMLCanvasElement;
@@ -222,7 +223,7 @@ export class GameEngine {
 
     for (const ach of unlocked) {
       sounds.playAchievement();
-      this.addFloatingText(this.player.x, this.player.y + 55, `🏆 ${ach.title}!`, '#FDE047', 24);
+      this.addFloatingText(this.player.x, this.player.y + 55, `★ ${ach.title.toUpperCase()}!`, '#FDE047', 24);
       this.onAchievementUnlocked?.(ach);
     }
   }
@@ -307,11 +308,26 @@ export class GameEngine {
       this.stats.levelTitle = this.currentLevelDef.title;
       const targetMap = getMapById(this.currentLevelDef.mapId);
       this.setMap(targetMap);
+    } else {
+      this.setMap(this.currentMap);
     }
 
-    // Pre-populate initial street with bystanders and balanced 3-lane obstacles
-    for (let i = 0; i < 4; i++) {
-      this.spawnMarketSegment(320 + i * 240);
+    // Biome-specific boss profiles for the opening slap sequence
+    const bossProfiles: Record<string, { name: string; title: string }> = {
+      market: { name: 'THE BAZAAR BARON', title: 'Grumpy Market Boss' },
+      tropical_coast: { name: 'CAPTAIN COCONUT', title: 'Smug Resort Tycoon' },
+      sunset_desert: { name: 'OUTLAW RATTLESNAKE', title: 'Desert Canyon Renegade' },
+      neon_night: { name: 'CYBER EXECUTIVE', title: 'Megacorp Tech Lord' },
+      winter_peak: { name: 'YETI TYCOON', title: 'Alpine Ski Mogul' },
+      golden_temple: { name: 'SHOGUN SHADOW', title: 'Temple Master' },
+    };
+    const activeBoss = bossProfiles[this.currentMap.id] || bossProfiles.market;
+
+    // Pre-populate initial street with bystanders and generously spaced segments
+    this.nextSpawnY = 360;
+    for (let i = 0; i < 3; i++) {
+      this.spawnMarketSegment(360 + i * 380);
+      this.nextSpawnY = 360 + (i + 1) * 380;
     }
 
     // Initialize Intro Cinematic Slap Sequence: target positioned squarely in the middle of the road!
@@ -332,8 +348,8 @@ export class GameEngine {
         slapped: false,
         glassesFlew: false,
         hatFlew: false,
-        name: 'THE MARKET BOSS',
-        title: 'Bazaar Boss',
+        name: activeBoss.name,
+        title: activeBoss.title,
       },
     };
 
@@ -425,7 +441,7 @@ export class GameEngine {
     v.hatFlew = true;
 
     // Tactical hit-stop frame freeze & massive screen shake!
-    this.hitFreezeMs = 90;
+    this.hitFreezeMs = 35;
     this.renderer.triggerShake(24);
     this.renderer.triggerHitFreeze(3);
 
@@ -440,8 +456,8 @@ export class GameEngine {
     }
 
     // Colossal comic popups & particles
-    this.addFloatingText(0, 45, 'MEGA SLAP!!', '#FFFDF0', 36);
-    this.addFloatingText(0, 75, '+500 OPENING BONUS!', '#10B981', 22);
+    this.addFloatingText(0, 45, 'MEGA OPENING SLAP!!', '#FFFDF0', 36);
+    this.addFloatingText(0, 75, '+500 MARKET CHAOS BONUS!', '#10B981', 22);
     this.spawnParticleExplosion(0, 32, '#F59E0B', 24, 'star');
     this.spawnParticleExplosion(0, 32, '#EC4899', 16, 'sparkle');
     this.spawnConfettiShower(0, 35);
@@ -780,7 +796,22 @@ export class GameEngine {
 
     // 8. Obstacle Collisions & Traps
     for (const obs of this.obstacles) {
-      if (obs.type === 'barrel') {
+      // Dynamic Shifting Hazard Blocks slide smoothly across lanes
+      if (obs.type === 'shifting_block' || obs.isShifting) {
+        if (!obs.vx) obs.vx = 1.6;
+        obs.x += obs.vx * dtFactor;
+        const minX = obs.shiftMinX ?? -95;
+        const maxX = obs.shiftMaxX ?? 95;
+        if (obs.x < minX) {
+          obs.x = minX;
+          obs.vx = Math.abs(obs.vx);
+        } else if (obs.x > maxX) {
+          obs.x = maxX;
+          obs.vx = -Math.abs(obs.vx);
+        }
+      }
+
+      if (obs.type === 'barrel' || obs.type === 'loop_boulder') {
         obs.y -= (obs.rollSpeed ?? 1.8) * dtFactor;
         obs.rotation = (obs.rotation ?? 0) + 0.12 * dtFactor;
         if (obs.vx) {
@@ -800,34 +831,35 @@ export class GameEngine {
       const dy = Math.abs(p.y - obs.y);
       const dx = Math.abs(p.x - obs.x);
 
-      // Launch Ramp Trigger
-      if (obs.type === 'ramp' && dy < 24 && dx < 24) {
+      // Launch Ramp Trigger (Standard ramp or Terminal launch pad)
+      if ((obs.type === 'ramp' || obs.type === 'terminal_ramp') && dy < 24 && dx < 24) {
         obs.hit = true;
         sounds.playJump();
-        p.vz = 8.5; // High launch jump!
-        this.renderer.triggerShake(3);
+        p.vz = 8.8; // High launch jump!
+        this.renderer.triggerShake(4);
         this.boostJumpsCount++;
         this.stats.boostJumpsCount = this.boostJumpsCount;
         this.stats.score += 150 * this.stats.chaosMultiplier;
-        this.addFloatingText(p.x, p.y + 20, 'BOOST JUMP!', '#10B981', 24);
-        this.spawnParticleExplosion(obs.x, obs.y, '#34D399', 10, 'sparkle');
+        this.addFloatingText(p.x, p.y + 20, obs.type === 'terminal_ramp' ? 'TURBO LAUNCH!' : 'BOOST JUMP!', '#10B981', 24);
+        this.spawnParticleExplosion(obs.x, obs.y, '#34D399', 12, 'sparkle');
         this.triggerAchievementCheck({ rampHit: true });
         continue;
       }
 
-      // If player is in the air jumping over ground obstacles (crates, barrels, carts)
-      if (p.z > 7.5 && obs.type !== 'barrier') {
-        if (dy < 22 && dx < (obs.width / 2 + 10)) {
+      // If player is in the air jumping over ground obstacles (shifting blocks, crates, barrels, bugs, spikes, carts)
+      if (p.z > 3.8 && obs.type !== 'firewall') {
+        if (dy < 28 && dx < (obs.width / 2 + 12)) {
           obs.hit = true;
           this.stats.score += 80 * this.stats.chaosMultiplier;
           sounds.playJump();
-          this.addFloatingText(p.x, p.y + 25, 'LEAP OVER! +80', '#10B981', 18);
+          this.addFloatingText(p.x, p.y + 25, 'VAULT OVER! +80', '#10B981', 18);
           this.spawnParticleExplosion(p.x, p.y, '#34D399', 6, 'sparkle');
         }
         continue;
       }
 
-      if (dy < 20 && dx < (obs.width / 2 + 8)) {
+      // Tight, fair collision box so near-misses and quick lane switches don't clip accidentally
+      if (dy < 17 && dx < (obs.width / 2 - 3)) {
         obs.hit = true;
         if (this.stats.feverActive) {
           // Ram through obstacle with explosive stars in fever mode!
@@ -862,7 +894,7 @@ export class GameEngine {
             this.renderer.triggerShake(9);
             p.slipTimer = 25; // stumble slowdown
             this.stats.comboStreak = 0;
-            this.addFloatingText(p.x, p.y + 20, '⚠️ CHASER ALERT! 1 MORE HIT = BUSTED!', '#EF4444', 20);
+            this.addFloatingText(p.x, p.y + 20, 'CHASER ALERT! 1 MORE HIT = BUSTED!', '#EF4444', 20);
             this.spawnParticleExplosion(obs.x, obs.y, '#EF4444', 12, 'star');
           }
         }
@@ -908,15 +940,17 @@ export class GameEngine {
         pu.collected = true;
         sounds.playPowerup();
         if (pu.type === 'soda') {
-          // Instant turbo + refill chaos
+          // Espresso Turbo Fuel
           this.addChaos(35);
-          this.addFloatingText(p.x, p.y + 20, 'TURBO SODA!', '#EF4444', 22);
-          this.spawnParticleExplosion(pu.x, pu.y, '#EF4444', 12, 'star');
+          p.stamina = Math.min(100, p.stamina + 45);
+          this.stats.stamina = Math.round(p.stamina);
+          this.addFloatingText(p.x, p.y + 20, 'POWER BOOST!', '#F59E0B', 22);
+          this.spawnParticleExplosion(pu.x, pu.y, '#F59E0B', 14, 'star');
         } else {
-          // Soap Bar gives brief slippery invulnerability
-          p.feverTime = Math.max(p.feverTime, 3000);
-          this.addFloatingText(p.x, p.y + 20, 'SLICK SOAP!', '#38BDF8', 22);
-          this.spawnParticleExplosion(pu.x, pu.y, '#38BDF8', 12, 'cloud');
+          // Debug Shield Orb (invulnerability barrier)
+          p.feverTime = Math.max(p.feverTime, 3500);
+          this.addFloatingText(p.x, p.y + 20, 'ENERGY SHIELD!', '#00F0FF', 22);
+          this.spawnParticleExplosion(pu.x, pu.y, '#00F0FF', 14, 'sparkle');
         }
       }
     }
@@ -924,10 +958,10 @@ export class GameEngine {
     // 11-12. Update Particles, Popups, and Shockwaves
     this.updateParticlesAndTexts(dtFactor);
 
-    // 13. Infinite Market Street Spawning (spaced generously so obstacles aren't too close)
+    // 13. Infinite Market Street Spawning (spaced generously so obstacles aren't too crowded)
     if (p.y + 700 > this.nextSpawnY) {
       this.spawnMarketSegment(this.nextSpawnY);
-      this.nextSpawnY += 260 + Math.random() * 40;
+      this.nextSpawnY += 340 + Math.random() * 60;
     }
 
     // 14. Cleanup off-screen entities behind player (lead chaser is always preserved)
@@ -947,7 +981,7 @@ export class GameEngine {
         this.stats.coins += this.currentLevelDef.coinReward;
         this.stats.totalCoinsCollected += this.currentLevelDef.coinReward;
         sounds.playStageClear();
-        this.addFloatingText(p.x, p.y + 40, 'STAGE CLEARED! ' + '⭐'.repeat(evaluation.stars), '#F59E0B', 30);
+        this.addFloatingText(p.x, p.y + 40, 'STAGE CLEARED! ' + '★ '.repeat(evaluation.stars), '#F59E0B', 30);
         this.addFloatingText(p.x, p.y + 65, `+${this.currentLevelDef.coinReward} LEVEL BONUS!`, '#10B981', 22);
         this.spawnConfettiShower(p.x, p.y + 35);
         saveLevelResult(this.currentLevel, evaluation.stars, this.stats.score);
@@ -1097,7 +1131,7 @@ export class GameEngine {
       const b = hitBystander;
       b.slapped = true;
       b.wobble = 1.0;
-      this.hitFreezeMs = 65; // ~65ms tactical hit-stop frame freeze!
+      this.hitFreezeMs = 15; // Crisp, subtle 15ms impact without jarring stutter!
 
       // Directional Slap Knockback!
       const side = b.x >= p.x ? 1 : -1;
@@ -1297,50 +1331,66 @@ export class GameEngine {
       });
     }
 
-    // 2. Dynamic Fair Difficulty Progression based on distance run
-    // - Phase 1 (0-180m): Gentle learning curve - strictly 1 obstacle per segment, 2 open lanes
-    // - Phase 2 (180-500m): 1 or 2 obstacles, varied patterns
-    // - Phase 3 (500m+): Dynamic challenging obstacle combinations (never impassable!)
+    // 2. Balanced Obstacle Spawning with Easy Start
+    // - Easy Start: First 75m is completely clear for smooth intro, coin trails, and critter slaps
+    // - 75m-200m: Gentle introduction with strictly 1 obstacle in 1 lane (38% chance)
+    // - 200m+: Engaging obstacle density (58% chance), always keeping 1-2 open lanes or jump ramps
+    let isObstacleSegment = false;
     let obstacleLaneCount = 1;
-    if (dist < 180) {
-      obstacleLaneCount = 1;
-    } else if (dist < 500) {
-      obstacleLaneCount = Math.random() < 0.65 ? 1 : 2;
-    } else {
-      obstacleLaneCount = Math.random() < 0.35 ? 1 : 2;
-    }
 
-    // Balanced lane weights so all 3 lanes feel exciting and open
-    const laneWeights = [1.5, 1.0, 1.5];
-    const availableLaneIndices = [0, 1, 2];
+    if (dist > 75) {
+      if (dist <= 200) {
+        isObstacleSegment = Math.random() < 0.38;
+        obstacleLaneCount = 1;
+      } else if (dist <= 600) {
+        isObstacleSegment = Math.random() < 0.58;
+        obstacleLaneCount = Math.random() < 0.80 ? 1 : 2;
+      } else {
+        isObstacleSegment = Math.random() < 0.62;
+        obstacleLaneCount = Math.random() < 0.65 ? 1 : 2;
+      }
+    }
     const chosenLanes: number[] = [];
 
-    for (let o = 0; o < obstacleLaneCount; o++) {
-      let totalW = 0;
-      for (const idx of availableLaneIndices) totalW += laneWeights[idx];
-      let roll = Math.random() * totalW;
-      let selectedIdx = availableLaneIndices[0];
-      for (const idx of availableLaneIndices) {
-        roll -= laneWeights[idx];
-        if (roll <= 0) {
-          selectedIdx = idx;
-          break;
+    if (isObstacleSegment) {
+      // Balanced lane weights so all 3 lanes feel exciting and open
+      const laneWeights = [1.2, 1.0, 1.2];
+      const availableLaneIndices = [0, 1, 2];
+
+      for (let o = 0; o < obstacleLaneCount; o++) {
+        let totalW = 0;
+        for (const idx of availableLaneIndices) totalW += laneWeights[idx];
+        let roll = Math.random() * totalW;
+        let selectedIdx = availableLaneIndices[0];
+        for (const idx of availableLaneIndices) {
+          roll -= laneWeights[idx];
+          if (roll <= 0) {
+            selectedIdx = idx;
+            break;
+          }
         }
+        chosenLanes.push(lanes[selectedIdx]);
+        const removePos = availableLaneIndices.indexOf(selectedIdx);
+        if (removePos !== -1) availableLaneIndices.splice(removePos, 1);
       }
-      chosenLanes.push(lanes[selectedIdx]);
-      const removePos = availableLaneIndices.indexOf(selectedIdx);
-      if (removePos !== -1) availableLaneIndices.splice(removePos, 1);
     }
 
     const occupiedLanes = new Set<number>(chosenLanes);
 
-    // Obstacle types: crates, barriers, barrels, carts, and jump ramps
-    const obstacleTypes: ('crate' | 'barrier' | 'barrel' | 'cart' | 'ramp')[] = [
-      'crate',
-      'barrier',
-      'barrel',
-      'cart',
+    // Obstacle types: rich combination with high chance of positive jump ramps
+    const obstacleTypes: ObstacleType[] = [
       'ramp',
+      'terminal_ramp',
+      'ramp',
+      'crate',
+      'barrel',
+      'bug',
+      'spikes',
+      'cart',
+      'loop_boulder',
+      'barrier',
+      'shifting_block',
+      'firewall',
     ];
 
     for (let i = 0; i < chosenLanes.length; i++) {
@@ -1348,19 +1398,32 @@ export class GameEngine {
       const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
       const oy = targetY + 45 + i * 20;
 
-      let width = 30;
-      let height = 22;
-      if (type === 'barrier') {
-        width = 38;
-      } else if (type === 'ramp') {
-        width = 42;
-        height = 26;
+      let width = 46;
+      let height = 34;
+      if (type === 'shifting_block' || type === 'barrier' || type === 'firewall') {
+        width = 54;
+        height = 36;
+      } else if (type === 'ramp' || type === 'terminal_ramp') {
+        width = 46;
+        height = 30;
       } else if (type === 'cart') {
+        width = 50;
+        height = 34;
+      } else if (type === 'barrel' || type === 'loop_boulder') {
+        width = 40;
+        height = 32;
+      } else if (type === 'spikes') {
+        width = 42;
+        height = 28;
+      } else if (type === 'bug') {
         width = 38;
-        height = 24;
-      } else if (type === 'barrel') {
-        width = 28;
+        height = 26;
       }
+
+      const isShifting = type === 'shifting_block';
+      const initialVx = isShifting
+        ? (Math.random() > 0.5 ? 1 : -1) * (1.6 + Math.random() * 0.6)
+        : 0;
 
       this.obstacles.push({
         id: this.entityIdCounter++,
@@ -1370,8 +1433,11 @@ export class GameEngine {
         width,
         height,
         hit: false,
-        rollSpeed: type === 'barrel' ? 1.4 + Math.random() * 0.3 : 0,
-        vx: 0, // Barrels roll straight down their own lane squarely
+        rollSpeed: (type === 'barrel' || type === 'loop_boulder') ? 1.5 + Math.random() * 0.3 : 0,
+        vx: initialVx,
+        isShifting,
+        shiftMinX: -100,
+        shiftMaxX: 100,
       });
     }
 

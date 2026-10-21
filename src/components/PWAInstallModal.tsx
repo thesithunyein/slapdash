@@ -1,7 +1,6 @@
-import React from 'react';
-import { usePWAInstall } from '../game/usePWAInstall.ts';
+import React, { useState, useEffect } from 'react';
+import { X, Download, Smartphone, Share, CheckCircle2, Sparkles, ShieldCheck, Chrome, Compass } from 'lucide-react';
 import { sounds } from '../game/SoundEngine.ts';
-import { Download, Star, Award, ShieldCheck, X, Share, PlusSquare, Smartphone, CheckCircle } from 'lucide-react';
 
 interface PWAInstallModalProps {
   isOpen: boolean;
@@ -9,135 +8,152 @@ interface PWAInstallModalProps {
 }
 
 export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({ isOpen, onClose }) => {
-  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    };
+  }, []);
 
   if (!isOpen) return null;
 
   const handleInstallClick = async () => {
-    sounds.playClick();
-    if (isInstallable) {
-      await install();
+    sounds.playStart();
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setIsInstalled(true);
+      }
+      setDeferredPrompt(null);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xs select-none">
-      <div className="relative w-full max-w-md bg-[#181A24] border-3 sm:border-4 border-black shadow-[6px_6px_0px_#000000] flex flex-col max-h-[92vh] overflow-hidden animate-fadeIn">
-        {/* Banner Graphic Header */}
-        <div className="relative h-28 sm:h-36 w-full overflow-hidden border-b-3 border-black bg-black">
-          <img
-            src="/src/assets/images/app_store_banner_1792417490868.jpg"
-            alt="SlapDash Promotional Art"
-            className="w-full h-full object-cover opacity-90"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#181A24] via-transparent to-black/30" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md select-none animate-fadeIn font-['Fredoka']">
+      <div className="relative w-full max-w-lg flex flex-col bg-gradient-to-b from-[#2A1E14] via-[#1E1712] to-[#140F0C] border-3 border-[#F97316] shadow-[0_12px_36px_rgba(0,0,0,0.85)] rounded-3xl text-[#FFF8E7] overflow-hidden max-h-[92vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 sm:p-5 bg-[#19110B] border-b-2 border-[#F97316]/40">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-gradient-to-br from-[#10B981] to-[#047857] text-white flex items-center justify-center border-2 border-white/40 rounded-2xl shadow-md">
+              <Smartphone className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-['Lilita_One'] text-xl sm:text-2xl font-bold text-[#FEF08A] tracking-wider">
+                  INSTALL APP
+                </h2>
+                <span className="text-[10px] font-['Lilita_One'] bg-[#10B981] text-white px-2 py-0.5 rounded-full border border-white/40">
+                  PWA READY
+                </span>
+              </div>
+              <span className="text-xs text-[#FED7AA] font-medium block">
+                Instant loading, offline play & fullscreen 60FPS
+              </span>
+            </div>
+          </div>
 
-          {/* Close Button */}
           <button
-            type="button"
             onClick={() => {
               sounds.playClick();
               onClose();
             }}
             aria-label="Close"
-            className="absolute top-2.5 right-2.5 w-8 h-8 bg-black/75 hover:bg-[#EF4444] text-white border-2 border-black shadow-[2px_2px_0px_#000000] flex items-center justify-center cursor-pointer transition-colors"
+            className="w-9 h-9 flex items-center justify-center bg-[#EF4444] hover:bg-[#F87171] text-white border-2 border-white/40 shadow-md active:scale-95 rounded-2xl cursor-pointer transition-all"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
 
-        {/* App Store Card Body */}
-        <div className="p-4 pt-2 overflow-y-auto space-y-3.5">
-          {/* App Header with 3D Icon & Store Metadata */}
-          <div className="flex items-start gap-3">
-            <div className="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-2xl overflow-hidden border-3 border-black shadow-[3px_3px_0px_#000000]">
-              <img
-                src="/src/assets/images/app_store_icon_1792417490923.jpg"
-                alt="SlapDash App Icon"
-                className="w-full h-full object-cover"
-              />
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <h2 className="font-pixel text-xs sm:text-sm text-white tracking-wide truncate">
-                SlapDash
-              </h2>
-              <p className="text-[8px] sm:text-[9px] text-[#94A3B8] font-pixel truncate">
-                Market Chaos Runner 3D
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+          {/* App Card */}
+          <div className="flex items-center gap-3.5 p-3.5 bg-[#25180E] rounded-2xl border border-white/10">
+            <img
+              src="/apple-touch-icon.png"
+              alt="Partysaur"
+              className="w-16 h-16 rounded-2xl shadow-md border-2 border-[#F97316] object-cover"
+              onError={(e) => {
+                // fallback if image not present
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+            <div className="flex-1">
+              <h3 className="font-['Lilita_One'] text-base text-white">
+                PARTYSAUR: Dino Mayhem
+              </h3>
+              <p className="text-xs text-[#FED7AA]/80">
+                Action-packed 3D dinosaur runner with zero lag
               </p>
-
-              {/* App Store Stats Pill Strip */}
-              <div className="flex items-center gap-2 mt-1.5 text-[7px] sm:text-[8px] font-pixel text-[#CBD5E1]">
-                <span className="flex items-center gap-0.5 text-[#F6C445]">
-                  <Star className="w-3 h-3 fill-[#F6C445]" />
-                  <span>4.9</span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] text-[#10B981] font-bold flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" /> No App Store Download Required
                 </span>
-                <span className="text-[#64748B]">·</span>
-                <span className="text-[#38BDF8]">#1 RUNNER</span>
-                <span className="text-[#64748B]">·</span>
-                <span>9+ AGE</span>
               </div>
             </div>
           </div>
 
-          {/* App Features List */}
-          <div className="bg-[#0B0F19] border-2 border-black p-3 space-y-2 text-[8px] sm:text-[9px] font-pixel text-[#CBD5E1]">
-            <div className="flex items-center gap-2 text-white">
-              <CheckCircle className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
-              <span>Full-screen 60 FPS Native Performance</span>
-            </div>
-            <div className="flex items-center gap-2 text-white">
-              <CheckCircle className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
-              <span>Offline Ready — Play Anytime Without Wi-Fi</span>
-            </div>
-            <div className="flex items-center gap-2 text-white">
-              <CheckCircle className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
-              <span>Zero App Store Ads & Instant Home Screen Launch</span>
-            </div>
-          </div>
-
-          {/* iOS Safari Instructions or Direct Install Button */}
-          {isInstalled ? (
-            <div className="py-2.5 px-3 bg-[#10B981]/20 border-2 border-[#10B981] text-[#10B981] font-pixel text-xs flex items-center justify-center gap-2 text-center">
-              <CheckCircle className="w-4 h-4" />
-              <span>APP ALREADY INSTALLED ON YOUR DEVICE!</span>
-            </div>
-          ) : isIOS ? (
-            <div className="p-3 bg-[#0F172A] border-2 border-black space-y-2 text-[8px] sm:text-[9px] font-pixel text-[#94A3B8]">
-              <div className="flex items-center gap-1.5 text-[#F6C445] font-bold">
-                <Smartphone className="w-4 h-4" />
-                <span>INSTALL ON IPHONE / IPAD:</span>
-              </div>
-              <ol className="list-decimal list-inside space-y-1 text-white">
-                <li>
-                  Tap the Safari <strong className="text-[#38BDF8]">Share</strong> button <Share className="w-3 h-3 inline mx-0.5" />
-                </li>
-                <li>
-                  Scroll down and tap <strong className="text-[#F6C445]">Add to Home Screen</strong> <PlusSquare className="w-3 h-3 inline mx-0.5" />
-                </li>
-                <li>Launch SlapDash directly from your home screen!</li>
-              </ol>
-            </div>
-          ) : isInstallable ? (
+          {/* Direct Install Button if supported */}
+          {deferredPrompt && !isInstalled && (
             <button
-              type="button"
               onClick={handleInstallClick}
-              className="w-full py-3 bg-[#38BDF8] hover:bg-[#0284C7] text-black border-3 border-black shadow-[4px_4px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none font-pixel text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition-none"
+              className="w-full py-3 bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#34D399] hover:to-[#10B981] text-white font-['Lilita_One'] text-sm sm:text-base rounded-2xl flex items-center justify-center gap-2 shadow-lg border-2 border-white/30 cursor-pointer active:scale-95 transition-all animate-pulse"
             >
-              <Download className="w-4 h-4" />
-              <span>INSTALL TO HOME SCREEN</span>
+              <Download className="w-5 h-5" />
+              <span>ADD TO HOME SCREEN NOW</span>
             </button>
-          ) : (
-            <div className="p-3 bg-[#0B0F19] border-2 border-black text-center space-y-1 font-pixel text-[8px] text-[#94A3B8]">
-              <p className="text-white">To install on desktop or mobile:</p>
-              <p>Click your browser address bar's install icon or menu to pin SlapDash.</p>
+          )}
+
+          {isInstalled && (
+            <div className="p-3 bg-[#10B981]/20 border-2 border-[#10B981] rounded-2xl flex items-center gap-2.5 text-[#A7F3D0] text-xs font-['Lilita_One']">
+              <CheckCircle2 className="w-5 h-5 text-[#10B981]" />
+              <span>Partysaur is installed! Launch it from your home screen for fullscreen immersion.</span>
             </div>
           )}
+
+          {/* iOS Instructions */}
+          <div className="p-3.5 bg-[#1C120B] rounded-2xl border border-white/10 space-y-2">
+            <h4 className="font-['Lilita_One'] text-sm text-[#FBBF24] flex items-center gap-1.5">
+              <Compass className="w-4 h-4 text-[#FBBF24]" />
+              <span>iOS / iPhone / iPad Safari:</span>
+            </h4>
+            <ol className="text-xs text-[#FED7AA] space-y-1.5 list-decimal list-inside pl-1">
+              <li>Tap the <strong className="text-white">Share</strong> icon <Share className="w-3.5 h-3.5 inline mx-0.5 text-[#38BDF8]" /> at the bottom of Safari.</li>
+              <li>Scroll down and tap <strong className="text-white">"Add to Home Screen"</strong>.</li>
+              <li>Tap <strong className="text-white">Add</strong> in the top right corner. Enjoy full-screen dino chaos!</li>
+            </ol>
+          </div>
+
+          {/* Android / Chrome Instructions */}
+          <div className="p-3.5 bg-[#1C120B] rounded-2xl border border-white/10 space-y-2">
+            <h4 className="font-['Lilita_One'] text-sm text-[#38BDF8] flex items-center gap-1.5">
+              <Chrome className="w-4 h-4 text-[#38BDF8]" />
+              <span>Android / Chrome:</span>
+            </h4>
+            <ol className="text-xs text-[#FED7AA] space-y-1.5 list-decimal list-inside pl-1">
+              <li>Tap the <strong className="text-white">Three Dots</strong> menu in Chrome.</li>
+              <li>Select <strong className="text-white">"Install app"</strong> or <strong className="text-white">"Add to Home screen"</strong>.</li>
+              <li>Confirm and launch directly from your app drawer with offline support.</li>
+            </ol>
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="bg-[#0B0F19] border-t-2 border-black p-2.5 text-center font-pixel text-[7px] text-[#64748B]">
-          OFFICIAL DIGIT7 ARCADE JAM RELEASE · VERSION 2.0 PREMIUM
+        <div className="px-5 py-3 bg-[#160E08] border-t border-white/10 text-center text-xs text-[#FED7AA]/80">
+          Powered by Progressive Web App Technology
         </div>
       </div>
     </div>

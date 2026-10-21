@@ -1,4 +1,16 @@
-export type GameState = 'MENU' | 'PLAYING' | 'PAUSED' | 'GAMEOVER';
+export type GameState = 'MENU' | 'PLAYING' | 'PAUSED' | 'GAMEOVER' | 'VICTORY';
+
+export type BystanderType =
+  | 'rubber_duck'
+  | 'sleepy_dev'
+  | 'bug_gremlin'
+  | 'reviewer_bot'
+  | 'senior_wizard'
+  | 'fishmonger'
+  | 'influencer'
+  | 'bouncer'
+  | 'fruitseller'
+  | 'salaryman';
 
 export interface CharacterSkin {
   id: string;
@@ -7,31 +19,39 @@ export interface CharacterSkin {
   bodyColor: string;
   shirtColor: string;
   pantsColor: string;
-  hat: 'cap' | 'headband' | 'crown' | 'none';
+  hat: 'none' | 'crown' | string;
   speedBonus: number;
   cost: number;
 }
 
+export interface LeaderboardEntry {
+  id: string;
+  name: string;
+  score: number;
+  maxCombo: number;
+  date: string;
+  skinId: string;
+  isPlayer?: boolean;
+}
+
 export interface Player {
-  x: number; // Lateral position (-140 to 140)
-  y: number; // Forward progress (increases continually)
-  z: number; // Vertical jump elevation
+  x: number;
+  y: number;
+  z: number;
   vx: number;
   vz: number;
   speed: number;
   baseSpeed: number;
-  slapCooldown: number; // frames or ms remaining
+  slapCooldown: number;
   isSlapping: boolean;
   slapHand: 'left' | 'right';
-  slapProgress: number; // 0 to 1
-  slipTimer: number; // When slipped on banana
-  feverTime: number; // Remaining time in Fever mode (ms)
+  slapProgress: number;
+  slipTimer: number;
+  feverTime: number;
   skin: CharacterSkin;
   runCycle: number;
-  stamina: number; // 0 to 100, depletes continually unless slapping
+  stamina: number;
 }
-
-export type BystanderType = 'fishmonger' | 'influencer' | 'bouncer' | 'fruitseller' | 'salaryman';
 
 export interface Bystander {
   id: number;
@@ -45,9 +65,8 @@ export interface Bystander {
   accessory: 'hat' | 'glasses' | 'phone' | 'fish' | 'fruit';
   slapped: boolean;
   wobble: number;
-  inStrikeRange?: boolean;
   knockbackVx?: number;
-  ignoredTriggered?: boolean;
+  inStrikeRange?: boolean;
   flyingAccessory?: {
     x: number;
     y: number;
@@ -55,30 +74,6 @@ export interface Bystander {
     vy: number;
     rotation: number;
   };
-}
-
-export interface IntroVictim {
-  x: number; // Center of road (0)
-  y: number; // In front of player (32)
-  z: number;
-  vx: number;
-  vy: number;
-  vz: number;
-  rotationX: number;
-  rotationY: number;
-  rotationZ: number;
-  slapped: boolean;
-  glassesFlew: boolean;
-  hatFlew: boolean;
-  name: string;
-  title: string;
-}
-
-export interface IntroState {
-  active: boolean;
-  phase: 'WINDUP' | 'SLAP_IMPACT' | 'BLAST_OFF' | 'DONE';
-  timer: number;
-  victim: IntroVictim | null;
 }
 
 export interface Chaser {
@@ -94,11 +89,17 @@ export interface Chaser {
 }
 
 export type ObstacleType =
-  | 'crate'
-  | 'barrier'
-  | 'barrel'
   | 'ramp'
+  | 'terminal_ramp'
+  | 'crate'
+  | 'barrel'
+  | 'bug'
+  | 'spikes'
   | 'cart'
+  | 'loop_boulder'
+  | 'barrier'
+  | 'shifting_block'
+  | 'firewall'
   | 'watermelon'
   | 'planter'
   | 'hydrant'
@@ -112,21 +113,13 @@ export interface Obstacle {
   width: number;
   height: number;
   hit: boolean;
-  nearMissChecked?: boolean;
+  rollSpeed: number;
+  vx: number;
+  isShifting: boolean;
+  shiftMinX: number;
+  shiftMaxX: number;
   rotation?: number;
-  rollSpeed?: number;
-  vx?: number;
-  isEdgeHazard?: boolean;
-}
-
-export interface LeaderboardEntry {
-  id: string;
-  name: string;
-  score: number;
-  maxCombo: number;
-  date: string;
-  skinId: string;
-  isPlayer?: boolean;
+  nearMissChecked?: boolean;
 }
 
 export interface Coin {
@@ -137,13 +130,11 @@ export interface Coin {
   bobPhase: number;
 }
 
-export type PowerupType = 'soda' | 'soap';
-
 export interface Powerup {
   id: number;
   x: number;
   y: number;
-  type: PowerupType;
+  type: 'soda' | 'soap';
   collected: boolean;
   bobPhase: number;
 }
@@ -157,9 +148,22 @@ export interface Particle {
   size: number;
   life: number;
   maxLife: number;
-  shape?: 'star' | 'circle' | 'cloud' | 'sparkle' | 'confetti' | 'fruit' | 'splinter';
+  shape: 'star' | 'circle' | 'cloud' | 'sparkle' | 'confetti';
   rotation?: number;
   vRot?: number;
+}
+
+export interface FloatingText {
+  id: number;
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  size: number;
+  life: number;
+  maxLife: number;
+  scale: number;
+  vy: number;
 }
 
 export interface Shockwave {
@@ -173,32 +177,35 @@ export interface Shockwave {
   maxLife: number;
 }
 
-export interface FloatingText {
-  id: number;
+export interface IntroVictim {
   x: number;
   y: number;
-  text: string;
-  color: string;
-  size: number;
-  life: number;
-  maxLife: number;
-  scale: number;
-  vy?: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+  slapped: boolean;
+  glassesFlew: boolean;
+  hatFlew: boolean;
+  name: string;
+  title: string;
+}
+
+export type IntroPhase = 'WINDUP' | 'SLAP_IMPACT' | 'DONE' | 'BLAST_OFF';
+
+export interface IntroState {
+  active: boolean;
+  phase: IntroPhase;
+  timer: number;
+  victim: IntroVictim | null;
 }
 
 export interface InputState {
-  joystick: {
-    active: boolean;
-    x: number; // -1 to 1
-    y: number; // -1 to 1
-  };
-  keys: {
-    left: boolean;
-    right: boolean;
-    up: boolean;
-    down: boolean;
-    slap: boolean;
-  };
+  joystick: { active: boolean; x: number; y: number };
+  keys: { left: boolean; right: boolean; up: boolean; down: boolean; slap: boolean };
   slapRequested: boolean;
 }
 
@@ -208,37 +215,37 @@ export interface GameStats {
   coins: number;
   totalCoinsCollected: number;
   slapsCount: number;
-  chaosLevel: number; // 0 to 100
-  chaosMultiplier: number; // 1, 2, 4, 8, 16
+  chaosLevel: number;
+  chaosMultiplier: number;
   feverActive: boolean;
   distanceRun: number;
   comboStreak: number;
   maxCombo: number;
   longestChaseEscape: number;
-  mobDistance?: number;
+  stamina: number;
+  maxStamina: number;
+  chaserOnScreen: boolean;
+  chaserAlertTimer: number;
+  mobDistance: number;
+  currentLevel: number;
+  isLevelMode: boolean;
+  currentMapId: string;
+  boostJumpsCount: number;
+  nearMissesCount: number;
+  escapedCount: number;
+  gameOverReason?: 'BUSTED' | 'EXHAUSTED' | 'COLLISION';
+  introActive?: boolean;
+  introPhase?: IntroPhase;
+  levelComplete?: boolean;
+  levelStars?: number;
+  levelTargetDistance?: number;
+  levelTargetSlaps?: number;
+  levelTargetCoins?: number;
+  levelTitle?: string;
   globalRank?: number;
   globalRankPending?: boolean;
   globalRankConfirmed?: boolean;
   nextPlayerAbove?: { name: string; score: number; scoreToSurpass: number } | null;
   leaderboardError?: boolean;
-  stamina: number; // 0 to 100, depletes unless slapping pedestrians
-  maxStamina: number;
-  chaserOnScreen: boolean; // Subway Surfers police chase indicator (true if stumbled)
-  chaserAlertTimer: number; // time left before chaser falls off-screen
-  gameOverReason?: 'BUSTED' | 'EXHAUSTED' | 'COLLISION';
-  introActive?: boolean;
-  introPhase?: 'WINDUP' | 'SLAP_IMPACT' | 'BLAST_OFF' | 'DONE';
   currentLane?: number;
-  currentLevel: number;
-  isLevelMode?: boolean;
-  levelTargetDistance?: number;
-  levelTargetSlaps?: number;
-  levelTargetCoins?: number;
-  levelTitle?: string;
-  levelComplete?: boolean;
-  levelStars?: number;
-  currentMapId: string;
-  boostJumpsCount: number;
-  nearMissesCount: number;
-  escapedCount: number;
 }

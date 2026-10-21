@@ -1,7 +1,7 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Heart, ShieldAlert, Zap, Compass, Keyboard, Flame, Coins, Smartphone } from 'lucide-react';
 import { sounds } from '../game/SoundEngine.ts';
-import { SlapDashPixelMark } from './SlapDashLogo.tsx';
+import { DinoVectorIcon } from './GameIcons.tsx';
 
 interface GuideModalProps {
   onClose: () => void;
@@ -16,24 +16,24 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
           onClose();
         }
       }}
-      className="absolute inset-0 z-50 bg-[#000000]/75 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 select-none pointer-events-auto touch-auto"
+      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 md:p-6 select-none pointer-events-auto touch-auto animate-fadeIn font-['Fredoka']"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#181A24] border-4 border-[#000000] shadow-[6px_6px_0px_#000000] max-w-lg w-full p-4 md:p-6 max-h-[90dvh] flex flex-col overflow-hidden text-[#FDFBF7] relative pointer-events-auto"
+        className="bg-gradient-to-b from-[#2A1E14] via-[#1E1712] to-[#140F0C] border-3 border-[#F97316] shadow-[0_12px_36px_rgba(0,0,0,0.8)] rounded-3xl max-w-lg w-full p-5 max-h-[90dvh] flex flex-col overflow-hidden text-[#FFF8E7] relative pointer-events-auto"
       >
-        {/* Header with SlapDash icon */}
-        <div className="flex items-center justify-between pb-3 border-b-2 border-[#000000] shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 shrink-0">
-              <SlapDashPixelMark className="w-full h-full" />
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b-2 border-[#F97316]/40 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-gradient-to-br from-[#FFA726] to-[#E65100] border-2 border-[#FFE082] rounded-2xl flex items-center justify-center shadow-md">
+              <DinoVectorIcon className="w-7 h-7" bodyColor="#FEF08A" bellyColor="#FFF" />
             </div>
             <div>
-              <h2 className="font-pixel text-base md:text-xl text-[#F6C445] leading-none">
-                HOW TO PLAY
+              <h2 className="font-['Lilita_One'] text-xl text-[#FEF08A] tracking-wider leading-none">
+                DINO SURVIVAL GUIDE
               </h2>
-              <p className="font-pixel text-[7px] md:text-[8px] text-[#FDFBF7]/60 uppercase tracking-wider mt-1">
-                STEER · SLAP · FEVER · ESCAPE
+              <p className="text-xs text-[#FED7AA] font-medium mt-1">
+                How to tail-whip, dodge stampedes & trigger Primal Roars
               </p>
             </div>
           </div>
@@ -46,97 +46,94 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
               onClose();
             }}
             aria-label="Close"
-            className="w-8 h-8 bg-[#FF4757] hover:bg-[#E25B45] text-white border-2 border-[#000000] shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none flex items-center justify-center cursor-pointer transition-none pointer-events-auto touch-manipulation"
+            className="w-9 h-9 bg-[#EF4444] hover:bg-[#F87171] text-white border-2 border-white/40 shadow-md active:scale-95 rounded-2xl flex items-center justify-center cursor-pointer transition-all"
           >
-            <X className="w-4 h-4 stroke-[3]" />
+            <X className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
 
-        {/* Scrollable Core Rules & Table */}
-        <div className="overflow-y-auto pr-1 space-y-3 font-pixel text-[#FDFBF7] my-3">
+        {/* Scrollable Rules */}
+        <div className="overflow-y-auto pr-1 space-y-3 my-3">
           {/* Action Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <div className="p-2.5 bg-[#1E2333] border-2 border-[#000000] shadow-[2px_2px_0px_#000000]">
-              <div className="text-[10px] text-[#10B981] mb-1">
-                ▶ SLAP FOR STAMINA
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-3.5 bg-[#19110B] border-2 border-[#10B981]/50 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-2 font-['Lilita_One'] text-sm text-[#10B981] mb-1">
+                <Zap className="w-4 h-4 fill-[#10B981]" />
+                <span>TAIL-WHIP CRITTERS</span>
               </div>
-              <p className="text-[8px] text-[#FDFBF7]/80 leading-relaxed font-ui">
-                Your energy constantly depletes! You MUST slap bystanders on the sidewalk platforms to replenish health (+35%) and stay alive.
+              <p className="text-xs text-[#FED7AA]/90 leading-relaxed">
+                Whack cheeky dodos, crabs & beach cavemen as you sprint past! Each hit boosts your Dino Energy and builds your Roar combo!
               </p>
             </div>
 
-            <div className="p-2.5 bg-[#1E2333] border-2 border-[#000000] shadow-[2px_2px_0px_#000000]">
-              <div className="text-[10px] text-[#FF4757] mb-1">
-                ▶ TWO-HIT CHASE RULE
+            <div className="p-3.5 bg-[#19110B] border-2 border-[#EF4444]/50 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-2 font-['Lilita_One'] text-sm text-[#EF4444] mb-1">
+                <DinoVectorIcon className="w-4 h-4" bodyColor="#EF4444" bellyColor="#FECACA" />
+                <span>ESCAPE STAMPEDES</span>
               </div>
-              <p className="text-[8px] text-[#FDFBF7]/80 leading-relaxed font-ui">
-                A police officer stalks behind you. Hit 1 obstacle and they surge on-screen! Hit a 2nd obstacle while they are visible and you get BUSTED!
+              <p className="text-xs text-[#FED7AA]/90 leading-relaxed">
+                Missing too many targets enrages the chasing stampede mob! Don't let them catch up to your tail or you'll get Busted!
               </p>
             </div>
 
-            <div className="p-2.5 bg-[#1E2333] border-2 border-[#000000] shadow-[2px_2px_0px_#000000]">
-              <div className="text-[10px] text-[#38BDF8] mb-1">
-                ▶ 3 LANES & DEAD-CENTER ALIGNMENT
+            <div className="p-3.5 bg-[#19110B] border-2 border-[#FBBF24]/50 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-2 font-['Lilita_One'] text-sm text-[#FEF08A] mb-1">
+                <Flame className="w-4 h-4 fill-[#F59E0B] text-[#F59E0B]" />
+                <span>PRIMAL ROAR FEVER</span>
               </div>
-              <p className="text-[8px] text-[#FDFBF7]/80 leading-relaxed font-ui">
-                3 tight lanes tailored for mobile. Switching lanes always snaps you squarely into the center for precise coin collection and obstacle dodging! Deliver the massive opening slap to start each run!
+              <p className="text-xs text-[#FED7AA]/90 leading-relaxed">
+                Fill the Mayhem Meter to ignite 16x score multiplier and invincible sprint boost with party fireworks!
               </p>
             </div>
 
-            <div className="p-2.5 bg-[#1E2333] border-2 border-[#000000] shadow-[2px_2px_0px_#000000]">
-              <div className="text-[10px] text-[#F6C445] mb-1">
-                ▶ ACCELERATING SPEED
+            <div className="p-3.5 bg-[#19110B] border-2 border-[#38BDF8]/50 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-2 font-['Lilita_One'] text-sm text-[#38BDF8] mb-1">
+                <Coins className="w-4 h-4 fill-[#38BDF8] text-[#38BDF8]" />
+                <span>COLLECT DINO COINS</span>
               </div>
-              <p className="text-[8px] text-[#FDFBF7]/80 leading-relaxed font-ui">
-                Slightly faster base speed that increases with distance. Chain slaps to charge Chaos and trigger FEVER 16x invincible turbo!
+              <p className="text-xs text-[#FED7AA]/90 leading-relaxed">
+                Grab golden fossils and coins across the track to unlock new party dinosaurs in the paddock!
               </p>
             </div>
           </div>
 
-          {/* Controls Keymap Box */}
-          <div className="border-2 border-[#000000] bg-[#000000] p-2.5 sm:p-3 shadow-[2px_2px_0px_#000000]">
-            <span className="text-[7px] sm:text-[8px] font-pixel text-[#F6C445] uppercase tracking-wider block mb-2">
-              MOBILE & KEYBOARD CONTROLS
-            </span>
-            <div className="space-y-1.5 text-[7px] sm:text-[8px]">
-              <div className="flex items-center justify-between py-1 border-b border-[#333333]">
-                <span className="text-[#FDFBF7]/80">Steer / Dodge</span>
-                <div className="flex items-center gap-1 text-[#F6C445]">
-                  <span className="text-[#38BDF8]">Swipe / D-Pad</span>
-                  <span className="opacity-50">or A/D</span>
-                </div>
+          {/* Controls Box */}
+          <div className="p-3.5 bg-[#19110B] border-2 border-white/10 rounded-2xl">
+            <h3 className="font-['Lilita_One'] text-xs text-[#FEF08A] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <Keyboard className="w-4 h-4 text-[#38BDF8]" />
+              <span>CONTROLS CHEAT SHEET</span>
+            </h3>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-0.5 rounded-lg bg-black/60 border border-white/20 text-[#FEF08A] font-['Lilita_One']">SPACE</kbd>
+                <span>Jump & Tail-Whip</span>
               </div>
-
-              <div className="flex items-center justify-between py-1 border-b border-[#333333]">
-                <span className="text-[#FDFBF7]/80">Slap & Recharge</span>
-                <div className="flex items-center gap-1 text-[#FF4757]">
-                  <span className="text-[#FF4757]">Tap Road / SLAP!</span>
-                  <span className="opacity-50">or Space</span>
-                </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-0.5 rounded-lg bg-black/60 border border-white/20 text-[#38BDF8] font-['Lilita_One']">A / D</kbd>
+                <span>Swerve Lanes</span>
               </div>
-
-              <div className="flex items-center justify-between py-1">
-                <span className="text-[#FDFBF7]/80">Audio / Fullscreen</span>
-                <div className="flex items-center gap-1 text-[#38BDF8]">
-                  <span>Top Bar Buttons</span>
-                  <span className="opacity-50">or M/F</span>
-                </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-0.5 rounded-lg bg-black/60 border border-white/20 text-[#34D399] font-['Lilita_One']">W / ↑</kbd>
+                <span>Sprint Jump</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#FED7AA] flex items-center gap-1"><Smartphone className="w-3.5 h-3.5 text-[#38BDF8]" /> Mobile:</span>
+                <span>Swipe & Tap buttons</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Start / Close Button */}
+        {/* Footer */}
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            sounds.playClick();
+          onClick={() => {
+            sounds.playStart();
             onClose();
           }}
-          className="w-full py-3 bg-[#F6C445] hover:bg-[#FBBF24] text-[#000000] font-pixel text-xs tracking-wider border-3 border-[#000000] shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none cursor-pointer transition-none shrink-0 pointer-events-auto touch-manipulation"
+          className="w-full py-3 px-5 bg-gradient-to-b from-[#FFA726] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-base tracking-wider uppercase rounded-2xl border-2 border-[#FFE082] shadow-md cursor-pointer active:scale-95 transition-all text-center"
         >
-          GOT IT - LET'S RUN!
+          READY FOR MAYHEM!
         </button>
       </div>
     </div>

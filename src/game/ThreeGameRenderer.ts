@@ -58,6 +58,7 @@ export class ThreeGameRenderer {
   private playerHatGroup: THREE.Group;
   private playerShadow: THREE.Mesh;
   private megaSlapGlove: THREE.Mesh;
+  private playerTail?: THREE.Group;
   private currentSkin?: CharacterSkin;
 
   // High-Clarity Player Focus Elements
@@ -169,6 +170,7 @@ export class ThreeGameRenderer {
     this.playerHatGroup = charBuild.hatGroup;
     this.playerShadow = charBuild.shadow;
     this.megaSlapGlove = charBuild.megaSlapGlove;
+    this.playerTail = charBuild.tail;
     this.scene.add(this.playerGroup);
 
     // 9. Build 3D Voxel Intro Target Character (The Smug Boss)
@@ -657,6 +659,9 @@ export class ThreeGameRenderer {
     if (this.materials['sidewalk'] instanceof THREE.MeshStandardMaterial) {
       this.materials['sidewalk'].color.setHex(map.sidewalkColor);
     }
+    if (this.materials['curb'] instanceof THREE.MeshStandardMaterial) {
+      this.materials['curb'].color.setHex(map.curbColor);
+    }
     if (this.materials['curbBevel'] instanceof THREE.MeshStandardMaterial) {
       this.materials['curbBevel'].color.setHex(map.curbColor);
     }
@@ -670,6 +675,8 @@ export class ThreeGameRenderer {
     }
     this.roadSegments = [];
     this.buildRoadSegments();
+    const currentPz = this.playerGroup ? this.playerGroup.position.z : 0;
+    this.resetTrack(currentPz);
   }
 
   public getCurrentMap(): MapDefinition {
@@ -955,6 +962,23 @@ export class ThreeGameRenderer {
     megaSlapGlove.visible = false;
     playerGroup.add(megaSlapGlove);
 
+    // 8. Chubby Voxel Dino Tail (Mounted on lower back of torso facing camera rear)
+    const tailGroup = new THREE.Group();
+    tailGroup.position.set(0, 0.95, 0.28);
+    const tail1 = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.42), skinMat);
+    tail1.position.set(0, 0, 0.18);
+    tail1.castShadow = true;
+    tailGroup.add(tail1);
+    const tail2 = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.36), skinMat);
+    tail2.position.set(0, 0.05, 0.46);
+    tail2.castShadow = true;
+    tailGroup.add(tail2);
+    const tail3 = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.3), shirtMat);
+    tail3.position.set(0, 0.12, 0.7);
+    tail3.castShadow = true;
+    tailGroup.add(tail3);
+    playerGroup.add(tailGroup);
+
     return {
       playerGroup,
       head,
@@ -966,6 +990,7 @@ export class ThreeGameRenderer {
       hatGroup,
       shadow,
       megaSlapGlove,
+      tail: tailGroup,
     };
   }
 
@@ -1070,6 +1095,18 @@ export class ThreeGameRenderer {
     }
     if (this.playerRightLeg && this.playerRightLeg.children[0]) {
       ((this.playerRightLeg.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial).color = pantsColor;
+    }
+
+    if (this.playerTail) {
+      if (this.playerTail.children[0]) {
+        ((this.playerTail.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial).color = skinColor;
+      }
+      if (this.playerTail.children[1]) {
+        ((this.playerTail.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial).color = skinColor;
+      }
+      if (this.playerTail.children[2]) {
+        ((this.playerTail.children[2] as THREE.Mesh).material as THREE.MeshStandardMaterial).color = shirtColor;
+      }
     }
 
     if (this.playerHatGroup) {

@@ -2,20 +2,17 @@ import React from 'react';
 import { CharacterSkin } from '../game/types.ts';
 import { MapDefinition } from '../game/maps.ts';
 import { sounds } from '../game/SoundEngine.ts';
-import { SlapDashLogo } from './SlapDashLogo.tsx';
+import { PartysaurLogo } from './SlapDashLogo.tsx';
 import {
   Trophy,
   Volume2,
   VolumeX,
   Coins,
-  Star,
-  Compass,
-  Play,
-  Settings,
-  Shirt,
-  Flame,
   Gift,
+  HelpCircle,
 } from 'lucide-react';
+
+import { DinoVectorIcon } from './GameIcons.tsx';
 
 export interface PaceMode {
   id: 'CRUISE' | 'RUSH' | 'MAYHEM';
@@ -27,9 +24,9 @@ export interface PaceMode {
 }
 
 export const PACE_MODES: PaceMode[] = [
-  { id: 'CRUISE', name: 'NORMAL', multiplier: 1.0, label: '1.0X', keyHint: '1', description: 'CLASSIC ARCADE SPEED' },
-  { id: 'RUSH', name: 'FAST', multiplier: 1.3, label: '1.3X', keyHint: '2', description: 'TURBO SPRINT SPEED' },
-  { id: 'MAYHEM', name: 'MAYHEM', multiplier: 1.65, label: '1.65X', keyHint: '3', description: 'SUPERSONIC CHAOS' },
+  { id: 'CRUISE', name: 'BEACH CHILL', multiplier: 1.0, label: '1.0X', keyHint: '1', description: 'SUNNY' },
+  { id: 'RUSH', name: 'TURBO DINO', multiplier: 1.3, label: '1.3X', keyHint: '2', description: 'SPEEDY' },
+  { id: 'MAYHEM', name: 'PRIMAL MAYHEM', multiplier: 1.65, label: '1.65X', keyHint: '3', description: 'CHAOS' },
 ];
 
 interface StartScreenProps {
@@ -69,247 +66,256 @@ export const StartScreen: React.FC<StartScreenProps> = ({
   highScore,
   totalCoins,
   selectedSkin,
-  unlockedLevel,
   currentMap,
+  unclaimedMissionsCount = 0,
   isDailyAvailable = false,
-  isLevelMode,
-  onToggleMode,
   onStartGame,
   isMuted,
   onToggleMute,
   onOpenLeaderboard,
-  onOpenLevelSelect,
   onOpenMapSelect,
   onOpenDailyRewards,
+  onOpenDailyMissions,
+  onOpenGuide,
   onOpenSettings,
   onOpenSkins,
 }) => {
   return (
-    <div className="absolute inset-0 z-30 flex flex-col justify-between p-4 sm:p-6 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-b from-black/60 via-transparent to-black/85 pointer-events-none select-none">
-      {/* 1. TOP HEADER: Ultra-Clean & Minimalist */}
-      <div className="w-full flex items-center justify-between pointer-events-auto shrink-0 z-40 max-w-4xl mx-auto">
-        {/* Left: Clean Arcade Stats (No heavy clunky boxes) */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-1.5 bg-[#181A24]/90 backdrop-blur-md px-3 py-1.5 border border-white/10 rounded-lg shadow-sm">
-            <span className="text-[8px] font-pixel text-[#94A3B8]">BEST</span>
-            <span className="font-pixel text-xs sm:text-sm font-bold text-white leading-none">
-              {highScore > 0 ? highScore.toLocaleString() : '0'}
+    <div className="absolute inset-0 z-30 flex flex-col justify-between p-2 sm:p-5 md:p-6 pointer-events-none select-none overflow-hidden pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))]">
+      {/* 3D Gameplay Scene Passthrough Layer: Menu background directly matches live 3D gameplay */}
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        {/* Cinematic arcade top and bottom vignettes to keep UI buttons ultra crisp while letting 3D track show through */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#111927]/85 via-black/15 to-[#111927]/60 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.55)_100%)] pointer-events-none" />
+      </div>
+
+      {/* Top Header: Responsive Claymorphic Tropical Badges */}
+      <header className="w-full flex items-center justify-between pointer-events-auto shrink-0 z-40 px-1 sm:px-4">
+        {/* Top-Left: Active Dinosaur Pill */}
+        <button
+          type="button"
+          onClick={() => {
+            sounds.playClick();
+            onOpenSkins();
+          }}
+          className="flex items-center gap-1.5 sm:gap-2 bg-[#FF7B1C]/90 hover:bg-[#FF8F3D] text-white border-2 border-[#FFE8A3] px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.35)] backdrop-blur-md active:scale-95 transition-all cursor-pointer"
+        >
+          <DinoVectorIcon bodyColor={selectedSkin.bodyColor} bellyColor={selectedSkin.shirtColor} className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
+          <div className="flex flex-col text-left">
+            <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-[#FEF08A] leading-tight">
+              Runner
+            </span>
+            <span className="text-[11px] sm:text-xs md:text-sm font-['Lilita_One'] text-white leading-tight truncate max-w-[90px] sm:max-w-none">
+              {selectedSkin.name}
             </span>
           </div>
+        </button>
 
-          <div className="flex items-center gap-1.5 bg-[#181A24]/90 backdrop-blur-md px-3 py-1.5 border border-white/10 rounded-lg shadow-sm text-[#F6C445]">
-            <Coins className="w-3.5 h-3.5 fill-[#F6C445]" />
-            <span className="font-pixel text-xs sm:text-sm font-bold text-white leading-none">
-              {totalCoins.toLocaleString()}
-            </span>
+        {/* Top-Right: Coins, High Score, Daily Gift, Sound */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Best Score Trophy */}
+          <div className="bg-[#182335]/85 backdrop-blur-md border-2 border-[#FBBF24]/60 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
+            <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FDE047] fill-[#FACC15] shrink-0 drop-shadow" />
+            <div className="flex flex-col">
+              <span className="text-[7px] sm:text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider leading-none">
+                Best
+              </span>
+              <span className="font-['Lilita_One'] text-[11px] sm:text-xs md:text-sm text-[#FEF08A] leading-none mt-0.5">
+                {highScore > 0 ? highScore.toLocaleString() : '0'}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Right: Exactly 3 Clean Utility Icons */}
-        <div className="flex items-center gap-2">
-          {/* Sound Toggle */}
+          {/* Dino Fossils & Coins */}
+          <div className="bg-[#182335]/85 backdrop-blur-md border-2 border-[#F97316]/60 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
+            <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FACC15] fill-[#FACC15] shrink-0 drop-shadow" />
+            <div className="flex flex-col">
+              <span className="text-[7px] sm:text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider leading-none">
+                Coins
+              </span>
+              <span className="font-['Lilita_One'] text-[11px] sm:text-xs md:text-sm text-[#FBBF24] leading-none mt-0.5">
+                {totalCoins.toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          {/* Daily Egg Hatch Rewards */}
+          {onOpenDailyRewards && (
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playClick();
+                onOpenDailyRewards();
+              }}
+              title="Daily Dino Egg Hatch"
+              className={`h-8 sm:h-10 px-2 sm:px-3 bg-[#182335]/90 hover:bg-[#202E44] border-2 rounded-xl sm:rounded-2xl flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_4px_12px_rgba(0,0,0,0.4)] active:scale-95 ${
+                isDailyAvailable
+                  ? 'border-[#FACC15] text-[#FACC15] ring-2 ring-[#FACC15]/50 animate-pulse'
+                  : 'border-white/20 text-white'
+              }`}
+            >
+              <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-[#FACC15]" />
+              <span className="text-xs font-['Lilita_One'] hidden md:inline text-white">REWARDS</span>
+              {isDailyAvailable && (
+                <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping" />
+              )}
+            </button>
+          )}
+
+          {/* How to play / Guide */}
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playClick();
+              onOpenGuide();
+            }}
+            title="How to Play"
+            aria-label="Guide"
+            className="w-8 h-8 sm:w-10 sm:h-10 bg-[#182335]/90 hover:bg-[#202E44] text-white border-2 border-white/20 rounded-xl sm:rounded-2xl flex items-center justify-center cursor-pointer transition-all shadow-[0_4px_12px_rgba(0,0,0,0.4)] active:scale-95"
+          >
+            <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#38BDF8]" />
+          </button>
+
+          {/* Audio Toggle */}
           <button
             type="button"
             onClick={() => {
               sounds.playClick();
               onToggleMute();
             }}
-            title={isMuted ? 'Unmute Sound' : 'Mute Sound'}
-            aria-label="Sound"
-            className="w-9 h-9 bg-[#181A24]/90 hover:bg-[#252A3C] text-white border border-white/10 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
+            title={isMuted ? 'Unmute' : 'Mute'}
+            aria-label="Toggle Sound"
+            className="w-8 h-8 sm:w-10 sm:h-10 bg-[#182335]/90 hover:bg-[#202E44] text-white border-2 border-white/20 rounded-xl sm:rounded-2xl flex items-center justify-center cursor-pointer transition-all shadow-[0_4px_12px_rgba(0,0,0,0.4)] active:scale-95"
           >
-            {isMuted ? <VolumeX className="w-4 h-4 text-[#EF4444]" /> : <Volume2 className="w-4 h-4 text-white" />}
-          </button>
-
-          {/* Global Leaderboard */}
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playClick();
-              onOpenLeaderboard();
-            }}
-            title="Leaderboard Rankings"
-            aria-label="Leaderboard"
-            className="w-9 h-9 bg-[#181A24]/90 hover:bg-[#252A3C] text-white border border-white/10 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-          >
-            <Trophy className="w-4 h-4 text-[#F6C445]" />
-          </button>
-
-          {/* Settings Menu */}
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playClick();
-              onOpenSettings();
-            }}
-            title="Game Settings"
-            aria-label="Settings"
-            className="w-9 h-9 bg-[#181A24]/90 hover:bg-[#252A3C] text-white border border-white/10 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-          >
-            <Settings className="w-4 h-4 text-[#94A3B8]" />
+            {isMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#F43F5E]" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#34D399]" />}
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* 2. CENTER HERO ZONE: Clean, Focused, Beautiful Breathing Room */}
-      <div className="w-full max-w-sm sm:max-w-md mx-auto my-auto flex flex-col items-center pointer-events-auto py-4">
-        {/* SlapDash Hero Brand Logo (Centered, No distracting images) */}
-        <div className="animate-float-logo mb-6">
-          <SlapDashLogo size="lg" />
-        </div>
+      {/* Main Content Area: Left Stack Menu matching reference screenshot */}
+      <div className="flex-1 flex items-center justify-start px-2 sm:px-8 md:px-16 pointer-events-none z-30 py-2 sm:py-4">
+        {/* Left-Aligned Menu Column (Optimized with responsive scaling so it never overflows on mobile) */}
+        <div className="flex flex-col items-start gap-1.5 sm:gap-2.5 pointer-events-auto max-w-[210px] sm:max-w-[260px] md:max-w-xs w-full max-h-[calc(100vh-5rem)] overflow-y-auto no-scrollbar">
+          {/* 3D PARTYSALUR DINO MAYHEM Logo above the buttons */}
+          <div className="w-full max-w-[190px] sm:max-w-[240px] md:max-w-[280px] -ml-1 -mb-1 sm:-mb-2 transition-transform duration-300 hover:scale-[1.02]">
+            <PartysaurLogo size="sm" showSubtitle={false} />
+          </div>
 
-        {/* Clean Mode Switcher: Stage Run vs Endless */}
-        <div className="w-full bg-[#181A24]/90 backdrop-blur-md p-1 border border-white/10 rounded-xl mb-4 shadow-lg">
-          <div className="grid grid-cols-2 gap-1">
+          {/* Vertical Stacked Chunky Orange Buttons (Exact design from uploaded image) */}
+          <div className="flex flex-col gap-1.5 sm:gap-2.5 w-full">
+            {/* 1. PLAY BUTTON (Hero primary button) */}
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playStart();
+                onStartGame();
+              }}
+              className="w-full py-2.5 sm:py-3.5 md:py-4 px-4 sm:px-6 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-base sm:text-xl md:text-2xl tracking-wider uppercase rounded-xl sm:rounded-2xl md:rounded-3xl border-2 sm:border-3 border-[#FFE082] shadow-[0_4px_0px_#BF360C,0_8px_16px_rgba(0,0,0,0.45)] sm:shadow-[0_6px_0px_#BF360C,0_10px_20px_rgba(0,0,0,0.5)] active:translate-y-1 active:shadow-[0_1px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-center text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
+            >
+              PLAY
+            </button>
+
+            {/* 2. OPTIONS / SETTINGS BUTTON */}
             <button
               type="button"
               onClick={() => {
                 sounds.playClick();
-                onToggleMode(true);
+                onOpenSettings();
               }}
-              className={`py-2 px-3 font-pixel text-[9px] rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
-                isLevelMode
-                  ? 'bg-[#10B981] text-black font-bold shadow-md'
-                  : 'text-[#94A3B8] hover:text-white'
-              }`}
+              className="w-full py-2 sm:py-2.5 md:py-3 px-3.5 sm:px-5 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-xs sm:text-base md:text-lg tracking-wider uppercase rounded-xl sm:rounded-2xl md:rounded-3xl border-2 sm:border-3 border-[#FFE082] shadow-[0_3px_0px_#BF360C,0_6px_12px_rgba(0,0,0,0.4)] sm:shadow-[0_5px_0px_#BF360C,0_8px_16px_rgba(0,0,0,0.45)] active:translate-y-1 active:shadow-[0_1px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-center text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
             >
-              <Star className={`w-3.5 h-3.5 ${isLevelMode ? 'fill-black' : 'text-[#94A3B8]'}`} />
-              <span>STAGES</span>
+              OPTIONS
             </button>
 
+            {/* 3. DINO SKINS BUTTON */}
             <button
               type="button"
               onClick={() => {
                 sounds.playClick();
-                onToggleMode(false);
+                onOpenSkins();
               }}
-              className={`py-2 px-3 font-pixel text-[9px] rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
-                !isLevelMode
-                  ? 'bg-[#F59E0B] text-black font-bold shadow-md'
-                  : 'text-[#94A3B8] hover:text-white'
-              }`}
+              className="relative w-full py-2 sm:py-2.5 md:py-3 px-3.5 sm:px-5 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-xs sm:text-base md:text-lg tracking-wider uppercase rounded-xl sm:rounded-2xl md:rounded-3xl border-2 sm:border-3 border-[#FFE082] shadow-[0_3px_0px_#BF360C,0_6px_12px_rgba(0,0,0,0.4)] sm:shadow-[0_5px_0px_#BF360C,0_8px_16px_rgba(0,0,0,0.45)] active:translate-y-1 active:shadow-[0_1px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-center gap-1.5 sm:gap-2 text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
             >
-              <Flame className={`w-3.5 h-3.5 ${!isLevelMode ? 'fill-black' : 'text-[#94A3B8]'}`} />
-              <span>ENDLESS</span>
+              <span>DINO SKINS</span>
+              <span
+                className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full border border-white sm:border-2 shadow-xs"
+                style={{ backgroundColor: selectedSkin.bodyColor }}
+                title={selectedSkin.name}
+              />
             </button>
-          </div>
-        </div>
 
-        {/* Primary Hero PLAY Button - Clean, Confident, Modern Arcade CTA */}
-        <button
-          type="button"
-          onClick={() => {
-            sounds.playStart();
-            onStartGame();
-          }}
-          className="w-full py-4 sm:py-5 bg-[#F6C445] hover:bg-[#FBBF24] active:scale-[0.98] text-black font-pixel text-base sm:text-lg tracking-wider rounded-xl shadow-[0_8px_20px_rgba(246,196,69,0.3)] cursor-pointer flex flex-col items-center justify-center transition-all select-none group"
-        >
-          <div className="flex items-center gap-2.5">
-            <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-black group-hover:scale-110 transition-transform" />
-            <span className="font-bold tracking-widest">
-              {isLevelMode ? `PLAY STAGE ${unlockedLevel}` : 'START ENDLESS RUN'}
-            </span>
-          </div>
-        </button>
+            {/* 4. MAPS / BIOMES BUTTON */}
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playClick();
+                onOpenMapSelect();
+              }}
+              className="w-full py-2 sm:py-2.5 md:py-3 px-3.5 sm:px-5 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-xs sm:text-base md:text-lg tracking-wider uppercase rounded-xl sm:rounded-2xl md:rounded-3xl border-2 sm:border-3 border-[#FFE082] shadow-[0_3px_0px_#BF360C,0_6px_12px_rgba(0,0,0,0.4)] sm:shadow-[0_5px_0px_#BF360C,0_8px_16px_rgba(0,0,0,0.45)] active:translate-y-1 active:shadow-[0_1px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-between text-left drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
+            >
+              <div className="flex items-center gap-1.5 truncate">
+                <span>MAPS:</span>
+                <span className="text-[#FEF08A] truncate">{currentMap ? currentMap.name : 'BIOMES'}</span>
+              </div>
+              {currentMap && (
+                <span
+                  className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full border border-white sm:border-2 shadow-xs shrink-0 ml-1.5"
+                  style={{ backgroundColor: currentMap.badgeColor }}
+                  title={currentMap.name}
+                />
+              )}
+            </button>
 
-        {/* Minimal Runner Info */}
-        <div className="mt-3 flex items-center gap-2 text-[8px] font-pixel text-[#94A3B8]">
-          <span className="text-white flex items-center gap-1">
-            <span
-              className="w-2 h-2 rounded-full inline-block"
-              style={{ backgroundColor: selectedSkin.shirtColor }}
-            />
-            {selectedSkin.name}
-          </span>
-          <span>·</span>
-          <span className="text-[#38BDF8]">{currentMap.name}</span>
-        </div>
-
-        {/* Keyboard hint */}
-        <span className="mt-3 font-pixel text-[7px] text-[#64748B] tracking-wider hidden sm:block">
-          PRESS SPACEBAR OR ENTER TO RUN
-        </span>
-      </div>
-
-      {/* 3. BOTTOM NAVIGATION: Sleek, Minimal, Generously Spaced */}
-      <div className="w-full max-w-lg mx-auto pointer-events-auto shrink-0 z-40">
-        <div className="bg-[#181A24]/90 backdrop-blur-md border border-white/10 rounded-2xl p-1.5 shadow-xl grid grid-cols-4 gap-1.5">
-          {/* 1. STAGES */}
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playClick();
-              onOpenLevelSelect();
-            }}
-            className="py-2.5 px-2 hover:bg-white/5 rounded-xl cursor-pointer flex flex-col items-center justify-center text-center transition-colors"
-          >
-            <Star className="w-4 h-4 text-[#FDE047] fill-[#FDE047] mb-1" />
-            <span className="font-pixel text-[8px] text-white font-bold leading-tight">
-              STAGES
-            </span>
-            <span className="font-pixel text-[6px] text-[#94A3B8] leading-tight mt-0.5">
-              LV {unlockedLevel}/100
-            </span>
-          </button>
-
-          {/* 2. WORLDS */}
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playClick();
-              onOpenMapSelect();
-            }}
-            className="py-2.5 px-2 hover:bg-white/5 rounded-xl cursor-pointer flex flex-col items-center justify-center text-center transition-colors"
-          >
-            <Compass className="w-4 h-4 text-[#38BDF8] mb-1" />
-            <span className="font-pixel text-[8px] text-white font-bold leading-tight">
-              WORLDS
-            </span>
-            <span className="font-pixel text-[6px] text-[#94A3B8] leading-tight mt-0.5 truncate max-w-full">
-              {currentMap.name.split(' ')[0]}
-            </span>
-          </button>
-
-          {/* 3. SKINS */}
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playClick();
-              onOpenSkins();
-            }}
-            className="py-2.5 px-2 hover:bg-white/5 rounded-xl cursor-pointer flex flex-col items-center justify-center text-center transition-colors"
-          >
-            <Shirt className="w-4 h-4 text-[#10B981] mb-1" />
-            <span className="font-pixel text-[8px] text-white font-bold leading-tight">
-              SKINS
-            </span>
-            <span className="font-pixel text-[6px] text-[#94A3B8] leading-tight mt-0.5">
-              WARDROBE
-            </span>
-          </button>
-
-          {/* 4. DAILY BONUS */}
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playClick();
-              onOpenDailyRewards?.();
-            }}
-            className="relative py-2.5 px-2 hover:bg-white/5 rounded-xl cursor-pointer flex flex-col items-center justify-center text-center transition-colors"
-          >
-            <Gift className={`w-4 h-4 mb-1 ${isDailyAvailable ? 'text-[#F6C445] animate-bounce' : 'text-[#94A3B8]'}`} />
-            <span className="font-pixel text-[8px] text-white font-bold leading-tight">
-              REWARDS
-            </span>
-            <span className={`font-pixel text-[6px] leading-tight mt-0.5 ${isDailyAvailable ? 'text-[#10B981] font-bold' : 'text-[#94A3B8]'}`}>
-              {isDailyAvailable ? 'READY!' : 'DAILY'}
-            </span>
-            {isDailyAvailable && (
-              <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-[#10B981] ring-2 ring-[#181A24] animate-ping" />
+            {/* 5. MISSIONS BUTTON */}
+            {onOpenDailyMissions && (
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playClick();
+                  onOpenDailyMissions();
+                }}
+                className="relative w-full py-2 sm:py-2.5 md:py-3 px-3.5 sm:px-5 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-xs sm:text-base md:text-lg tracking-wider uppercase rounded-xl sm:rounded-2xl md:rounded-3xl border-2 sm:border-3 border-[#FFE082] shadow-[0_3px_0px_#BF360C,0_6px_12px_rgba(0,0,0,0.4)] sm:shadow-[0_5px_0px_#BF360C,0_8px_16px_rgba(0,0,0,0.45)] active:translate-y-1 active:shadow-[0_2px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-center text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
+              >
+                <span>MISSIONS</span>
+                {unclaimedMissionsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-[#10B981] text-white font-['Lilita_One'] text-[9px] border border-white shadow-md animate-bounce">
+                    {unclaimedMissionsCount}
+                  </span>
+                )}
+              </button>
             )}
-          </button>
+
+            {/* 6. LEADERBOARDS / HALL OF FAME */}
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playClick();
+                onOpenLeaderboard();
+              }}
+              className="w-full py-2 sm:py-2.5 md:py-3 px-3.5 sm:px-5 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-xs sm:text-base md:text-lg tracking-wider uppercase rounded-xl sm:rounded-2xl md:rounded-3xl border-2 sm:border-3 border-[#FFE082] shadow-[0_3px_0px_#BF360C,0_6px_12px_rgba(0,0,0,0.4)] sm:shadow-[0_5px_0px_#BF360C,0_8px_16px_rgba(0,0,0,0.45)] active:translate-y-1 active:shadow-[0_2px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-center text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
+            >
+              HALL OF FAME
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Bottom Hint Banner: HIDDEN ON MOBILE (hidden md:flex) as requested by user */}
+      <footer className="hidden md:flex w-full items-center justify-center pointer-events-auto shrink-0 z-40 pb-1">
+        <div className="bg-[#111927]/85 backdrop-blur-md px-5 py-2 rounded-2xl border-2 border-white/15 flex items-center gap-3 text-xs sm:text-sm font-['Fredoka'] font-medium text-amber-100 shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
+          <div className="flex items-center gap-1.5">
+            <kbd className="px-2 py-0.5 rounded-lg bg-black/60 border border-white/20 text-xs text-[#FDE047] font-['Lilita_One']">SPACE</kbd>
+            <span>Tail-Whip / Jump</span>
+          </div>
+          <span className="text-white/30">·</span>
+          <div className="flex items-center gap-1.5">
+            <kbd className="px-2 py-0.5 rounded-lg bg-black/60 border border-white/20 text-xs text-[#38BDF8] font-['Lilita_One']">A / D</kbd>
+            <span>Dodge Lanes</span>
+          </div>
+          <span className="text-white/30">·</span>
+          <span className="text-[#34D399] font-bold">Swipe & Tap on Touch!</span>
+        </div>
+      </footer>
     </div>
   );
 };

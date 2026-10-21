@@ -23,14 +23,14 @@ interface LeaderboardRecord {
 
 // Initialized Global Arcade Leaderboard seeded with authentic tournament scores
 let globalLeaderboard: LeaderboardRecord[] = [
-  { id: 'rec-1', name: 'SLAP_NINJA_99', score: 38450, maxCombo: 34, date: 'Today', skinId: 'golden_champ' },
-  { id: 'rec-2', name: 'TURBO_DASH_PRO', score: 31200, maxCombo: 28, date: 'Today', skinId: 'cyber_boxer' },
-  { id: 'rec-3', name: 'CHAOS_QUEEN', score: 26800, maxCombo: 24, date: 'Yesterday', skinId: 'market_ninja' },
-  { id: 'rec-4', name: 'MARKET_MENACE', score: 22150, maxCombo: 19, date: '2d ago', skinId: 'speedy_dash' },
-  { id: 'rec-5', name: 'SWERVE_KING', score: 18900, maxCombo: 17, date: '3d ago', skinId: 'golden_champ' },
-  { id: 'rec-6', name: 'SLAP_MASTER_J', score: 15400, maxCombo: 15, date: '3d ago', skinId: 'speedy_dash' },
-  { id: 'rec-7', name: 'MOB_RUNNER_X', score: 12600, maxCombo: 12, date: '4d ago', skinId: 'market_ninja' },
-  { id: 'rec-8', name: 'CHIBI_BRAWLER', score: 9800, maxCombo: 10, date: '5d ago', skinId: 'cyber_boxer' },
+  { id: 'rec-1', name: 'REXY_PRIME', score: 48900, maxCombo: 34, date: 'Today', skinId: 'rex_red' },
+  { id: 'rec-2', name: 'BUBBLES_SURF', score: 38200, maxCombo: 28, date: 'Today', skinId: 'spino_blue' },
+  { id: 'rec-3', name: 'GOLDIE_BASH', score: 29400, maxCombo: 24, date: 'Yesterday', skinId: 'spike_gold' },
+  { id: 'rec-4', name: 'RAPTOR_DASH', score: 21500, maxCombo: 19, date: '2d ago', skinId: 'snappy_green' },
+  { id: 'rec-5', name: 'FOSSIL_KING', score: 18900, maxCombo: 17, date: '3d ago', skinId: 'king_fossil' },
+  { id: 'rec-6', name: 'CYBER_SAUR', score: 15400, maxCombo: 15, date: '3d ago', skinId: 'mecha_saur' },
+  { id: 'rec-7', name: 'ISLAND_SPEED', score: 12600, maxCombo: 12, date: '4d ago', skinId: 'rex_red' },
+  { id: 'rec-8', name: 'TROPIC_RUNNER', score: 9800, maxCombo: 10, date: '5d ago', skinId: 'spino_blue' },
 ];
 
 // In-memory lightweight gameplay analytics
@@ -42,6 +42,7 @@ interface AnalyticsSummary {
   exhaustedFailures: number;
   stageClears: number;
 }
+
 const analyticsData: AnalyticsSummary = {
   runsStarted: 0,
   runsCompleted: 0,
@@ -67,9 +68,9 @@ app.get('/api/leaderboard', (_req, res) => {
     totalEntries: globalLeaderboard.length,
     entries: sorted,
     tournament: {
-      season: 'Season 1: Grand Bazaar Blitz',
+      season: 'Season 1: Dino Resort Mayhem Blitz',
       endsInHours: hoursRemaining,
-      topReward: '500 Coins + Crown Trophy',
+      topReward: '500 Dino Coins + Golden Dino Trophy',
       activeParticipants: globalLeaderboard.length + 142,
     },
     updatedAt: new Date().toISOString(),

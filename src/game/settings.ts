@@ -1,61 +1,41 @@
 export interface GameSettings {
-  // Audio
-  masterVolume: number; // 0 to 100
-  sfxVolume: number; // 0 to 100
-  bgmVolume: number; // 0 to 100
-  isMuted: boolean;
-
-  // Controls
-  onScreenControls: 'auto' | 'always' | 'hidden'; // auto = touch only
-  showLaneButtons: 'auto' | 'always' | 'hidden'; // auto = hide on PC, show on touch
-  sensitivity: number; // 0.75 to 1.75
-
-  // Graphics & Feel
-  characterFocus: 'enhanced' | 'classic'; // High-visibility beacon, ground target ring & rim light
+  soundEnabled: boolean;
+  musicEnabled: boolean;
   cameraShake: boolean;
   reducedMotion: boolean;
-  fovWarp: boolean;
-  haptics: boolean;
-  graphicsQuality: 'high' | 'medium' | 'low';
+  characterFocus: 'close' | 'classic' | 'dynamic';
+  showLaneButtons: 'auto' | 'always' | 'hidden';
+  onScreenControls: 'auto' | 'always' | 'hidden';
+  vibration: boolean;
 }
 
-const SETTINGS_KEY = 'slap_dash_game_settings';
+const STORAGE_KEY = 'slap_run_game_settings';
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  masterVolume: 85,
-  sfxVolume: 100,
-  bgmVolume: 70,
-  isMuted: false,
-
-  onScreenControls: 'auto',
-  showLaneButtons: 'auto',
-  sensitivity: 1.0,
-
-  characterFocus: 'enhanced',
+  soundEnabled: true,
+  musicEnabled: true,
   cameraShake: true,
   reducedMotion: false,
-  fovWarp: true,
-  haptics: true,
-  graphicsQuality: 'high',
+  characterFocus: 'close',
+  showLaneButtons: 'auto',
+  onScreenControls: 'auto',
+  vibration: true,
 };
 
 export function loadSettings(): GameSettings {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { ...DEFAULT_SETTINGS };
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_SETTINGS, ...parsed };
-  } catch {
-    return { ...DEFAULT_SETTINGS };
-  }
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    }
+  } catch {}
+  return { ...DEFAULT_SETTINGS };
 }
 
 export function saveSettings(settings: GameSettings): void {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  } catch {
-    // Storage access disabled or quota exceeded
-  }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {}
 }
 
 export function isTouchEnvironment(): boolean {

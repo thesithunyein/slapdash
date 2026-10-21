@@ -8,7 +8,8 @@ import {
   DailyRewardState,
 } from '../game/dailyRewards.ts';
 import { sounds } from '../game/SoundEngine.ts';
-import { Gift, Coins, Flame, Crown, Trophy, Check, X, Sparkles, Calendar } from 'lucide-react';
+import { Gift, Coins, Flame, Crown, Trophy, Check, X, Sparkles } from 'lucide-react';
+import { DinoEggIcon } from './GameIcons.tsx';
 
 interface DailyRewardsModalProps {
   isOpen: boolean;
@@ -36,37 +37,30 @@ export const DailyRewardsModal: React.FC<DailyRewardsModalProps> = ({
     onRewardClaimed(result.bonusCoins);
   };
 
-  const renderIcon = (name: DailyRewardTier['iconName']) => {
-    switch (name) {
-      case 'flame':
-        return <Flame className="w-5 h-5 text-[#EF4444] fill-[#EF4444]" />;
-      case 'crown':
-        return <Crown className="w-6 h-6 text-[#F6C445] fill-[#F6C445] animate-bounce" />;
-      case 'trophy':
-        return <Trophy className="w-5 h-5 text-[#F59E0B] fill-[#F59E0B]" />;
-      default:
-        return <Coins className="w-5 h-5 text-[#F6C445] fill-[#F6C445]" />;
-    }
+  const renderEggIcon = (day: number) => {
+    return <DinoEggIcon className="w-7 h-7 sm:w-8 sm:h-8" day={day} isGolden={day === 7} />;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xs select-none">
-      <div className="relative w-full max-w-lg bg-[#181A24] border-3 sm:border-4 border-black shadow-[6px_6px_0px_#000000] flex flex-col max-h-[92vh] overflow-hidden animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md select-none animate-fadeIn font-['Fredoka']">
+      <div className="relative w-full max-w-lg bg-gradient-to-b from-[#2A1E14] via-[#1E1712] to-[#140F0C] border-3 border-[#F97316] shadow-[0_12px_36px_rgba(0,0,0,0.8)] rounded-3xl flex flex-col max-h-[92vh] overflow-hidden text-[#FFF8E7]">
         {/* Header */}
-        <div className="bg-[#0F172A] border-b-3 border-black px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#F6C445] border-2 border-black flex items-center justify-center shadow-[1px_1px_0px_#000000]">
-              <Gift className="w-4 h-4 text-black" />
+        <div className="bg-[#19110B] border-b-2 border-[#F97316]/40 px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-gradient-to-br from-[#FBBF24] to-[#F59E0B] border-2 border-[#FEF08A] rounded-2xl flex items-center justify-center shadow-md">
+              <DinoEggIcon className="w-7 h-7" isGolden={true} />
             </div>
             <div>
-              <h2 className="font-pixel text-xs sm:text-sm text-white tracking-wider flex items-center gap-1.5">
-                <span>DAILY LOGIN BONUS</span>
-                <span className="text-[8px] bg-[#10B981] text-black px-1.5 py-0.5 border border-black font-bold">
+              <div className="flex items-center gap-2">
+                <h2 className="font-['Lilita_One'] text-xl text-[#FEF08A] tracking-wider uppercase">
+                  DINO EGG HATCHERY
+                </h2>
+                <span className="text-[10px] font-['Lilita_One'] bg-[#10B981] text-white px-2 py-0.5 rounded-full border border-white/40">
                   7-DAY STREAK
                 </span>
-              </h2>
-              <span className="text-[7px] sm:text-[8px] font-pixel text-[#94A3B8] block">
-                LOG IN DAILY TO COLLECT EPIC COIN DROPS
+              </div>
+              <span className="text-xs text-[#FED7AA] font-medium block">
+                Log in daily to hatch dinosaur fossils & bonus coins!
               </span>
             </div>
           </div>
@@ -78,114 +72,87 @@ export const DailyRewardsModal: React.FC<DailyRewardsModalProps> = ({
               onClose();
             }}
             aria-label="Close"
-            className="w-8 h-8 bg-[#EF4444] hover:bg-[#DC2626] text-white border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer flex items-center justify-center"
+            className="w-9 h-9 bg-[#EF4444] hover:bg-[#F87171] text-white border-2 border-white/40 shadow-md active:scale-95 rounded-2xl cursor-pointer flex items-center justify-center transition-all"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
 
-        {/* Claim celebration alert */}
+        {/* Claim Alert Banner */}
         {claimedTier && (
-          <div className="bg-[#10B981] border-b-3 border-black p-3 text-black font-pixel text-xs flex items-center justify-between animate-pulse">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 fill-black" />
-              <span>
-                CLAIMED {claimedTier.title.toUpperCase()}: +{claimedTier.coins} COINS!
+          <div className="m-4 p-3 bg-gradient-to-r from-[#10B981]/25 to-[#059669]/25 border-2 border-[#10B981] rounded-2xl flex items-center gap-3 animate-bounce">
+            <Sparkles className="w-6 h-6 text-[#FEF08A] shrink-0" />
+            <div>
+              <span className="font-['Lilita_One'] text-sm text-[#34D399] uppercase block">
+                EGG HATCHED!
+              </span>
+              <span className="text-xs text-white">
+                You collected <strong className="text-[#FEF08A]">+{claimedTier.coins} Coins</strong> and maintained your streak!
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setClaimedTier(null)}
-              className="text-black font-bold hover:underline cursor-pointer"
-            >
-              OK
-            </button>
           </div>
         )}
 
-        {/* 7-Day Grid */}
-        <div className="p-3 sm:p-4 overflow-y-auto space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* 7 Days Grid */}
+        <div className="p-4 sm:p-5 overflow-y-auto">
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2.5 mb-4">
             {DAILY_REWARD_TIERS.map((tier) => {
-              const isPast = tier.day < state.currentDay || (!isAvailable && tier.day === state.currentDay);
-              const isCurrent = tier.day === state.currentDay && isAvailable;
-              const isFuture = tier.day > state.currentDay;
-              const isBigDay = tier.day === 7;
+              const isPast = tier.day < state.currentDay;
+              const isToday = tier.day === state.currentDay;
+              const isClaimedToday = isToday && !isAvailable;
+              const isUnlockable = isToday && isAvailable;
 
               return (
                 <div
                   key={tier.day}
-                  className={`relative p-2.5 sm:p-3 border-2 border-black flex flex-col items-center justify-between text-center ${
-                    isBigDay ? 'col-span-2 sm:col-span-2 bg-gradient-to-br from-[#1E1B4B] to-[#312E81] border-[#F6C445]' : 'bg-[#0B0F19]'
+                  className={`relative p-2.5 rounded-2xl border-2 flex flex-col items-center justify-between text-center transition-all ${
+                    tier.day === 7 ? 'col-span-4 sm:col-span-1 bg-gradient-to-b from-[#F59E0B]/30 to-[#B45309]/30 border-[#FBBF24]' : ''
                   } ${
-                    isCurrent
-                      ? 'border-[#10B981] shadow-[0_0_12px_rgba(16,185,129,0.5)] ring-2 ring-[#10B981]'
-                      : 'shadow-[2px_2px_0px_#000000]'
-                  } ${isPast ? 'opacity-60' : ''}`}
+                    isUnlockable
+                      ? 'bg-gradient-to-b from-[#FFA726]/30 to-[#E65100]/30 border-[#FFE082] ring-2 ring-[#FFE082]/60 scale-105 shadow-md'
+                      : isPast || isClaimedToday
+                      ? 'bg-[#19110B] border-[#10B981]/60'
+                      : 'bg-[#1D140D] border-white/10 opacity-70'
+                  }`}
                 >
-                  {/* Status Tag */}
-                  <div className="w-full flex items-center justify-between mb-1">
-                    <span className="font-pixel text-[8px] sm:text-[9px] text-[#94A3B8]">
-                      DAY {tier.day}
-                    </span>
-                    {isPast && (
-                      <span className="flex items-center gap-0.5 text-[7px] font-pixel text-[#10B981]">
-                        <Check className="w-3 h-3 text-[#10B981]" />
-                        CLAIMED
-                      </span>
-                    )}
-                    {isCurrent && (
-                      <span className="text-[7px] font-pixel bg-[#10B981] text-black px-1 font-bold animate-pulse">
-                        READY!
-                      </span>
-                    )}
-                    {isFuture && (
-                      <span className="text-[7px] font-pixel text-[#64748B]">
-                        LOCKED
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Icon */}
-                  <div className="my-1.5 p-2 bg-[#181A24] border border-black/60 rounded flex items-center justify-center">
-                    {renderIcon(tier.iconName)}
-                  </div>
-
-                  {/* Reward text */}
-                  <span className="font-pixel text-xs sm:text-sm font-bold text-[#F6C445] leading-none mb-1">
-                    +{tier.coins.toLocaleString()}
+                  <span className="text-[10px] font-['Lilita_One'] text-[#FED7AA] uppercase">
+                    Day {tier.day}
                   </span>
-                  <span className="text-[7px] text-[#CBD5E1] line-clamp-1">
-                    {tier.title}
+
+                  <div className="my-1.5 flex items-center justify-center">
+                    {isPast || isClaimedToday ? (
+                      <div className="w-7 h-7 rounded-full bg-[#10B981] flex items-center justify-center text-white">
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      </div>
+                    ) : (
+                      renderEggIcon(tier.day)
+                    )}
+                  </div>
+
+                  <span className="font-['Lilita_One'] text-xs text-[#FEF08A]">
+                    +{tier.coins}
                   </span>
                 </div>
               );
             })}
           </div>
 
-          {/* Action CTA Container */}
-          <div className="pt-2">
-            {isAvailable ? (
-              <button
-                type="button"
-                onClick={handleClaim}
-                className="w-full py-3 bg-[#10B981] hover:bg-[#059669] text-black border-3 border-black shadow-[4px_4px_0px_#000000] active:translate-x-1 active:translate-y-1 active:shadow-none font-pixel text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition-none"
-              >
-                <Sparkles className="w-4 h-4 fill-black" />
-                <span>CLAIM DAY {state.currentDay} REWARD!</span>
-              </button>
-            ) : (
-              <div className="w-full py-2.5 px-3 bg-[#0B0F19] border-2 border-black flex items-center justify-between text-[#94A3B8] font-pixel text-[8px] sm:text-[9px]">
-                <span className="flex items-center gap-1.5 text-[#10B981]">
-                  <Check className="w-3.5 h-3.5" />
-                  DAY {state.currentDay} REWARD CLAIMED TODAY
-                </span>
-                <span className="text-[#64748B]">
-                  NEXT BONUS IN 24H
-                </span>
-              </div>
-            )}
-          </div>
+          {/* Action Button */}
+          {isAvailable ? (
+            <button
+              type="button"
+              onClick={handleClaim}
+              className="w-full py-3.5 px-6 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-lg tracking-wider uppercase rounded-2xl border-3 border-[#FFE082] shadow-[0_5px_0px_#BF360C] active:translate-y-1 active:shadow-[0_1px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-5 h-5 text-[#FEF08A] fill-[#FEF08A]" />
+              <span>HATCH TODAY'S DINO EGG</span>
+            </button>
+          ) : (
+            <div className="w-full py-3 px-4 bg-[#19110B] border-2 border-white/10 rounded-2xl text-center text-xs text-[#FED7AA] font-medium flex items-center justify-center gap-2">
+              <Check className="w-4 h-4 text-[#10B981]" />
+              <span>Today's Dino Egg is already hatched! Come back tomorrow for Day {Math.min(7, state.currentDay + 1)}!</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

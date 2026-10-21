@@ -25,7 +25,7 @@ import { DailyMissionsModal } from './components/DailyMissionsModal.tsx';
 import { PWAInstallModal } from './components/PWAInstallModal.tsx';
 import { isDailyRewardAvailable } from './game/dailyRewards.ts';
 import { getUnclaimedMissionsCount, updateMissionsOnRun } from './game/dailyMissions.ts';
-import { loadLevelProgress, LevelProgress } from './game/levels.ts';
+import { loadLevelProgress, LevelProgress, getMapForLevel } from './game/levels.ts';
 import { GAME_MAPS, MapDefinition, getMapById } from './game/maps.ts';
 import { Achievement, loadAchievementStorage, ACHIEVEMENTS_LIST } from './game/achievements.ts';
 import { loadSettings, saveSettings, GameSettings } from './game/settings.ts';
@@ -38,7 +38,16 @@ export default function App() {
   const engineRef = useRef<GameEngine | null>(null);
 
   const [gameState, setGameState] = useState<GameState>('MENU');
-  const [selectedSkin, setSelectedSkin] = useState<CharacterSkin>(CHARACTER_SKINS[0]);
+  const [selectedSkin, setSelectedSkin] = useState<CharacterSkin>(() => {
+    try {
+      const savedSkinId = localStorage.getItem('slap_run_selected_skin');
+      if (savedSkinId) {
+        const found = CHARACTER_SKINS.find((s) => s.id === savedSkinId);
+        if (found) return found;
+      }
+    } catch {}
+    return CHARACTER_SKINS[0];
+  });
   const [selectedPace, setSelectedPace] = useState<PaceMode>(PACE_MODES[0]); // Default: NORMAL (1.0X)
   const [isMuted, setIsMuted] = useState<boolean>(sounds.getMuted());
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState<boolean>(false);
@@ -68,17 +77,23 @@ export default function App() {
   const [activeToastAchievement, setActiveToastAchievement] = useState<Achievement | null>(null);
 
   const [levelProgress, setLevelProgress] = useState<LevelProgress>(() => loadLevelProgress());
-  const [currentMap, setCurrentMap] = useState<MapDefinition>(GAME_MAPS[0]);
-  const [isLevelMode, setIsLevelMode] = useState<boolean>(true);
   const [currentLevel, setCurrentLevel] = useState<number>(() => levelProgress.unlockedLevel || 1);
+  const [isLevelMode, setIsLevelMode] = useState<boolean>(true);
+  const [currentMap, setCurrentMap] = useState<MapDefinition>(() => getMapById(getMapForLevel(levelProgress.unlockedLevel || 1)));
 
   // Persistent Unlocked Skins
   const [unlockedSkinIds, setUnlockedSkinIds] = useState<string[]>(() => {
     try {
       const s = localStorage.getItem('slap_run_unlocked_skins');
-      if (s) return JSON.parse(s);
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (!parsed.includes('rex_red')) {
+          parsed.unshift('rex_red');
+        }
+        return parsed;
+      }
     } catch {}
-    return ['speedy_dash'];
+    return ['rex_red', 'spino_blue'];
   });
 
   // Persistent Tournament Leaderboard
@@ -116,6 +131,7 @@ export default function App() {
       maxStamina: 100,
       chaserOnScreen: false,
       chaserAlertTimer: 0,
+      mobDistance: 180,
       currentLevel: levelProgress.unlockedLevel || 1,
       isLevelMode: true,
       currentMapId: 'market',
@@ -135,7 +151,7 @@ export default function App() {
   const achievementStore = loadAchievementStorage();
   let claimableAchievementsCount = 0;
   ACHIEVEMENTS_LIST.forEach((a) => {
-    if (achievementStore.unlocked[a.id] && !achievementStore.claimed[a.id]) {
+    if (achievementStore[a.id]) {
       claimableAchievementsCount++;
     }
   });
@@ -263,10 +279,10 @@ export default function App() {
             id: completedBounties[0].id,
             title: `Bounty: ${completedBounties[0].title}`,
             description: `Earned +${completedBounties[0].rewardCoins} Coins!`,
-            icon: '🎯',
-            category: 'special',
-            reward: completedBounties[0].rewardCoins,
-            targetValue: completedBounties[0].target,
+            icon: 'target',
+            category: 'slap',
+            unlocked: true,
+            rewardCoins: completedBounties[0].rewardCoins,
           });
         }
 
@@ -296,6 +312,9 @@ export default function App() {
     const engine = new GameEngine(canvasRef.current, handleStatsUpdate, handleHurtFlash);
     engineRef.current = engine;
     engine.paceMultiplier = selectedPace.multiplier;
+    engine.setSkin(selectedSkin);
+    const initialMap = isLevelMode ? getMapById(getMapForLevel(currentLevel)) : currentMap;
+    engine.setMap(initialMap);
 
     // Connect Achievement Toast Hook
     engine.onAchievementUnlocked = (ach: Achievement) => {
@@ -466,9 +485,28 @@ export default function App() {
     }
   };
 
+  const handleToggleMode = useCallback((levelMode: boolean) => {
+    setIsLevelMode(levelMode);
+    if (levelMode) {
+      const stageMap = getMapById(getMapForLevel(currentLevel));
+      setCurrentMap(stageMap);
+      if (engineRef.current) {
+        engineRef.current.isLevelMode = true;
+        engineRef.current.setLevel(currentLevel, true);
+      }
+    } else {
+      if (engineRef.current) {
+        engineRef.current.isLevelMode = false;
+        engineRef.current.setMap(currentMap);
+      }
+    }
+  }, [currentLevel, currentMap]);
+
   const handleSelectLevel = (levelNumber: number) => {
     setCurrentLevel(levelNumber);
     setIsLevelMode(true);
+    const targetMap = getMapById(getMapForLevel(levelNumber));
+    setCurrentMap(targetMap);
     setIsLevelSelectOpen(false);
     if (engineRef.current) {
       engineRef.current.paceMultiplier = selectedPace.multiplier;
@@ -481,7 +519,9 @@ export default function App() {
   const handleSelectMap = (map: MapDefinition) => {
     setCurrentMap(map);
     setIsMapSelectOpen(false);
+    setIsLevelMode(false);
     if (engineRef.current) {
+      engineRef.current.isLevelMode = false;
       engineRef.current.setMap(map);
     }
   };
@@ -494,6 +534,9 @@ export default function App() {
         const nextLvl = stats.levelComplete ? currentLevel + 1 : currentLevel;
         setCurrentLevel(nextLvl);
         engineRef.current.setLevel(nextLvl, true);
+      } else {
+        engineRef.current.isLevelMode = false;
+        engineRef.current.setMap(currentMap);
       }
       engineRef.current.restartGame();
     }
@@ -502,6 +545,8 @@ export default function App() {
   const handleHome = () => {
     if (engineRef.current) {
       engineRef.current.resetToMenu();
+      const activeMap = isLevelMode ? getMapById(getMapForLevel(currentLevel)) : currentMap;
+      engineRef.current.setMap(activeMap);
       setGameState('MENU');
       setLevelProgress(loadLevelProgress());
     }
@@ -572,6 +617,14 @@ export default function App() {
     }
   };
 
+  const handleSelectSkin = (skin: CharacterSkin) => {
+    setSelectedSkin(skin);
+    try {
+      localStorage.setItem('slap_run_selected_skin', skin.id);
+    } catch {}
+    if (engineRef.current) engineRef.current.setSkin(skin);
+  };
+
   const handleUnlockSkin = (skin: CharacterSkin) => {
     if (stats.totalCoinsCollected >= skin.cost) {
       const remainingCoins = stats.totalCoinsCollected - skin.cost;
@@ -587,6 +640,7 @@ export default function App() {
 
       try {
         localStorage.setItem('slap_run_unlocked_skins', JSON.stringify(updatedSkins));
+        localStorage.setItem('slap_run_selected_skin', skin.id);
         localStorage.setItem('slap_run_total_coins', String(remainingCoins));
       } catch {}
       sounds.playPowerup();
@@ -639,9 +693,35 @@ export default function App() {
     const deltaY = e.clientY - pointerStartYRef.current;
     const elapsed = performance.now() - pointerStartTimeRef.current;
 
-    // Fast flick / swipe detection for 3-lane switching & jumping
+    // Fast flick / swipe detection for 3-lane switching, diagonal jumps & vaults
     if (!swipeHandledRef.current && elapsed < 320) {
-      if (Math.abs(deltaX) > 28 && Math.abs(deltaX) > Math.abs(deltaY) * 1.1) {
+      // 1. Diagonal Swipe UP-LEFT or UP-RIGHT -> Jump AND change lane simultaneously!
+      if (deltaY < -24 && Math.abs(deltaX) > 20) {
+        swipeHandledRef.current = true;
+        if (deltaX < 0) {
+          engineRef.current.changeLane(-1);
+        } else {
+          engineRef.current.changeLane(1);
+        }
+        engineRef.current.requestJump();
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate(18); } catch {}
+        }
+        return;
+      }
+
+      // 2. Pure Swipe UP -> Jump Vault
+      if (deltaY < -26 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
+        swipeHandledRef.current = true;
+        engineRef.current.requestJump();
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate(15); } catch {}
+        }
+        return;
+      }
+
+      // 3. Pure Horizontal Swipe Left / Right -> Lane switch
+      if (Math.abs(deltaX) > 24 && Math.abs(deltaX) > Math.abs(deltaY) * 0.9) {
         swipeHandledRef.current = true;
         if (deltaX < 0) {
           engineRef.current.changeLane(-1);
@@ -649,16 +729,7 @@ export default function App() {
           engineRef.current.changeLane(1);
         }
         if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          try { navigator.vibrate(15); } catch {}
-        }
-        return;
-      }
-      // Swipe UP -> Jump
-      if (deltaY < -28 && Math.abs(deltaY) > Math.abs(deltaX) * 1.1) {
-        swipeHandledRef.current = true;
-        engineRef.current.requestJump();
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          try { navigator.vibrate(15); } catch {}
+          try { navigator.vibrate(14); } catch {}
         }
         return;
       }
@@ -672,7 +743,7 @@ export default function App() {
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isPointerDownRef.current) return;
     isPointerDownRef.current = false;
 
@@ -682,8 +753,28 @@ export default function App() {
     }
 
     const elapsed = performance.now() - pointerStartTimeRef.current;
-    if (!swipeHandledRef.current && elapsed < 240) {
-      handleSlap();
+    const deltaX = e.clientX - pointerStartXRef.current;
+    const deltaY = e.clientY - pointerStartYRef.current;
+
+    // Tap detection when user didn't swipe
+    if (!swipeHandledRef.current && elapsed < 260 && Math.abs(deltaX) < 18 && Math.abs(deltaY) < 18) {
+      const screenW = window.innerWidth;
+      const clientX = e.clientX;
+
+      // Intuitive edge taps: tap left 28% to move left, right 28% to move right, center to slap
+      if (clientX < screenW * 0.28) {
+        engineRef.current?.changeLane(-1);
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate(12); } catch {}
+        }
+      } else if (clientX > screenW * 0.72) {
+        engineRef.current?.changeLane(1);
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate(12); } catch {}
+        }
+      } else {
+        handleSlap();
+      }
     }
   };
 
@@ -701,6 +792,9 @@ export default function App() {
         onPointerCancel={handlePointerUp}
         className="w-full h-full block touch-none cursor-pointer pixel-canvas"
       />
+
+      {/* Warm Tropical Resort Frame (Desktop only, edge-to-edge full bleed on mobile) */}
+      <div className="hidden md:block absolute inset-3 rounded-[34px] border-[5px] border-[#F97316]/50 shadow-[0_0_35px_rgba(249,115,22,0.3)] pointer-events-none z-30" />
 
 
 
@@ -725,15 +819,12 @@ export default function App() {
           isDailyAvailable={isDailyAvailable}
           unclaimedMissionsCount={unclaimedMissions}
           isLevelMode={isLevelMode}
-          onToggleMode={(levelMode) => setIsLevelMode(levelMode)}
+          onToggleMode={handleToggleMode}
           onSelectPace={(pace) => {
             setSelectedPace(pace);
             if (engineRef.current) engineRef.current.paceMultiplier = pace.multiplier;
           }}
-          onSelectSkin={(skin) => {
-            setSelectedSkin(skin);
-            if (engineRef.current) engineRef.current.setSkin(skin);
-          }}
+          onSelectSkin={handleSelectSkin}
           onUnlockSkin={handleUnlockSkin}
           onStartGame={handleStartGame}
           isMuted={isMuted}
@@ -764,6 +855,20 @@ export default function App() {
         />
       )}
 
+      {/* Opening Boss Encounter Prompt */}
+      {gameState === 'PLAYING' && stats.introActive && stats.introPhase === 'WINDUP' && (
+        <div className="absolute top-[24%] inset-x-0 z-30 flex flex-col items-center pointer-events-none px-4 animate-bounce">
+          <div className="bg-[#19110B]/95 border-2 border-[#F97316] shadow-[0_8px_24px_rgba(0,0,0,0.6)] px-4 py-2.5 rounded-2xl flex flex-col items-center gap-1 backdrop-blur-sm text-center max-w-sm">
+            <span className="font-['Lilita_One'] text-xs sm:text-sm text-[#FACC15] tracking-wider uppercase">
+              SMACK {engineRef.current?.introState.victim?.name || 'THE BOSS'}!
+            </span>
+            <span className="font-['Fredoka'] text-xs text-[#38BDF8] font-bold">
+              TAP SLAP OR PRESS SPACE FOR MEGA SLAP!
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Touch Controls - On PC, left/right buttons are automatically hidden */}
       {gameState === 'PLAYING' && engineRef.current && (
         <TouchControls
@@ -772,6 +877,14 @@ export default function App() {
           onJump={() => engineRef.current?.requestJump()}
           onLaneLeft={() => engineRef.current?.changeLane(-1)}
           onLaneRight={() => engineRef.current?.changeLane(1)}
+          onJumpLeft={() => {
+            engineRef.current?.changeLane(-1);
+            engineRef.current?.requestJump();
+          }}
+          onJumpRight={() => {
+            engineRef.current?.changeLane(1);
+            engineRef.current?.requestJump();
+          }}
           isPaused={false}
           isIntroActive={stats.introActive}
           showLaneButtonsSetting={settings.showLaneButtons}
@@ -781,21 +894,21 @@ export default function App() {
 
       {/* Pause Overlay */}
       {gameState === 'PAUSED' && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-[#000000]/75 backdrop-blur-xs select-none">
-          <div className="bg-[#181A24] border-4 border-[#000000] p-5 text-center max-w-xs w-full shadow-[6px_6px_0px_#000000]">
-            <span className="text-[8px] font-pixel uppercase tracking-wider text-[#F6C445] block mb-1">
-              ARCADE RUN
+        <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-[#0F121C]/80 backdrop-blur-md select-none animate-fadeIn">
+          <div className="bg-[#1B1D2A] border-3 border-black rounded-2xl p-6 text-center max-w-xs w-full shadow-[6px_6px_0px_#000000]">
+            <span className="font-ui text-[9px] uppercase font-bold tracking-wider text-[#FACC15] block mb-1">
+              Sprint Paused
             </span>
-            <h3 className="font-pixel text-lg md:text-xl font-bold text-[#FFFFFF] mb-4 tracking-wider">
-              GAME PAUSED
+            <h3 className="font-pixel text-lg font-bold text-white mb-5 tracking-wide">
+              PAUSED
             </h3>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               <button
                 onClick={handleTogglePause}
-                className="w-full py-3 px-4 bg-[#F6C445] hover:bg-[#FBBF24] text-[#000000] font-pixel text-xs uppercase tracking-wider border-2 border-[#000000] shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-none"
+                className="w-full py-3 px-4 bg-[#10B981] hover:bg-[#34D399] text-black font-ui text-xs font-bold uppercase tracking-wider rounded-xl border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer transition-transform"
               >
                 <Play className="w-4 h-4 fill-black" />
-                <span>RESUME</span>
+                <span>RESUME SPRINT</span>
               </button>
 
               <button
@@ -803,7 +916,7 @@ export default function App() {
                   sounds.playStart();
                   handleRestart();
                 }}
-                className="w-full py-2.5 px-4 bg-[#24698F] hover:bg-[#38BDF8] text-white font-pixel text-xs uppercase tracking-wider border-2 border-[#000000] shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-none"
+                className="w-full py-2.5 px-4 bg-[#FACC15] hover:bg-[#FDE047] text-black font-ui text-xs font-bold uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer transition-transform"
               >
                 <span>RESTART</span>
               </button>
@@ -813,9 +926,9 @@ export default function App() {
                   sounds.playClick();
                   setIsSettingsOpen(true);
                 }}
-                className="w-full py-2 px-4 bg-[#1E293B] hover:bg-[#334155] text-[#FDE047] font-pixel text-xs uppercase tracking-wider border-2 border-[#000000] shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none flex items-center justify-center gap-1.5 cursor-pointer transition-none"
+                className="w-full py-2.5 px-4 bg-[#25283B] hover:bg-[#31354D] text-white font-ui text-xs font-bold uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5 cursor-pointer transition-transform"
               >
-                <SettingsIcon className="w-3.5 h-3.5" />
+                <SettingsIcon className="w-3.5 h-3.5 text-[#A78BFA]" />
                 <span>SETTINGS</span>
               </button>
 
@@ -824,9 +937,9 @@ export default function App() {
                   sounds.playClick();
                   handleHome();
                 }}
-                className="w-full py-2 px-4 bg-[#FDFBF7] hover:bg-[#EAD7B0] text-[#000000] font-pixel text-[10px] uppercase tracking-wider border-2 border-[#000000] shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-none"
+                className="w-full py-2.5 px-4 bg-[#12131C] hover:bg-[#1B1D2A] text-[#94A3B8] hover:text-white font-ui text-xs font-bold uppercase tracking-wider rounded-xl border-2 border-black cursor-pointer transition-colors"
               >
-                <span>QUIT TO MENU</span>
+                <span>MAIN MENU</span>
               </button>
             </div>
           </div>
@@ -911,10 +1024,7 @@ export default function App() {
           selectedSkin={selectedSkin}
           unlockedSkinIds={unlockedSkinIds}
           totalCoins={stats.totalCoinsCollected}
-          onSelectSkin={(skin) => {
-            setSelectedSkin(skin);
-            if (engineRef.current) engineRef.current.setSkin(skin);
-          }}
+          onSelectSkin={handleSelectSkin}
           onUnlockSkin={handleUnlockSkin}
         />
       )}

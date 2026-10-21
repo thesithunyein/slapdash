@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
-import { X, Award, Check, Gift, Sparkles, Lock } from 'lucide-react';
-import {
-  ACHIEVEMENTS_LIST,
-  Achievement,
-  loadAchievementStorage,
-  saveAchievementStorage,
-} from '../game/achievements.ts';
+import { X, Trophy, Coins, Check, Sparkles, Lock } from 'lucide-react';
 import { GameStats } from '../game/types.ts';
+import { ACHIEVEMENTS_LIST, Achievement, loadAchievementStorage } from '../game/achievements.ts';
 import { sounds } from '../game/SoundEngine.ts';
+import { AchievementVectorIcon } from './GameIcons.tsx';
 
 interface AchievementsModalProps {
   stats: GameStats;
@@ -19,7 +15,23 @@ interface AchievementsModalProps {
   onClose: () => void;
 }
 
-type FilterTab = 'ALL' | 'CLAIMABLE' | 'UNLOCKED' | 'IN_PROGRESS';
+const CLAIMED_KEY = 'slap_run_claimed_achievements';
+
+function loadClaimedAchievements(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(CLAIMED_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+}
+
+function saveClaimedAchievement(id: string): void {
+  const current = loadClaimedAchievements();
+  current[id] = true;
+  try {
+    localStorage.setItem(CLAIMED_KEY, JSON.stringify(current));
+  } catch {}
+}
 
 export const AchievementsModal: React.FC<AchievementsModalProps> = ({
   stats,
@@ -30,141 +42,54 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({
   onCoinsClaimed,
   onClose,
 }) => {
-  const [filter, setFilter] = useState<FilterTab>('ALL');
-  const [store, setStore] = useState(() => loadAchievementStorage());
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [unlockedMap, setUnlockedMap] = useState<Record<string, boolean>>(() => loadAchievementStorage());
+  const [claimedMap, setClaimedMap] = useState<Record<string, boolean>>(() => loadClaimedAchievements());
 
-  // Compute progress for each achievement
-  const enrichedAchievements = ACHIEVEMENTS_LIST.map((ach) => {
-    let current = 0;
-    switch (ach.id) {
-      case 'first_slap':
-        current = Math.max(stats.slapsCount, store.cumulative.totalSlaps);
-        break;
-      case 'slaps_50':
-      case 'slaps_200':
-      case 'slaps_500':
-      case 'slaps_1500':
-        current = store.cumulative.totalSlaps;
-        break;
-      case 'combo_5':
-      case 'combo_15':
-      case 'combo_25':
-        current = stats.maxCombo;
-        break;
-      case 'fever_trigger':
-        current = stats.feverActive ? 1 : 0;
-        break;
-      case 'chaos_16x':
-        current = stats.chaosMultiplier;
-        break;
-      case 'distance_100':
-      case 'distance_500':
-      case 'distance_1500':
-        current = stats.distanceRun;
-        break;
-      case 'chaser_escaped_3':
-        current = store.cumulative.totalEscaped;
-        break;
-      case 'near_miss_10':
-        current = store.cumulative.totalNearMisses;
-        break;
-      case 'boost_ramps_10':
-        current = store.cumulative.totalRamps;
-        break;
-      case 'coins_50':
-      case 'coins_500':
-      case 'coins_2500':
-        current = totalCoins;
-        break;
-      case 'unlock_skin_1':
-      case 'unlock_all_skins':
-        current = unlockedSkinsCount;
-        break;
-      case 'level_5':
-      case 'level_10':
-      case 'level_25':
-      case 'level_50':
-      case 'level_100':
-        current = unlockedLevel;
-        break;
-      case 'stars_30':
-        current = totalStars;
-        break;
-      case 'maps_all_6':
-        current = store.cumulative.mapsPlayed.length;
-        break;
-      default:
-        current = 0;
-    }
+  const categories = [
+    { id: 'all', label: 'All Trophies' },
+    { id: 'slap', label: 'Tail Slaps' },
+    { id: 'survival', label: 'Survival' },
+    { id: 'speed', label: 'Speed & Combo' },
+    { id: 'milestone', label: 'Milestones' },
+  ];
 
-    const isUnlocked = Boolean(store.unlocked[ach.id]) || current >= ach.targetValue;
-    const isClaimed = Boolean(store.claimed[ach.id]);
-    const isClaimable = isUnlocked && !isClaimed;
-
-    return {
-      ...ach,
-      currentValue: Math.min(ach.targetValue, current),
-      isUnlocked,
-      isClaimed,
-      isClaimable,
-    };
-  });
-
-  const totalUnlocked = enrichedAchievements.filter((a) => a.isUnlocked).length;
-  const totalClaimableCount = enrichedAchievements.filter((a) => a.isClaimable).length;
-  const totalClaimableCoins = enrichedAchievements
-    .filter((a) => a.isClaimable)
-    .reduce((sum, a) => sum + a.reward, 0);
-
-  const filteredList = enrichedAchievements.filter((a) => {
-    if (filter === 'CLAIMABLE') return a.isClaimable;
-    if (filter === 'UNLOCKED') return a.isUnlocked;
-    if (filter === 'IN_PROGRESS') return !a.isUnlocked;
-    return true;
-  });
-
-  const handleClaim = (achId: string, reward: number) => {
+  const handleClaim = (ach: Achievement) => {
     sounds.playCoin();
-    const updated = {
-      ...store,
-      claimed: { ...store.claimed, [achId]: true },
-    };
-    setStore(updated);
-    saveAchievementStorage(updated);
-    onCoinsClaimed(reward);
+    sounds.playAchievement();
+    saveClaimedAchievement(ach.id);
+    setClaimedMap((prev) => ({ ...prev, [ach.id]: true }));
+    onCoinsClaimed(ach.rewardCoins);
   };
 
-  const handleClaimAll = () => {
-    if (totalClaimableCoins <= 0) return;
-    sounds.playCoin();
-    const newClaimed = { ...store.claimed };
-    enrichedAchievements
-      .filter((a) => a.isClaimable)
-      .forEach((a) => {
-        newClaimed[a.id] = true;
-      });
-    const updated = { ...store, claimed: newClaimed };
-    setStore(updated);
-    saveAchievementStorage(updated);
-    onCoinsClaimed(totalClaimableCoins);
-  };
+  const filteredAchievements = ACHIEVEMENTS_LIST.filter((a) => {
+    if (activeCategory === 'all') return true;
+    return a.category === activeCategory;
+  });
+
+  const unlockedCount = ACHIEVEMENTS_LIST.filter((a) => unlockedMap[a.id]).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-xs select-none">
-      <div className="relative w-full max-w-3xl max-h-[92vh] flex flex-col bg-[#181A24] border-4 border-black shadow-[8px_8px_0px_#000000] text-white overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md select-none animate-fadeIn font-['Fredoka']">
+      <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col bg-gradient-to-b from-[#2A1E14] via-[#1E1712] to-[#140F0C] border-3 border-[#F97316] shadow-[0_12px_36px_rgba(0,0,0,0.85)] rounded-3xl text-[#FFF8E7] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 bg-[#0F172A] border-b-4 border-black">
+        <div className="flex items-center justify-between p-4 sm:p-5 bg-[#19110B] border-b-2 border-[#F97316]/40">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#F59E0B] text-black flex items-center justify-center font-pixel text-lg border-2 border-black">
-              ⭐
+            <div className="w-11 h-11 bg-gradient-to-br from-[#F59E0B] to-[#D97706] text-white flex items-center justify-center border-2 border-[#FEF08A] rounded-2xl shadow-md">
+              <Trophy className="w-6 h-6 fill-[#FEF08A] text-white" />
             </div>
             <div>
-              <span className="text-[9px] font-pixel text-[#FDE047] uppercase tracking-wider block">
-                TROPHY HALL
+              <div className="flex items-center gap-2">
+                <h2 className="font-['Lilita_One'] text-xl sm:text-2xl font-bold text-[#FEF08A] tracking-wider">
+                  DINO TROPHIES & BADGES
+                </h2>
+                <span className="text-xs font-['Lilita_One'] bg-[#10B981] text-white px-2 py-0.5 rounded-full border border-white/40">
+                  {unlockedCount} / {ACHIEVEMENTS_LIST.length}
+                </span>
+              </div>
+              <span className="text-xs text-[#FED7AA] font-medium block">
+                Unlock achievements to earn bonus Dino Gold Coins
               </span>
-              <h2 className="font-pixel text-base sm:text-lg font-bold text-white tracking-wide">
-                ACHIEVEMENTS & TROPHIES
-              </h2>
             </div>
           </div>
 
@@ -173,168 +98,113 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({
               sounds.playClick();
               onClose();
             }}
-            className="w-8 h-8 flex items-center justify-center bg-[#EF4444] hover:bg-[#DC2626] text-white border-2 border-black active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+            aria-label="Close"
+            className="w-9 h-9 flex items-center justify-center bg-[#EF4444] hover:bg-[#F87171] text-white border-2 border-white/40 shadow-md active:scale-95 rounded-2xl cursor-pointer transition-all"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
 
-        {/* Global Progress Bar Banner */}
-        <div className="p-4 bg-[#1E293B] border-b-2 border-black flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex-1">
-            <div className="flex justify-between items-center text-xs font-pixel mb-1.5">
-              <span className="text-[#94A3B8]">TOTAL COMPLETION:</span>
-              <span className="text-[#FDE047] font-bold">
-                {totalUnlocked} / {ACHIEVEMENTS_LIST.length} ({Math.round((totalUnlocked / ACHIEVEMENTS_LIST.length) * 100)}%)
-              </span>
-            </div>
-            <div className="h-3 w-full bg-[#0A0D14] border-2 border-black overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-[#F59E0B] to-[#10B981] transition-all duration-300"
-                style={{ width: `${(totalUnlocked / ACHIEVEMENTS_LIST.length) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          {totalClaimableCoins > 0 && (
+        {/* Categories */}
+        <div className="flex items-center gap-1.5 p-2.5 bg-[#120A05] border-b border-white/10 overflow-x-auto scrollbar-none">
+          {categories.map((c) => (
             <button
-              onClick={handleClaimAll}
-              className="px-4 py-2 bg-[#10B981] hover:bg-[#059669] text-black font-pixel text-xs font-bold border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer flex items-center justify-center gap-2"
+              key={c.id}
+              onClick={() => {
+                sounds.playClick();
+                setActiveCategory(c.id);
+              }}
+              className={`px-3 py-1.5 rounded-xl font-['Lilita_One'] text-xs shrink-0 transition-all border ${
+                activeCategory === c.id
+                  ? 'bg-gradient-to-r from-[#F97316] to-[#EA580C] text-white border-[#FEF08A] shadow-md'
+                  : 'bg-[#24170E] text-[#FED7AA] hover:bg-[#322013] border-white/10'
+              }`}
             >
-              <Gift className="w-4 h-4 fill-black" />
-              <span>CLAIM ALL (+{totalClaimableCoins}🪙)</span>
+              {c.label}
             </button>
-          )}
+          ))}
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-1 p-2 bg-[#0A0D14] border-b-2 border-black overflow-x-auto no-scrollbar">
-          {(['ALL', 'CLAIMABLE', 'UNLOCKED', 'IN_PROGRESS'] as FilterTab[]).map((tab) => {
-            const count =
-              tab === 'ALL'
-                ? ACHIEVEMENTS_LIST.length
-                : tab === 'CLAIMABLE'
-                ? totalClaimableCount
-                : tab === 'UNLOCKED'
-                ? totalUnlocked
-                : ACHIEVEMENTS_LIST.length - totalUnlocked;
+        {/* Achievement List */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5">
+          {filteredAchievements.map((ach) => {
+            const isUnlocked = Boolean(unlockedMap[ach.id]);
+            const isClaimed = Boolean(claimedMap[ach.id]);
 
             return (
-              <button
-                key={tab}
-                onClick={() => {
-                  sounds.playClick();
-                  setFilter(tab);
-                }}
-                className={`py-1.5 px-3 font-pixel text-[10px] uppercase tracking-wider border-2 border-black cursor-pointer transition-none flex items-center gap-1.5 ${
-                  filter === tab
-                    ? 'bg-[#F59E0B] text-black font-bold shadow-[2px_2px_0px_#000000]'
-                    : 'bg-[#1E293B] text-[#94A3B8] hover:text-white'
+              <div
+                key={ach.id}
+                className={`flex items-center justify-between p-3.5 rounded-2xl border-2 transition-all ${
+                  isUnlocked
+                    ? 'bg-gradient-to-r from-[#2F1F13] to-[#1F140C] border-[#F97316]/70 shadow-sm'
+                    : 'bg-[#180E07]/60 border-white/10 opacity-60'
                 }`}
               >
-                <span>{tab.replace('_', ' ')}</span>
-                <span className="text-[8px] px-1 bg-black/40 rounded-xs">
-                  {count}
-                </span>
-              </button>
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 shadow-xs shrink-0 ${
+                      isUnlocked
+                        ? 'bg-[#3E2514] border-[#FBBF24]'
+                        : 'bg-black/40 border-white/15 grayscale'
+                    }`}
+                  >
+                    {isUnlocked ? (
+                      <AchievementVectorIcon iconKey={ach.icon} className="w-6 h-6" />
+                    ) : (
+                      <Lock className="w-5 h-5 text-white/40" />
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="font-['Lilita_One'] text-base text-white flex items-center gap-2">
+                      <span>{ach.title}</span>
+                      {isUnlocked && (
+                        <span className="text-[10px] bg-[#10B981] text-white px-1.5 py-0.2 rounded-md font-sans font-bold">
+                          DONE
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-[#FED7AA]/80 leading-snug">
+                      {ach.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 flex items-center gap-2">
+                  <div className="flex items-center gap-1 font-['Lilita_One'] text-xs font-bold text-[#FACC15] bg-[#2D1B0F] border border-[#F59E0B]/60 px-2 py-1 rounded-xl">
+                    <Coins className="w-3.5 h-3.5 fill-[#FACC15]" />
+                    <span>+{ach.rewardCoins}</span>
+                  </div>
+
+                  {isUnlocked && !isClaimed && (
+                    <button
+                      onClick={() => handleClaim(ach)}
+                      className="px-3 py-1.5 bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#34D399] hover:to-[#10B981] text-white font-['Lilita_One'] text-xs rounded-xl flex items-center gap-1 shadow-sm active:scale-95 cursor-pointer border border-white/20 animate-pulse"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#FEF08A] fill-[#FEF08A]" />
+                      <span>CLAIM</span>
+                    </button>
+                  )}
+
+                  {isUnlocked && isClaimed && (
+                    <div className="flex items-center gap-1 font-['Lilita_One'] text-xs text-[#10B981] bg-[#10B981]/15 px-2.5 py-1 rounded-xl border border-[#10B981]/40">
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>CLAIMED</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             );
           })}
         </div>
 
-        {/* Achievements List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2.5 bg-[#131620]">
-          {filteredList.length === 0 ? (
-            <div className="p-8 text-center font-pixel text-xs text-[#64748B]">
-              NO ACHIEVEMENTS MATCH THIS FILTER
-            </div>
-          ) : (
-            filteredList.map((ach) => {
-              const progressPct = Math.round(((ach.currentValue || 0) / ach.targetValue) * 100);
-
-              return (
-                <div
-                  key={ach.id}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 border-3 border-black gap-3 transition-none ${
-                    ach.isClaimable
-                      ? 'bg-[#1E3A8A]/40 border-[#F59E0B] shadow-[3px_3px_0px_#F59E0B]'
-                      : ach.isClaimed
-                      ? 'bg-[#1E293B] opacity-80'
-                      : 'bg-[#0F172A]/80'
-                  }`}
-                >
-                  {/* Left: Icon & Description */}
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 shrink-0 bg-[#0A0D14] border-2 border-black flex items-center justify-center font-pixel text-xl">
-                      {ach.isUnlocked ? ach.icon : <Lock className="w-4 h-4 text-[#64748B]" />}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <h4 className="font-pixel text-xs font-bold text-white truncate">
-                          {ach.title}
-                        </h4>
-                        <span className="text-[8px] font-pixel px-1.5 py-0.2 bg-[#0A0D14] border border-black text-[#94A3B8] uppercase">
-                          {ach.category}
-                        </span>
-                      </div>
-                      <p className="font-pixel text-[9px] text-[#94A3B8] line-clamp-1">
-                        {ach.description}
-                      </p>
-
-                      {/* Progress bar */}
-                      <div className="mt-1.5 flex items-center gap-2 max-w-xs">
-                        <div className="h-1.5 flex-1 bg-[#0A0D14] border border-black overflow-hidden">
-                          <div
-                            className={`h-full ${ach.isUnlocked ? 'bg-[#10B981]' : 'bg-[#F59E0B]'}`}
-                            style={{ width: `${progressPct}%` }}
-                          />
-                        </div>
-                        <span className="text-[8px] font-pixel text-[#94A3B8] shrink-0">
-                          {ach.currentValue} / {ach.targetValue}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Claim button or Claimed status */}
-                  <div className="shrink-0 flex items-center gap-2 sm:self-center">
-                    {ach.isClaimable ? (
-                      <button
-                        onClick={() => handleClaim(ach.id, ach.reward)}
-                        className="w-full sm:w-auto px-3 py-1.5 bg-[#10B981] hover:bg-[#059669] text-black font-pixel text-[10px] font-bold border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        <Gift className="w-3.5 h-3.5 fill-black" />
-                        <span>CLAIM +{ach.reward}🪙</span>
-                      </button>
-                    ) : ach.isClaimed ? (
-                      <div className="flex items-center gap-1 px-2.5 py-1 bg-[#064E3B] border border-[#10B981] text-[#10B981] font-pixel text-[9px]">
-                        <Check className="w-3.5 h-3.5" />
-                        <span>CLAIMED</span>
-                      </div>
-                    ) : (
-                      <div className="px-2.5 py-1 bg-[#0A0D14] border border-black text-[#F59E0B] font-pixel text-[9px]">
-                        +{ach.reward}🪙
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
         {/* Footer */}
-        <div className="p-3 bg-[#0F172A] border-t-4 border-black flex items-center justify-between text-[9px] font-pixel text-[#94A3B8]">
-          <span>ACHIEVE MILESTONES IN GAMEPLAY TO UNLOCK GOLD COIN REWARDS</span>
-          <button
-            onClick={() => {
-              sounds.playClick();
-              onClose();
-            }}
-            className="px-3 py-1 bg-[#334155] hover:bg-[#475569] text-white border border-black cursor-pointer uppercase"
-          >
-            CLOSE
-          </button>
+        <div className="px-5 py-3 bg-[#160E08] border-t border-white/10 flex items-center justify-between text-xs text-[#FED7AA]">
+          <span className="flex items-center gap-1.5">
+            <Trophy className="w-3.5 h-3.5 text-[#FBBF24] fill-[#FBBF24] shrink-0" />
+            <span>Complete trophies during runs to claim Dino Gold</span>
+          </span>
+          <span className="font-['Lilita_One'] text-[#FBBF24]">Total Gold Bank: {totalCoins}</span>
         </div>
       </div>
     </div>

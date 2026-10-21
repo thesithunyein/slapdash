@@ -1,110 +1,99 @@
-/**
- * 7-Day Consecutive Daily Login Bonus System
- * Classic App Store mobile retention loop
- */
-
 export interface DailyRewardTier {
   day: number;
-  title: string;
   coins: number;
-  badge?: string;
-  description: string;
-  iconName: 'coins' | 'gem' | 'flame' | 'crown' | 'trophy';
+  label: string;
+  isSpecial?: boolean;
+}
+
+export interface DailyRewardState {
+  currentDay: number;
+  currentStreak: number;
+  lastClaimDate: string | null;
+  claimedDays: number[];
 }
 
 export const DAILY_REWARD_TIERS: DailyRewardTier[] = [
-  { day: 1, title: 'Day 1 Starter', coins: 250, description: '+250 Coins to kick off the market run!', iconName: 'coins' },
-  { day: 2, title: 'Day 2 Sprinter', coins: 500, description: '+500 Coins for speedy upgrades!', iconName: 'coins' },
-  { day: 3, title: 'Day 3 Chaos Charge', coins: 750, description: '+750 Coins + Instant Chaos surge!', iconName: 'flame' },
-  { day: 4, title: 'Day 4 Street Brawler', coins: 1000, description: '+1,000 Coins wallet expansion!', iconName: 'gem' },
-  { day: 5, title: 'Day 5 Slap Master', coins: 1500, description: '+1,500 Coins high-roller bonus!', iconName: 'trophy' },
-  { day: 6, title: 'Day 6 Market Tycoon', coins: 2500, description: '+2,500 Coins ultimate boost!', iconName: 'coins' },
-  { day: 7, title: 'Day 7 Golden Legend', coins: 5000, badge: '👑 GOLDEN RUNNER', description: '+5,000 Coins & Golden Crown Prestige!', iconName: 'crown' },
+  { day: 1, coins: 50, label: 'Beach Pebble Egg' },
+  { day: 2, coins: 100, label: 'Amber Shell Egg' },
+  { day: 3, coins: 150, label: 'Coral Nest Egg' },
+  { day: 4, coins: 200, label: 'Primal Claw Egg' },
+  { day: 5, coins: 300, label: 'Volcano Core Egg', isSpecial: true },
+  { day: 6, coins: 450, label: 'Electric Raptor Egg', isSpecial: true },
+  { day: 7, coins: 800, label: 'GOLDEN T-REX NEST', isSpecial: true },
 ];
 
-const STORAGE_KEY = 'slap_run_daily_rewards_v2';
+const STORAGE_KEY = 'slap_run_daily_rewards';
 
-export interface DailyRewardState {
-  currentDay: number; // 1 to 7
-  lastClaimDateString: string | null; // e.g. "2026-10-19"
-  totalClaimedCount: number;
-}
-
-export function getTodayDateString(): string {
+function getTodayKey(): string {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-export function getYesterdayDateString(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
 export function loadDailyRewardState(): DailyRewardState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return { currentDay: 1, lastClaimDateString: null, totalClaimedCount: 0 };
-    }
-    const state: DailyRewardState = JSON.parse(raw);
-    const today = getTodayDateString();
-    const yesterday = getYesterdayDateString();
-
-    // If streak was broken (missed more than 1 day), reset streak back to Day 1
-    if (state.lastClaimDateString && state.lastClaimDateString !== today && state.lastClaimDateString !== yesterday) {
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const streak = parsed.currentStreak || parsed.currentDay || 1;
       return {
-        currentDay: 1,
-        lastClaimDateString: state.lastClaimDateString,
-        totalClaimedCount: state.totalClaimedCount,
+        currentDay: streak,
+        currentStreak: streak,
+        lastClaimDate: parsed.lastClaimDate || null,
+        claimedDays: parsed.claimedDays || [],
       };
     }
-    return state;
-  } catch {
-    return { currentDay: 1, lastClaimDateString: null, totalClaimedCount: 0 };
-  }
+  } catch {}
+  return {
+    currentDay: 1,
+    currentStreak: 1,
+    lastClaimDate: null,
+    claimedDays: [],
+  };
 }
 
 export function isDailyRewardAvailable(): boolean {
   const state = loadDailyRewardState();
-  const today = getTodayDateString();
-  return state.lastClaimDateString !== today;
+  const today = getTodayKey();
+  return state.lastClaimDate !== today;
 }
 
-export function claimDailyReward(): { reward: DailyRewardTier; updatedState: DailyRewardState; bonusCoins: number } {
+export function claimDailyReward(): {
+  updatedState: DailyRewardState;
+  reward: DailyRewardTier;
+  bonusCoins: number;
+} {
   const state = loadDailyRewardState();
-  const today = getTodayDateString();
-  const yesterday = getYesterdayDateString();
+  const today = getTodayKey();
 
-  let nextDay = state.currentDay;
-  if (state.lastClaimDateString === yesterday) {
-    // Continued streak from yesterday
-    nextDay = (state.currentDay % 7) + 1;
-  } else if (state.lastClaimDateString === today) {
-    // Already claimed today
-    const currentTier = DAILY_REWARD_TIERS[Math.max(0, state.currentDay - 1)] || DAILY_REWARD_TIERS[0];
-    return { reward: currentTier, updatedState: state, bonusCoins: 0 };
-  } else {
-    // First time ever or broke streak
-    nextDay = 1;
+  let streak = state.currentStreak || 1;
+  if (state.lastClaimDate) {
+    const lastDate = new Date(state.lastClaimDate);
+    const currentDate = new Date(today);
+    const diffDays = Math.round((currentDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
+    if (diffDays === 1) {
+      streak = (streak % 7) + 1;
+    } else if (diffDays > 1) {
+      streak = 1;
+    }
   }
 
-  const reward = DAILY_REWARD_TIERS[nextDay - 1] || DAILY_REWARD_TIERS[0];
+  const tierIndex = (streak - 1) % DAILY_REWARD_TIERS.length;
+  const reward = DAILY_REWARD_TIERS[tierIndex];
+
   const updatedState: DailyRewardState = {
-    currentDay: nextDay,
-    lastClaimDateString: today,
-    totalClaimedCount: state.totalClaimedCount + 1,
+    currentDay: streak,
+    currentStreak: streak,
+    lastClaimDate: today,
+    claimedDays: [...(streak === 1 ? [] : state.claimedDays), streak],
   };
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedState));
-    // Add to total coins
-    let coins = 0;
-    const c = localStorage.getItem('slap_run_total_coins');
-    if (c) coins = parseInt(c, 10) || 0;
-    coins += reward.coins;
-    localStorage.setItem('slap_run_total_coins', String(coins));
   } catch {}
 
-  return { reward, updatedState, bonusCoins: reward.coins };
+  return {
+    updatedState,
+    reward,
+    bonusCoins: reward.coins,
+  };
 }
