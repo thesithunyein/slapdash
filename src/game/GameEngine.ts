@@ -323,11 +323,11 @@ export class GameEngine {
     };
     const activeBoss = bossProfiles[this.currentMap.id] || bossProfiles.market;
 
-    // Pre-populate initial street with bystanders and generously spaced segments
-    this.nextSpawnY = 360;
-    for (let i = 0; i < 3; i++) {
-      this.spawnMarketSegment(360 + i * 380);
-      this.nextSpawnY = 360 + (i + 1) * 380;
+    // Pre-populate initial street with active obstacles, coins, and fruit targets
+    this.nextSpawnY = 180;
+    for (let i = 0; i < 4; i++) {
+      this.spawnMarketSegment(180 + i * 200);
+      this.nextSpawnY = 180 + (i + 1) * 200;
     }
 
     // Initialize Intro Cinematic Slap Sequence: target positioned squarely in the middle of the road!
@@ -456,8 +456,8 @@ export class GameEngine {
     }
 
     // Colossal comic popups & particles
-    this.addFloatingText(0, 45, 'MEGA OPENING SLAP!!', '#FFFDF0', 36);
-    this.addFloatingText(0, 75, '+500 MARKET CHAOS BONUS!', '#10B981', 22);
+    this.addFloatingText(0, 45, 'MEGA OPENING TAIL-WHIP!!', '#FFFDF0', 36);
+    this.addFloatingText(0, 75, '+500 DINO MAYHEM BONUS!', '#10B981', 22);
     this.spawnParticleExplosion(0, 32, '#F59E0B', 24, 'star');
     this.spawnParticleExplosion(0, 32, '#EC4899', 16, 'sparkle');
     this.spawnConfettiShower(0, 35);
@@ -958,10 +958,10 @@ export class GameEngine {
     // 11-12. Update Particles, Popups, and Shockwaves
     this.updateParticlesAndTexts(dtFactor);
 
-    // 13. Infinite Market Street Spawning (spaced generously so obstacles aren't too crowded)
+    // 13. Continuous Street Spawning with tight, rhythmic obstacle flow
     if (p.y + 700 > this.nextSpawnY) {
       this.spawnMarketSegment(this.nextSpawnY);
-      this.nextSpawnY += 340 + Math.random() * 60;
+      this.nextSpawnY += 200 + Math.random() * 35;
     }
 
     // 14. Cleanup off-screen entities behind player (lead chaser is always preserved)
@@ -1332,22 +1332,23 @@ export class GameEngine {
     }
 
     // 2. Balanced Obstacle Spawning with Easy Start
-    // - Easy Start: First 75m is completely clear for smooth intro, coin trails, and critter slaps
-    // - 75m-200m: Gentle introduction with strictly 1 obstacle in 1 lane (38% chance)
-    // - 200m+: Engaging obstacle density (58% chance), always keeping 1-2 open lanes or jump ramps
+    // 2. Engaging Obstacle Spawning (Active from the start!)
+    // - 15m-80m: Quick start with 1 obstacle per segment (70% chance), leaving 2 wide-open lanes
+    // - 80m-250m: Rhythmic challenge (82% chance), with ramps and jumping challenges
+    // - 250m+: High-energy density (90% chance), always keeping at least 1 open lane or jump ramp
     let isObstacleSegment = false;
     let obstacleLaneCount = 1;
 
-    if (dist > 75) {
-      if (dist <= 200) {
-        isObstacleSegment = Math.random() < 0.38;
+    if (dist > 15) {
+      if (dist <= 80) {
+        isObstacleSegment = Math.random() < 0.70;
         obstacleLaneCount = 1;
-      } else if (dist <= 600) {
-        isObstacleSegment = Math.random() < 0.58;
-        obstacleLaneCount = Math.random() < 0.80 ? 1 : 2;
-      } else {
-        isObstacleSegment = Math.random() < 0.62;
+      } else if (dist <= 250) {
+        isObstacleSegment = Math.random() < 0.82;
         obstacleLaneCount = Math.random() < 0.65 ? 1 : 2;
+      } else {
+        isObstacleSegment = Math.random() < 0.90;
+        obstacleLaneCount = Math.random() < 0.40 ? 1 : 2;
       }
     }
     const chosenLanes: number[] = [];
@@ -1381,16 +1382,17 @@ export class GameEngine {
     const obstacleTypes: ObstacleType[] = [
       'ramp',
       'terminal_ramp',
-      'ramp',
       'crate',
       'barrel',
-      'bug',
       'spikes',
-      'cart',
       'loop_boulder',
       'barrier',
-      'shifting_block',
       'firewall',
+      'cart',
+      'watermelon',
+      'planter',
+      'hydrant',
+      'shifting_block',
     ];
 
     for (let i = 0; i < chosenLanes.length; i++) {

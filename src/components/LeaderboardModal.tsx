@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Crown, Trophy, Sparkles } from 'lucide-react';
+import { X, Crown, Trophy } from 'lucide-react';
 import { LeaderboardEntry } from '../game/types.ts';
 import { sounds } from '../game/SoundEngine.ts';
 import { RankMedalBadge } from './GameIcons.tsx';

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Trophy, Coins, Check, Sparkles, Lock } from 'lucide-react';
+import { X, Trophy, Coins, Check, Lock } from 'lucide-react';
 import { GameStats } from '../game/types.ts';
 import { ACHIEVEMENTS_LIST, Achievement, loadAchievementStorage } from '../game/achievements.ts';
 import { sounds } from '../game/SoundEngine.ts';
@@ -181,7 +181,7 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({
                       onClick={() => handleClaim(ach)}
                       className="px-3 py-1.5 bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#34D399] hover:to-[#10B981] text-white font-['Lilita_One'] text-xs rounded-xl flex items-center gap-1 shadow-sm active:scale-95 cursor-pointer border border-white/20 animate-pulse"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-[#FEF08A] fill-[#FEF08A]" />
+                      <Trophy className="w-3.5 h-3.5 text-[#FEF08A] fill-[#FEF08A]" />
                       <span>CLAIM</span>
                     </button>
                   )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Star, Lock, Play, Trophy, Palmtree, Waves, Flame, Building2, Snowflake, Sparkles } from 'lucide-react';
+import { X, Star, Lock, Play, Trophy, Palmtree, Waves, Flame, Building2, Snowflake, Crown } from 'lucide-react';
 import { LevelProgress, getLevel, getMapForLevel } from '../game/levels.ts';
 import { getMapById } from '../game/maps.ts';
 import { sounds } from '../game/SoundEngine.ts';
@@ -23,7 +23,7 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
     { id: 'sunset_desert', name: 'Volcano Canyon', minLvl: 10, maxLvl: 17, icon: Flame },
     { id: 'neon_night', name: 'Neon Metropolis', minLvl: 18, maxLvl: 24, icon: Building2 },
     { id: 'winter_peak', name: 'Ice Age Glacier', minLvl: 25, maxLvl: 34, icon: Snowflake },
-    { id: 'golden_temple', name: 'Blossom Sanctum', minLvl: 35, maxLvl: 40, icon: Sparkles },
+    { id: 'golden_temple', name: 'Blossom Sanctum', minLvl: 35, maxLvl: 40, icon: Crown },
   ];
 
   const currentChapter = CHAPTERS[activeChapter];

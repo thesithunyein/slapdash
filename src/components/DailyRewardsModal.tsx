@@ -8,7 +8,7 @@ import {
   DailyRewardState,
 } from '../game/dailyRewards.ts';
 import { sounds } from '../game/SoundEngine.ts';
-import { Gift, Coins, Flame, Crown, Trophy, Check, X, Sparkles } from 'lucide-react';
+import { Gift, Coins, Flame, Crown, Trophy, Check, X } from 'lucide-react';
 import { DinoEggIcon } from './GameIcons.tsx';
 
 interface DailyRewardsModalProps {
@@ -81,7 +81,7 @@ export const DailyRewardsModal: React.FC<DailyRewardsModalProps> = ({
         {/* Claim Alert Banner */}
         {claimedTier && (
           <div className="m-4 p-3 bg-gradient-to-r from-[#10B981]/25 to-[#059669]/25 border-2 border-[#10B981] rounded-2xl flex items-center gap-3 animate-bounce">
-            <Sparkles className="w-6 h-6 text-[#FEF08A] shrink-0" />
+            <Crown className="w-6 h-6 text-[#FEF08A] shrink-0 fill-[#FEF08A]" />
             <div>
               <span className="font-['Lilita_One'] text-sm text-[#34D399] uppercase block">
                 EGG HATCHED!
@@ -144,7 +144,7 @@ export const DailyRewardsModal: React.FC<DailyRewardsModalProps> = ({
               onClick={handleClaim}
               className="w-full py-3.5 px-6 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-lg tracking-wider uppercase rounded-2xl border-3 border-[#FFE082] shadow-[0_5px_0px_#BF360C] active:translate-y-1 active:shadow-[0_1px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-5 h-5 text-[#FEF08A] fill-[#FEF08A]" />
+              <Crown className="w-5 h-5 text-[#FEF08A] fill-[#FEF08A]" />
               <span>HATCH TODAY'S DINO EGG</span>
             </button>
           ) : (

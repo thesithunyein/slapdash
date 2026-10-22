@@ -860,10 +860,10 @@ export default function App() {
         <div className="absolute top-[24%] inset-x-0 z-30 flex flex-col items-center pointer-events-none px-4 animate-bounce">
           <div className="bg-[#19110B]/95 border-2 border-[#F97316] shadow-[0_8px_24px_rgba(0,0,0,0.6)] px-4 py-2.5 rounded-2xl flex flex-col items-center gap-1 backdrop-blur-sm text-center max-w-sm">
             <span className="font-['Lilita_One'] text-xs sm:text-sm text-[#FACC15] tracking-wider uppercase">
-              SMACK {engineRef.current?.introState.victim?.name || 'THE BOSS'}!
+              WHIP {engineRef.current?.introState.victim?.name || 'THE BOSS'}!
             </span>
             <span className="font-['Fredoka'] text-xs text-[#38BDF8] font-bold">
-              TAP SLAP OR PRESS SPACE FOR MEGA SLAP!
+              TAP WHIP OR PRESS SPACE FOR MEGA TAIL-WHIP!
             </span>
           </div>
         </div>

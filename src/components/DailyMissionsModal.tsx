@@ -5,7 +5,7 @@ import {
   claimDailyMission,
 } from '../game/dailyMissions.ts';
 import { sounds } from '../game/SoundEngine.ts';
-import { Target, Coins, Check, X, Sparkles, Footprints, Flame, ShieldAlert, Award, Clock, Zap } from 'lucide-react';
+import { Target, Coins, Check, X, Footprints, Flame, ShieldAlert, Award, Clock, Zap, Trophy } from 'lucide-react';
 import { DinoVectorIcon } from './GameIcons.tsx';
 
 interface DailyMissionsModalProps {
@@ -168,7 +168,7 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({
                       onClick={() => handleClaim(m.id)}
                       className="px-4 py-2 bg-gradient-to-b from-[#10B981] to-[#047857] hover:from-[#34D399] hover:to-[#059669] text-white border-2 border-[#A7F3D0] shadow-md active:scale-95 rounded-xl font-['Lilita_One'] text-xs flex items-center gap-1.5 cursor-pointer transition-all animate-pulse"
                     >
-                      <Sparkles className="w-4 h-4 text-[#FEF08A] fill-[#FEF08A]" />
+                      <Trophy className="w-4 h-4 text-[#FEF08A] fill-[#FEF08A]" />
                       <span>CLAIM +{m.rewardCoins} DINO COINS</span>
                     </button>
                   ) : (

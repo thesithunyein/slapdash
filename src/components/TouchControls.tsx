@@ -356,7 +356,7 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
             <div className="w-[1px] h-3.5 bg-white/20 mx-1" />
             <div className="flex items-center gap-1">
               <kbd className="bg-slate-800 px-1.5 py-0.5 border border-slate-600 rounded text-[9px] text-[#F43F5E] font-mono">SPACE</kbd>
-              <span className="text-[#F43F5E]">Slap!</span>
+              <span className="text-[#F43F5E]">Whip!</span>
             </div>
           </div>
         )}

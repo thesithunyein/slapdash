@@ -1,7 +1,7 @@
 import React from 'react';
 import { GameStats } from '../game/types.ts';
 import { sounds } from '../game/SoundEngine.ts';
-import { RotateCcw, Home, Sparkles, Award } from 'lucide-react';
+import { RotateCcw, Home, Trophy, Award } from 'lucide-react';
 
 interface GameOverModalProps {
   stats: GameStats;
@@ -54,7 +54,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           {/* New Record Banner */}
           {isNewBest && (
             <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-[#FBBF24] to-[#F59E0B] text-black rounded-full text-xs font-['Lilita_One'] shadow-md animate-pulse mb-3 border border-white/40">
-              <Sparkles className="w-4 h-4 fill-black" />
+              <Trophy className="w-4 h-4 fill-black text-black" />
               <span>NEW PERSONAL BEST!</span>
             </div>
           )}
@@ -69,7 +69,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           {/* 4 Stats Cards */}
           <div className="w-full bg-[#19110B] border-2 border-white/10 rounded-2xl p-3 grid grid-cols-4 gap-2 text-center mb-5">
             <div>
-              <div className="text-[10px] text-[#FED7AA] font-bold uppercase">Tail-Slaps</div>
+              <div className="text-[10px] text-[#FED7AA] font-bold uppercase">Tail-Whips</div>
               <div className="text-lg text-white font-['Lilita_One'] mt-0.5">
                 {stats.slapsCount}
               </div>

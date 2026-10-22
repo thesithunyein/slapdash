@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Volume2, VolumeX, Eye, Smartphone, RotateCcw, ShieldAlert, Sparkles, Settings } from 'lucide-react';
+import { X, Volume2, VolumeX, Eye, Smartphone, RotateCcw, ShieldAlert, Settings } from 'lucide-react';
 import { GameSettings } from '../game/settings.ts';
 import { sounds } from '../game/SoundEngine.ts';
 

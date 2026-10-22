@@ -722,6 +722,7 @@ export class ThreeGameRenderer {
     hatGroup: THREE.Group;
     shadow: THREE.Mesh;
     megaSlapGlove: THREE.Mesh;
+    tail?: THREE.Group;
   } {
     const playerGroup = new THREE.Group();
 
@@ -962,21 +963,54 @@ export class ThreeGameRenderer {
     megaSlapGlove.visible = false;
     playerGroup.add(megaSlapGlove);
 
-    // 8. Chubby Voxel Dino Tail (Mounted on lower back of torso facing camera rear)
+    // 8. Long Articulated Prehistoric Dino Tail (5 articulated segments + spiked club)
     const tailGroup = new THREE.Group();
     tailGroup.position.set(0, 0.95, 0.28);
-    const tail1 = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.42), skinMat);
-    tail1.position.set(0, 0, 0.18);
+
+    // Segment 1 (Base - thick anchor to hips)
+    const tail1 = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.48, 0.58), skinMat);
+    tail1.position.set(0, -0.02, 0.26);
     tail1.castShadow = true;
     tailGroup.add(tail1);
-    const tail2 = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.36), skinMat);
-    tail2.position.set(0, 0.05, 0.46);
+
+    // Segment 2 (Upper mid - arched slightly upward)
+    const tail2 = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.40, 0.64), skinMat);
+    tail2.position.set(0, 0.04, 0.76);
     tail2.castShadow = true;
     tailGroup.add(tail2);
-    const tail3 = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.3), shirtMat);
-    tail3.position.set(0, 0.12, 0.7);
+
+    // Segment 3 (Mid length - dynamic taper)
+    const tail3 = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.32, 0.70), skinMat);
+    tail3.position.set(0, 0.12, 1.34);
     tail3.castShadow = true;
     tailGroup.add(tail3);
+
+    // Segment 4 (Lower whip section)
+    const tail4 = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, 0.76), skinMat);
+    tail4.position.set(0, 0.20, 1.98);
+    tail4.castShadow = true;
+    tailGroup.add(tail4);
+
+    // Segment 5 (Tail Tip / Spiked Club)
+    const tail5 = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.82), shirtMat);
+    tail5.position.set(0, 0.28, 2.68);
+    tail5.castShadow = true;
+    tailGroup.add(tail5);
+
+    // Spiked Tail Club Fin / Spikes at apex
+    const clubMesh = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.34), shirtMat);
+    clubMesh.position.set(0, 0.32, 3.02);
+    clubMesh.rotation.set(0.78, 0.78, 0);
+    clubMesh.castShadow = true;
+    tailGroup.add(clubMesh);
+
+    // Upper Spiny Ridge Plates along spine of tail
+    for (let s = 0; s < 4; s++) {
+      const spinePlate = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.24), shirtMat);
+      spinePlate.position.set(0, 0.16 + s * 0.08, 0.4 + s * 0.65);
+      tailGroup.add(spinePlate);
+    }
+
     playerGroup.add(tailGroup);
 
     return {
@@ -1098,15 +1132,11 @@ export class ThreeGameRenderer {
     }
 
     if (this.playerTail) {
-      if (this.playerTail.children[0]) {
-        ((this.playerTail.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial).color = skinColor;
-      }
-      if (this.playerTail.children[1]) {
-        ((this.playerTail.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial).color = skinColor;
-      }
-      if (this.playerTail.children[2]) {
-        ((this.playerTail.children[2] as THREE.Mesh).material as THREE.MeshStandardMaterial).color = shirtColor;
-      }
+      this.playerTail.children.forEach((child, idx) => {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+          child.material.color = idx >= 4 ? shirtColor : skinColor;
+        }
+      });
     }
 
     if (this.playerHatGroup) {
@@ -1388,25 +1418,28 @@ export class ThreeGameRenderer {
     } else if (player.isSlapping) {
       const slapProgress = player.slapProgress;
       const isLeft = player.slapHand === 'left';
-      const slapArm = isLeft ? this.playerLeftArm : this.playerRightArm;
-      const otherArm = isLeft ? this.playerRightArm : this.playerLeftArm;
+      const whipProgress = Math.sin(slapProgress * Math.PI);
 
-      // Whip swing motion for the slapping arm only while body remains solid
-      const swingAngle = Math.sin(slapProgress * Math.PI) * 2.2;
-      slapArm.position.set(isLeft ? -0.55 : 0.55, 1.35, 0);
-      slapArm.rotation.set(-0.6 - swingAngle, (isLeft ? -1 : 1) * swingAngle * 1.1, (isLeft ? -1 : 1) * 0.7);
+      // Fast, powerful 360-degree Dino Tail-Whip Spin!
+      const spin = Math.sin(slapProgress * Math.PI) * Math.PI * 2 * (isLeft ? -1 : 1);
+      this.playerGroup.rotation.y = spin;
 
-      const otherArmSwing = isMoving ? Math.sin(runCycle) * 0.45 : 0;
-      otherArm.position.set(isLeft ? 0.55 : -0.55, 1.35, 0);
-      otherArm.rotation.set(isLeft ? otherArmSwing : -otherArmSwing, 0, 0);
-
-      // Display oversized Giant Voxel Slap Glove!
-      this.megaSlapGlove.visible = true;
-      this.megaSlapGlove.position.set(isLeft ? -0.85 : 0.85, 1.45, -0.6);
-      this.megaSlapGlove.rotation.y = isLeft ? -0.4 : 0.4;
-      const sc = 1 + Math.sin(slapProgress * Math.PI) * 0.6;
-      this.megaSlapGlove.scale.set(sc, sc, sc);
+      if (this.playerTail) {
+        // Dynamic Tail Reach Extension: Stretches out toward target during apex of whip
+        const reachExt = 1 + whipProgress * 0.9;
+        this.playerTail.scale.set(1.15, 1.15, reachExt);
+        // Wide lateral whip swing that sweeps out to reach the roadside targets
+        this.playerTail.rotation.y = (isLeft ? 1 : -1) * (1.75 + whipProgress * 0.95);
+        this.playerTail.rotation.x = -0.22 - whipProgress * 0.25;
+      }
+      this.megaSlapGlove.visible = false;
     } else {
+      this.playerGroup.rotation.y = 0;
+      if (this.playerTail) {
+        this.playerTail.scale.set(1, 1, 1);
+        this.playerTail.rotation.y = isMoving ? Math.sin(runCycle * 2) * 0.38 : 0;
+        this.playerTail.rotation.x = -0.12 + Math.sin(runCycle * 4) * 0.06;
+      }
       // Natural athletic arms pumping opposite to legs while running
       const armSwing = isMoving ? Math.sin(runCycle) * 0.65 : 0;
       this.playerLeftArm.position.set(-0.55, 1.35, 0);
@@ -2099,17 +2132,15 @@ export class ThreeGameRenderer {
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.clearRect(0, 0, 256, 128);
-      // Retro 8-bit Pixel Font
-      ctx.font = '700 24px "Press Start 2P", monospace';
+      // Authentic Retro Pixel Font ('Press Start 2P')
+      ctx.font = '700 22px "Press Start 2P", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Thick pixelated black shadow
-      ctx.fillStyle = '#000000';
-      ctx.fillText(text, 131, 67);
-      ctx.fillText(text, 125, 67);
-      ctx.fillText(text, 131, 61);
-      ctx.fillText(text, 125, 61);
+      // Thick pixelated black border stroke
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#000000';
+      ctx.strokeText(text, 128, 64);
 
       // Bright pixel text fill
       ctx.fillStyle = color;

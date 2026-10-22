@@ -7,7 +7,6 @@ import {
   Crown,
   Footprints,
   Coins,
-  Sparkles,
   Wind,
   Target,
   Palette,
@@ -222,7 +221,7 @@ export const AchievementVectorIcon: React.FC<{
     case 'chest':
       return <Coins className={`${className} text-[#FACC15] fill-[#FACC15]`} />;
     case 'blast':
-      return <Sparkles className={`${className} text-[#EC4899] fill-[#EC4899]`} />;
+      return <Flame className={`${className} text-[#F97316] fill-[#F97316]`} />;
     case 'party':
       return <Award className={`${className} text-[#A855F7]`} />;
     case 'crown':

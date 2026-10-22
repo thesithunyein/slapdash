@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Download, Smartphone, Share, CheckCircle2, Sparkles, ShieldCheck, Chrome, Compass } from 'lucide-react';
+import { X, Download, Smartphone, Share, CheckCircle2, ShieldCheck, Chrome, Compass } from 'lucide-react';
 import { sounds } from '../game/SoundEngine.ts';
 
 interface PWAInstallModalProps {
