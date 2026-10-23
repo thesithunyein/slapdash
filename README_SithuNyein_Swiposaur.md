@@ -1,6 +1,18 @@
-# Digit7 Jam 2026 — Submission README
+<div align="center">
 
-**Team:** Sithu Nyein (individual) · **Build:** v1.0.0
+<img src="docs/brand/swiposaur-logo.png" alt="Swiposaur: Tail Frenzy" width="460" />
+
+<br />
+
+<img src="docs/brand/shield-tile.png" alt="Swiposaur sealed build" width="68" />
+
+### Digit7 Jam 2026 · HTML arcade game · v1.0.0
+
+**Team:** Sithu Nyein (individual participant)
+
+[![Play now](https://img.shields.io/badge/%E2%96%B6_PLAY_NOW-swiposaur.vercel.app-F97316?style=for-the-badge)](https://swiposaur.vercel.app/)
+
+</div>
 
 ## 1. Game title
 
@@ -51,8 +63,29 @@ Best on a phone in portrait (360×640 and up) or any desktop window (1280×720 a
 - **Pause:** `P` / `Esc` or the pause button.
 
 Scoring: distance + coins + vaults + near-misses + whip combos, multiplied by the Roar
-meter (1×–16×). Stamina refills only on a landed whip. Grades are earned on survival and
-whip chaining: B 350 m · A 800 m · S 1,400 m + 10× combo · S+ 2,000 m + 15× combo.
+meter (1×–16×). Stamina refills only on a landed whip.
+
+Grades are read off the run itself, not the multiplier: **C** below 3,000 points · **B**
+3,000 · **A** 7,000 · **S** 14,000 (or 800 m with an 8× combo) · **S+** 24,000 (or
+1,100 m with a 12× combo).
+
+### How it works
+
+```mermaid
+flowchart LR
+    start(["Tap / SPACE"]) --> range{"Critter in<br/>whip reach?"}
+    range -- yes --> hit["WHIP LANDS<br/>+35 stamina · combo +1"]
+    range -- no --> whiff["WHIFF<br/>no refund"]
+    hit --> roar["Roar charges<br/>1x → 16x"]
+    whiff --> dodge{"Obstacle in lane?"}
+    roar --> dodge
+    dodge -- hit --> dmg["−35 to −45 stamina<br/>stampede for 6 s"]
+    dodge -- clean --> score["Distance · coins · vaults<br/>× roar multiplier"]
+    dmg --> alive{"Stamina left?"}
+    score --> alive
+    alive -- yes --> dodge
+    alive -- no --> over(["GAME OVER<br/>grade card"])
+```
 
 ## 9. Known bugs and limitations
 
@@ -68,6 +101,37 @@ whip chaining: B 350 m · A 800 m · S 1,400 m + 10× combo · S+ 2,000 m + 15×
 React 19, React DOM, Three.js r186, Vite 8, Tailwind CSS 4, TypeScript, lucide-react,
 Express (optional dev server only). No game engine, template or paid asset pack is used.
 
+### Architecture
+
+```mermaid
+flowchart TD
+    subgraph UI["React layer"]
+        APP["App.tsx<br/>screen state · persistence"]
+        MENU["StartScreen · modals<br/>menu, skins, maps, missions"]
+        HUD["HUD · TouchControls"]
+        OVER["GameOverModal · GradeStamp"]
+    end
+    subgraph SIM["Simulation"]
+        ENGINE["GameEngine.ts<br/>run loop · collisions · stamina"]
+        RULES["constants · maps · levels<br/>missions · achievements"]
+    end
+    subgraph VIS["Presentation"]
+        RENDER["ThreeGameRenderer.ts<br/>scene · camera · voxel world"]
+        DINO["DinoMeshBuilder.ts"]
+        SOUND["SoundEngine.ts<br/>Web Audio synthesis"]
+    end
+    STORE[("localStorage")]
+    MENU --> APP
+    APP --> ENGINE
+    RULES --> ENGINE
+    ENGINE --> RENDER
+    RENDER --> DINO
+    ENGINE --> HUD
+    ENGINE --> SOUND
+    ENGINE --> OVER
+    APP <--> STORE
+```
+
 ## 11. Asset credit summary
 
 - All art, 3D models, textures, logo and icons: original, generated in code (Three.js
@@ -81,7 +145,8 @@ Express (optional dev server only). No game engine, template or paid asset pack 
 
 - Test both a desktop browser and a phone; touch controls are swipe + a 72 px whip button.
 - If a run feels too easy or too hard, note the grade and distance on the game-over card.
-- To reset progress: OPTIONS → reset progress, or clear site data.
+- To reset progress: Settings (gear icon, top right of the menu) → Reset progress, or
+  clear site data.
 - Quick smoke test: PLAY → whip the intro rival → survive 6 s → whip a sidewalk critter
   (stamina +35) → pause → resume → finish the run and check the grade card.
 
