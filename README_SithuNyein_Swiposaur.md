@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="docs/brand/swiposaur-logo.png" alt="Swiposaur: Tail Frenzy" width="460" />
+<img src="docs/brand/swiposaur-wordmark.png" alt="Swiposaur: Tail Frenzy" width="460" />
 
 <br />
 
-<img src="docs/brand/shield-tile.png" alt="Swiposaur sealed build" width="68" />
+<img src="docs/brand/swiposaur-seal.png" alt="Swiposaur sealed build" width="68" />
 
 ### Digit7 Jam 2026 · HTML arcade game · v1.0.0
 

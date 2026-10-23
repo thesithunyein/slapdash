@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="docs/brand/swiposaur-logo.png" alt="Swiposaur: Tail Frenzy" width="620" />
+<img src="docs/brand/swiposaur-wordmark.png" alt="Swiposaur: Tail Frenzy" width="620" />
 
 <br />
 
-<img src="docs/brand/shield-tile.png" alt="Swiposaur sealed build" width="84" />
+<img src="docs/brand/swiposaur-seal.png" alt="Swiposaur sealed build" width="84" />
 
 ### A 3D voxel dinosaur runner for the browser
 
