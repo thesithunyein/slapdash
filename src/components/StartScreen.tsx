@@ -53,7 +53,6 @@ interface StartScreenProps {
   onOpenAchievements: () => void;
   onOpenDailyRewards?: () => void;
   onOpenDailyMissions?: () => void;
-  onOpenPWAInstall?: () => void;
   onOpenGuide: () => void;
   onOpenSettings: () => void;
   onOpenSkins: () => void;
@@ -169,9 +168,9 @@ export const StartScreen: React.FC<StartScreenProps> = ({
         </div>
       </header>
 
-      {/* Main Content Area: Left Stack Menu matching reference screenshot */}
-      <div className="flex-1 flex items-center justify-start px-2 sm:px-8 md:px-16 pointer-events-none z-30 py-2 sm:py-4">
-        {/* Left-Aligned Menu Column (100% transparent, zero background boxes or scrollbars) */}
+      {/* Main Content Area: Centred Menu Column */}
+      <div className="flex-1 flex items-center justify-center px-3 sm:px-8 md:px-16 pointer-events-none z-30 py-2 sm:py-4">
+        {/* Centred Menu Column (100% transparent, zero background boxes or scrollbars) */}
         <div className="flex flex-col items-start gap-1.5 sm:gap-2 pointer-events-auto max-w-[280px] sm:max-w-[340px] md:max-w-[380px] w-full bg-transparent">
           {/* 3D SWIPOSAUR TAIL FRENZY Logo - big, prominent, crisp and mobile friendly */}
           <div className="w-[115%] sm:w-[125%] -ml-1.5 sm:-ml-2.5 mb-2 sm:mb-3.5 transition-transform duration-300 hover:scale-[1.03] drop-shadow-[0_8px_20px_rgba(0,0,0,0.5)]">

@@ -174,5 +174,5 @@ export const COMIC_WORDS = ['TAIL-WHIP!', 'JUICY!', 'CRUNCH!', 'WHACK!', 'BONK!'
 export const ROAD_WIDTH = 280; // Fast 3-lane market road (-140 to 140)
 export const ROAD_LANES = [-90, 0, 90]; // 3 cleanly aligned lanes: Left (-90), Center (0), Right (90)
 export const SIDEWALK_EDGES = [-140, 140]; // Curb edge hazards
-export const SLAP_REACH = 110; // Comfortable reach to slap pedestrians from outer lanes
+export const SLAP_REACH = 190; // Reach across a lane so the whip lands from the centre lane too
 export const MOB_SAFE_DISTANCE = 45; // Minimum distance before mob catches player

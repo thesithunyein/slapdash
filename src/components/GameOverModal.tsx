@@ -210,12 +210,13 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 
   // Compute overall performance grade, rank, and metrics
   const computeOverallRating = () => {
-    const score = stats.score;
     const dist = stats.distanceRun;
     const slaps = stats.slapsCount;
     const combo = stats.maxCombo;
 
-    if (score >= 4500 || (dist >= 500 && combo >= 10)) {
+    // Grades are earned on survival distance plus whip chaining, not on raw
+    // score: the Roar multiplier can inflate points 16x, distance cannot.
+    if (dist >= 2000 && combo >= 15) {
       return {
         grade: 'S+',
         title: 'APEX PRIMAL LEGEND',
@@ -223,12 +224,12 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         gradeColor: 'text-[#38BDF8]',
         badgeBg: 'from-[#0284C7] to-[#0369A1]',
         reflexGrade: 'GODLIKE',
-        slapGrade: `${slaps} Slaps`,
+        slapGrade: `${slaps} Whips`,
         survivalGrade: `${Math.round(dist)}m Sprint`,
         summary: 'Flawless reflexes and total street mastery!',
       };
     }
-    if (score >= 2600 || (dist >= 350 && combo >= 6)) {
+    if (dist >= 1400 && combo >= 10) {
       return {
         grade: 'S',
         title: 'MASTER DINO DRIFTER',
@@ -236,12 +237,12 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         gradeColor: 'text-[#34D399]',
         badgeBg: 'from-[#059669] to-[#047857]',
         reflexGrade: 'EXCELLENT',
-        slapGrade: `${slaps} Slaps`,
+        slapGrade: `${slaps} Whips`,
         survivalGrade: `${Math.round(dist)}m Sprint`,
         summary: 'Incredible agility and ruthless tail attacks!',
       };
     }
-    if (score >= 1400 || dist >= 220) {
+    if (dist >= 800) {
       return {
         grade: 'A',
         title: 'SPEEDWAY CHAMPION',
@@ -249,12 +250,12 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         gradeColor: 'text-[#F97316]',
         badgeBg: 'from-[#EA580C] to-[#C2410C]',
         reflexGrade: 'GREAT',
-        slapGrade: `${slaps} Slaps`,
+        slapGrade: `${slaps} Whips`,
         survivalGrade: `${Math.round(dist)}m Sprint`,
         summary: 'Smooth obstacle evasion with sharp reflexes!',
       };
     }
-    if (score >= 600 || dist >= 120) {
+    if (dist >= 350) {
       return {
         grade: 'B',
         title: 'RISING ROARER',
@@ -262,7 +263,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         gradeColor: 'text-[#A855F7]',
         badgeBg: 'from-[#7E22CE] to-[#6B21A8]',
         reflexGrade: 'GOOD',
-        slapGrade: `${slaps} Slaps`,
+        slapGrade: `${slaps} Whips`,
         survivalGrade: `${Math.round(dist)}m Sprint`,
         summary: 'Good momentum! Vault higher and dodge closer for maximum score.',
       };

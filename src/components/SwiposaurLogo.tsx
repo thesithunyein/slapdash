@@ -1,2 +1,2 @@
-export * from './SlapDashLogo.tsx';
-export { default } from './SlapDashLogo.tsx';
+export * from './GameLogo.tsx';
+export { default } from './GameLogo.tsx';

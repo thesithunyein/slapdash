@@ -133,6 +133,37 @@ export function buildDinoCharacterMesh(skin: CharacterSkin): DinoMeshComponents 
     torso.add(spineMesh);
   }
 
+  // Readable rear silhouette. The chase camera looks at the dinosaur's back for
+  // almost the entire run, so the plain torso box gets a spine stripe, a tapered
+  // dorsal ridge and shoulder / hip blocks that read clearly at speed.
+  const spineStripe = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.98, 0.06), bellyMat);
+  spineStripe.position.set(0, 0, 0.395);
+  torso.add(spineStripe);
+
+  if (!isSpino) {
+    for (let i = 0; i < 6; i++) {
+      const t = i / 5;
+      const plateHeight = 0.34 - t * 0.14;
+      const plate = new THREE.Mesh(new THREE.ConeGeometry(0.085, plateHeight, 4), accentMat);
+      plate.position.set(0, 0.5 - t * 0.92, 0.5);
+      plate.rotation.y = Math.PI / 4;
+      plate.castShadow = true;
+      torso.add(plate);
+    }
+  }
+
+  [-1, 1].forEach((side) => {
+    const shoulder = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.34, 0.2), accentMat);
+    shoulder.position.set(side * 0.42, 0.34, 0.24);
+    shoulder.castShadow = true;
+    torso.add(shoulder);
+
+    const hip = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.3, 0.22), bodyMat);
+    hip.position.set(side * 0.44, -0.42, 0.2);
+    hip.castShadow = true;
+    torso.add(hip);
+  });
+
   // Spinosaurus Sail (Special dorsal fin for Blue Spino)
   if (isSpino) {
     const sailGroup = new THREE.Group();
@@ -160,6 +191,12 @@ export function buildDinoCharacterMesh(skin: CharacterSkin): DinoMeshComponents 
     }
   }
 
+  // Neck block bridges torso and skull so the silhouette has no visible gap.
+  const neck = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.3, 0.5), bodyMat);
+  neck.position.set(0, 1.98, 0.02);
+  neck.castShadow = true;
+  rootGroup.add(neck);
+
   // 3. Voxel Dinosaur Head (Complete with snout, jaw, teeth, nostrils & fierce eyes)
   const headGroup = new THREE.Group();
   headGroup.position.set(0, 2.18, 0);
@@ -169,6 +206,13 @@ export function buildDinoCharacterMesh(skin: CharacterSkin): DinoMeshComponents 
   const cranium = new THREE.Mesh(craniumGeo, bodyMat);
   cranium.castShadow = true;
   headGroup.add(cranium);
+
+  // Rear skull crest, visible from the chase camera.
+  const skullCrest = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.26, 4), accentMat);
+  skullCrest.position.set(0, 0.24, 0.4);
+  skullCrest.rotation.y = Math.PI / 4;
+  skullCrest.castShadow = true;
+  headGroup.add(skullCrest);
 
   // Dinosaur Snout / Muzzle (Projects boldly forward in -Z)
   const snoutDepth = isSpino ? 0.95 : isRaptor ? 0.82 : 0.75;

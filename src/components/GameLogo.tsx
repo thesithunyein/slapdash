@@ -554,18 +554,7 @@ export const Swiposaur3DLogo: React.FC<LogoProps> = ({
 export const SwiposaurVectorBanner = Swiposaur3DLogo;
 export const SwiposaurLogo = Swiposaur3DLogo;
 export const SwiposaurMark = SwiposaurVectorMark;
-
-export const PartysaurVectorBanner = Swiposaur3DLogo;
 export const GameLogoBanner = Swiposaur3DLogo;
 export const GameLogoIcon = SwiposaurVectorMark;
-export const PartysaurLogo = Swiposaur3DLogo;
-export const PartysaurVectorMark = SwiposaurVectorMark;
-export const Partysaur3DLogo = Swiposaur3DLogo;
-
-export const SlapDashPixelMark = GameLogoIcon;
-export const SlapDashMark = GameLogoIcon;
-export const SlapDashVectorMark = SwiposaurVectorMark;
-export const SlapDashVectorBanner = Swiposaur3DLogo;
-export const SlapDashLogo = SwiposaurLogo;
 
 export default Swiposaur3DLogo;

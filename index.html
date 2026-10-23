@@ -16,52 +16,6 @@
     <meta name="apple-mobile-web-app-title" content="Swiposaur" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/swiposaur-logo.svg" />
-    <!-- Suppress spurious development WebSocket/HMR runner errors in preview iframe -->
-    <script>
-      (function() {
-        const isIgnoredMessage = function(str) {
-          if (!str) return false;
-          const s = String(str).toLowerCase();
-          return s.includes('websocket') ||
-                 s.includes('@vite/client') ||
-                 s.includes('failed to connect to websocket') ||
-                 s.includes('objectmultiplex') ||
-                 s.includes('metamask');
-        };
-        const origError = console.error;
-        console.error = function(...args) {
-          if (args.some(arg => isIgnoredMessage(arg?.message || arg?.stack || arg))) {
-            return;
-          }
-          return origError.apply(console, args);
-        };
-        const origWarn = console.warn;
-        console.warn = function(...args) {
-          if (args.some(arg => isIgnoredMessage(arg?.message || arg?.stack || arg))) {
-            return;
-          }
-          return origWarn.apply(console, args);
-        };
-        window.addEventListener('error', function(event) {
-          if (event && (
-            isIgnoredMessage(event.message) ||
-            isIgnoredMessage(event.filename) ||
-            (event.error && isIgnoredMessage(event.error.message))
-          )) {
-            event.stopImmediatePropagation();
-            event.preventDefault();
-            return true;
-          }
-        }, true);
-        window.addEventListener('unhandledrejection', function(event) {
-          const reason = event && (event.reason?.message || event.reason);
-          if (isIgnoredMessage(reason)) {
-            event.stopImmediatePropagation();
-            event.preventDefault();
-          }
-        }, true);
-      })();
-    </script>
     <!-- Cute Bubbly Arcade & Cartoon Gaming Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

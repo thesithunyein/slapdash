@@ -22,7 +22,6 @@ import { SettingsModal } from './components/SettingsModal.tsx';
 import { SkinsModal } from './components/SkinsModal.tsx';
 import { DailyRewardsModal } from './components/DailyRewardsModal.tsx';
 import { DailyMissionsModal } from './components/DailyMissionsModal.tsx';
-import { PWAInstallModal } from './components/PWAInstallModal.tsx';
 import { isDailyRewardAvailable } from './game/dailyRewards.ts';
 import { getUnclaimedMissionsCount, updateMissionsOnRun } from './game/dailyMissions.ts';
 import { loadLevelProgress, LevelProgress, getMapForLevel } from './game/levels.ts';
@@ -31,6 +30,13 @@ import { Achievement, loadAchievementStorage, ACHIEVEMENTS_LIST } from './game/a
 import { loadSettings, saveSettings, GameSettings } from './game/settings.ts';
 import { trackGameEvent } from './game/analytics.ts';
 import { Play, Settings as SettingsIcon } from 'lucide-react';
+
+/**
+ * Online leaderboard is opt-in. When VITE_LEADERBOARD_API is not "true" the game
+ * keeps a fully local Hall of Fame, so static hosting (Digit7) has zero failing
+ * requests and the game works offline.
+ */
+const LEADERBOARD_API_ENABLED = import.meta.env.VITE_LEADERBOARD_API === 'true';
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -60,10 +66,9 @@ export default function App() {
     activeParticipants: number;
   } | undefined>(undefined);
 
-  // Daily Rewards, Missions & PWA Install
+  // Daily Rewards & Missions
   const [isDailyRewardsOpen, setIsDailyRewardsOpen] = useState<boolean>(false);
   const [isDailyMissionsOpen, setIsDailyMissionsOpen] = useState<boolean>(false);
-  const [isPWAInstallOpen, setIsPWAInstallOpen] = useState<boolean>(false);
   const [isDailyAvailable, setIsDailyAvailable] = useState<boolean>(() => isDailyRewardAvailable());
   const [unclaimedMissions, setUnclaimedMissions] = useState<number>(() => getUnclaimedMissionsCount());
 
@@ -156,8 +161,10 @@ export default function App() {
     }
   });
 
-  // Initial Global Leaderboard Sync from API
+  // Optional online leaderboard. Disabled by default so the game also runs on
+  // plain static hosting (Digit7 environment) without failing network calls.
   useEffect(() => {
+    if (!LEADERBOARD_API_ENABLED) return;
     fetch('/api/leaderboard')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -173,81 +180,78 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  const submitScoreToLeaderboard = useCallback((scoreToSubmit: number, comboToSubmit: number) => {
-    let savedName = 'YOU (CHAMPION)';
-    try {
-      const stored = localStorage.getItem('slap_run_share_name');
-      if (stored) savedName = stored;
-    } catch {}
+  const submitScoreToLeaderboard = useCallback(
+    (scoreToSubmit: number, comboToSubmit: number) => {
+      let savedName = 'YOU (CHAMPION)';
+      try {
+        const stored = localStorage.getItem('slap_run_share_name');
+        if (stored) savedName = stored;
+      } catch {}
 
-    setStats((curr) => ({
-      ...curr,
-      globalRankPending: true,
-      globalRankConfirmed: false,
-      leaderboardError: false,
-    }));
-
-    fetch('/api/leaderboard', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      // Local board first: this is the source of truth on static hosting and
+      // keeps the Hall of Fame and rank badge working with no server at all.
+      const newEntry = {
+        id: String(Date.now()),
         name: savedName,
         score: scoreToSubmit,
         maxCombo: comboToSubmit,
+        date: 'Just Now',
         skinId: selectedSkin.id,
-      }),
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && data.rank) {
-          setStats((curr) => ({
-            ...curr,
-            globalRank: data.rank,
-            globalRankConfirmed: true,
-            globalRankPending: false,
-            nextPlayerAbove: data.nextPlayerAbove,
-          }));
-          if (Array.isArray(data.entries)) {
-            setLeaderboardEntries(data.entries);
-          }
-        } else {
-          setStats((curr) => ({
-            ...curr,
-            globalRankPending: false,
-            leaderboardError: true,
-          }));
-        }
+        isPlayer: true,
+      };
+      const updated = [
+        ...leaderboardEntries.filter((e) => !e.isPlayer || e.score >= scoreToSubmit),
+        newEntry,
+      ]
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 15);
+      try {
+        localStorage.setItem('slap_run_leaderboard', JSON.stringify(updated));
+      } catch {}
+
+      const localRank = updated.findIndex((e) => e.id === newEntry.id) + 1;
+      setLeaderboardEntries(updated);
+      setStats((curr) => ({
+        ...curr,
+        globalRank: localRank > 0 ? localRank : undefined,
+        globalRankConfirmed: localRank > 0,
+        globalRankPending: false,
+        leaderboardError: false,
+      }));
+
+      if (!LEADERBOARD_API_ENABLED) return;
+
+      fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: savedName,
+          score: scoreToSubmit,
+          maxCombo: comboToSubmit,
+          skinId: selectedSkin.id,
+        }),
       })
-      .catch(() => {
-        setStats((curr) => ({
-          ...curr,
-          globalRankPending: false,
-          leaderboardError: true,
-        }));
-        // Fallback if offline - save locally
-        setLeaderboardEntries((prev) => {
-          const newEntry = {
-            id: String(Date.now()),
-            name: savedName,
-            score: scoreToSubmit,
-            maxCombo: comboToSubmit,
-            date: 'Just Now',
-            skinId: selectedSkin.id,
-            isPlayer: true,
-          };
-          const updated = [
-            ...prev.filter((e) => !e.isPlayer || e.score >= scoreToSubmit),
-            newEntry,
-          ]
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 15);
-          try {
-            localStorage.setItem('slap_run_leaderboard', JSON.stringify(updated));
-          } catch {}
-          return updated;
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.rank) {
+            setStats((curr) => ({
+              ...curr,
+              globalRank: data.rank,
+              globalRankConfirmed: true,
+              globalRankPending: false,
+              nextPlayerAbove: data.nextPlayerAbove,
+            }));
+            if (Array.isArray(data.entries)) {
+              setLeaderboardEntries(data.entries);
+            }
+          }
+        })
+        .catch(() => {
+          // Keep the local board; the game never depends on the network.
         });
-      });
-  }, [selectedSkin.id]);
+    },
+    [leaderboardEntries, selectedSkin.id]
+  );
 
   // Handle stats updates from GameEngine
   const handleStatsUpdate = useCallback(
@@ -670,7 +674,7 @@ export default function App() {
     setUnclaimedMissions(getUnclaimedMissionsCount());
   };
 
-  // Smooth, Responsive Mobile Runner Touch & Swipe Gestures (Subway Surfers style)
+  // Smooth, responsive mobile runner touch & swipe gestures
   const isPointerDownRef = useRef<boolean>(false);
   const pointerStartXRef = useRef<number>(0);
   const pointerStartYRef = useRef<number>(0);
@@ -827,7 +831,6 @@ export default function App() {
           onOpenAchievements={() => setIsAchievementsOpen(true)}
           onOpenDailyRewards={() => setIsDailyRewardsOpen(true)}
           onOpenDailyMissions={() => setIsDailyMissionsOpen(true)}
-          onOpenPWAInstall={() => setIsPWAInstallOpen(true)}
           onOpenGuide={() => setShowGuide(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenSkins={() => setIsSkinsOpen(true)}
@@ -1042,13 +1045,6 @@ export default function App() {
         />
       )}
 
-      {/* App Store PWA Install Modal */}
-      {isPWAInstallOpen && (
-        <PWAInstallModal
-          isOpen={isPWAInstallOpen}
-          onClose={() => setIsPWAInstallOpen(false)}
-        />
-      )}
     </div>
   );
 }

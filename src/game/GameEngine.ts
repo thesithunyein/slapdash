@@ -121,6 +121,9 @@ export class GameEngine {
   public paceMultiplier: number = 1.0;
   private hitFreezeMs: number = 0;
   private passiveRunTimer: number = 0;
+  // Opening grace window (seconds) after the intro cinematic. While it runs the
+  // street is clear, the mob is off-camera and a mistake cannot end the run.
+  private graceTimer: number = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -288,6 +291,7 @@ export class GameEngine {
     this.stats.mobDistance = 180;
     this.stats.gameOverReason = undefined;
     this.passiveRunTimer = 0;
+    this.graceTimer = 0;
     this.boostJumpsCount = 0;
     this.nearMissesCount = 0;
     this.escapedCount = 0;
@@ -620,7 +624,7 @@ export class GameEngine {
     // If they stop slapping, their health will gradually deplete, eventually leading to a game over."
     if (!this.stats.feverActive) {
       // Depletes ~3.3% per second at ~60fps
-      p.stamina = Math.max(0, p.stamina - 0.055 * dtFactor);
+      p.stamina = Math.max(0, p.stamina - 0.035 * dtFactor);
       this.stats.stamina = Math.round(p.stamina);
       if (p.stamina <= 0) {
         this.triggerGameOver('EXHAUSTED');
@@ -731,7 +735,7 @@ export class GameEngine {
       if (!b.slapped) {
         const dy = b.y - p.y;
         const dx = Math.abs(b.x - p.x);
-        b.inStrikeRange = dy >= -25 && dy <= 65 && dx <= SLAP_REACH;
+        b.inStrikeRange = dy >= -35 && dy <= 90 && dx <= SLAP_REACH;
 
       } else {
         b.inStrikeRange = false;
@@ -749,7 +753,15 @@ export class GameEngine {
       }
     }
 
-    // 7. Update Subway Surfers Style Chaser Pursuit
+    // 6b. Opening grace window: keep the mob off-camera so a new player can
+    // learn the controls before anything can end the run.
+    if (this.graceTimer > 0) {
+      this.graceTimer = Math.max(0, this.graceTimer - dtFactor / 60);
+      this.stats.chaserOnScreen = false;
+      this.stats.chaserAlertTimer = 0;
+    }
+
+    // 7. Update Chaser Pursuit
     // Rules from prompt:
     // - Chaser/mob is always following behind the player.
     // - If player successfully navigates past obstacles, they are NOT visible on screen (staying back ~180 units).
@@ -947,27 +959,21 @@ export class GameEngine {
           obs.rotVx = 0.3;
           obs.rotVz = 0.25;
 
-          // SUBWAY SURFERS TWO-HIT RULE:
-          // If stampede mob was already right behind you on-screen -> BUSTED!
-          if (this.stats.chaserOnScreen) {
-            sounds.playWhack();
-            this.renderer.triggerShake(16);
-            this.addFloatingText(p.x, p.y + 20, 'BUSTED! CAUGHT!', '#EF4444', 28);
-            this.triggerGameOver('BUSTED');
-            return;
-          }
-
-          // Damage Calculation:
-          // Tall barriers = -45 HP (heavy impact)
-          // Low obstacles = -35 HP (trip impact)
+          // THREE-HIT STRUCTURE:
+          // Every stumble costs stamina (3 clean hits from full health), the mob
+          // only appears after the first mistake, and whip hits refill stamina.
+          // Tall barriers = -45 HP (heavy impact), low obstacles = -35 HP (trip).
           const isHeavy =
             obs.type === 'barrier' ||
             obs.type === 'shifting_block' ||
             obs.type === 'cart' ||
             obs.type === 'firewall';
           const damage = isHeavy ? 45 : 35;
+          const inGrace = this.graceTimer > 0;
 
-          p.stamina = Math.max(0, p.stamina - damage);
+          p.stamina = inGrace
+            ? Math.max(1, p.stamina - damage)
+            : Math.max(0, p.stamina - damage);
           this.stats.stamina = Math.round(p.stamina);
           this.onHurtFlash?.();
           sounds.playWhack();
@@ -976,22 +982,24 @@ export class GameEngine {
           if (p.stamina <= 0) {
             this.renderer.triggerShake(16);
             this.addFloatingText(p.x, p.y + 20, `OUT OF ENERGY! -${damage} HP`, '#EF4444', 26);
-            this.triggerGameOver('EXHAUSTED');
+            this.triggerGameOver(this.stats.chaserOnScreen ? 'BUSTED' : 'EXHAUSTED');
             return;
           }
 
-          // First trip with energy left:
-          // 1. Grant 1.2s of post-hit recovery grace (flicker) so you don't get instantly double-hit
+          // Stumble with energy left:
+          // 1. 1.2s post-hit recovery so a single mistake never double-hits
           p.invulnerableTimer = 1.2;
           p.slipTimer = 30; // stumble slowdown
           this.stats.comboStreak = 0;
 
-          // 2. Mob stampede surges right onto your heels!
-          this.stats.chaserOnScreen = true;
-          this.stats.chaserAlertTimer = 6.0; // 6 seconds to run cleanly to shake off chaser
-          if (this.chasers.length > 0) {
-            this.chasers[0].y = p.y - 42;
-            this.chasers[0].x = p.x;
+          // 2. Mob stampede surges onto your heels (never during the grace run)
+          if (!inGrace) {
+            this.stats.chaserOnScreen = true;
+            this.stats.chaserAlertTimer = 6.0; // 6s clean run shakes them off
+            if (this.chasers.length > 0) {
+              this.chasers[0].y = p.y - 42;
+              this.chasers[0].x = p.x;
+            }
           }
 
           sounds.playPoliceWhistle();
@@ -1155,8 +1163,11 @@ export class GameEngine {
         sounds.updateBeatChaos(1);
 
         this.addFloatingText(0, 50, 'RUN FOR YOUR LIFE!', '#EF4444', 28);
-        this.stats.chaserOnScreen = true;
-        this.stats.chaserAlertTimer = 5;
+        // Six seconds of clear road before the stampede starts hunting you.
+        this.graceTimer = 6;
+        this.stats.chaserOnScreen = false;
+        this.stats.chaserAlertTimer = 0;
+        this.addFloatingText(0, 95, 'SAFE START 6s', '#34D399', 18);
 
         if (this.onStatsUpdate) this.onStatsUpdate(this.stats, this.state);
       }
@@ -1204,7 +1215,7 @@ export class GameEngine {
     const p = this.player;
     if (p.slapCooldown > 0) return;
 
-    p.slapCooldown = 10; // Rapid slap cooldown
+    p.slapCooldown = 7; // Snappy whip cadence
     p.isSlapping = true;
     p.slapProgress = 0;
     this.passiveRunTimer = 0;
@@ -1218,7 +1229,7 @@ export class GameEngine {
 
       const dy = b.y - p.y;
       // Valid slap window is alongside or slightly ahead of player
-      if (dy >= -25 && dy <= 65) {
+      if (dy >= -35 && dy <= 90) {
         const dx = b.x - p.x;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < minDistance) {
@@ -1346,8 +1357,9 @@ export class GameEngine {
         }
       }, 240);
     } else {
-      // Slapped thin air
+      // Whiffed the whip: short recovery and clear feedback so the reach is learnable.
       sounds.playWhoosh();
+      this.addFloatingText(p.x, p.y + 45, 'WHIFF!', '#94A3B8', 16);
     }
   }
 

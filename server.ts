@@ -21,7 +21,7 @@ interface LeaderboardRecord {
   isPlayer?: boolean;
 }
 
-// Initialized Global Arcade Leaderboard seeded with authentic tournament scores
+// Optional local dev leaderboard, seeded with demo scores for UI testing
 let globalLeaderboard: LeaderboardRecord[] = [
   { id: 'rec-1', name: 'REXY_PRIME', score: 48900, maxCombo: 34, date: 'Today', skinId: 'rex_red' },
   { id: 'rec-2', name: 'BUBBLES_SURF', score: 38200, maxCombo: 28, date: 'Today', skinId: 'spino_blue' },

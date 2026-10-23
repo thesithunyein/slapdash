@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "SlapDash - Market Chaos Runner",
-  "short_name": "SlapDash",
-  "description": "A fast, hilarious 2.5D arcade runner where you slap quirky market pedestrians, dodge crazy obstacles, charge the Chaos Meter, and escape the enraged chasing mob!",
+  "name": "Swiposaur: Tail Frenzy",
+  "short_name": "Swiposaur",
+  "description": "A fast, hilarious 3D voxel dinosaur runner: swipe lanes, tail-whip prehistoric critters, charge the Primal Roar and outrun the stampede.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

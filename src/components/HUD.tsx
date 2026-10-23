@@ -48,7 +48,7 @@ export const HUD: React.FC<HUDProps> = ({
             </span>
             <AlertTriangle className="w-4 h-4 text-white fill-white shrink-0" />
             <span className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wider">
-              STAMPEDE ON YOUR TAIL! 1 HIT TO BUSTED!
+              STAMPEDE ON YOUR TAIL! {Math.max(1, Math.ceil(stats.stamina / 45))} HITS TO BUSTED!
             </span>
           </div>
         </div>

@@ -78,6 +78,26 @@ const INITIAL_MISSIONS: DailyMission[] = [
   },
 ];
 
+/**
+ * Local, offline-safe reset countdown. Missions reset at 00:00 UTC, so the
+ * label is computed from the device clock instead of a network call.
+ */
+export function getNextUtcResetIn(): string {
+  const now = new Date();
+  const nextReset = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+    0,
+    0,
+    0
+  );
+  const diffMinutes = Math.max(0, Math.floor((nextReset - now.getTime()) / 60000));
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
 export function loadDailyMissions(): DailyMission[] {
   const today = getTodayKey();
   try {

@@ -1672,7 +1672,7 @@ export class IsometricRenderer {
       ctx.arc(eyeX + steerDir * 2 * s, headY + 2.5 * s, 2.4 * s, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      // Forward sprint stance: GLOSSY CARTOON BEAN EYES (Fall Guys / Subway Surfers style)
+      // Forward sprint stance: glossy cartoon bean eyes
       // Left Eye
       ctx.fillStyle = fever ? '#F59E0B' : '#0F172A';
       ctx.beginPath();

@@ -3258,7 +3258,7 @@ export class ThreeGameRenderer {
 
     group.add(head);
 
-    // Officer / Inspector Visor Cap & Golden Badge (Subway Surfers tribute)
+    // Officer / inspector visor cap & golden badge
     const capMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.4, flatShading: true });
     const cap = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.22, 0.78), capMat);
     cap.position.set(0, 2.52, 0);

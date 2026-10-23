@@ -3,6 +3,7 @@ import {
   DailyMission,
   loadDailyMissions,
   claimDailyMission,
+  getNextUtcResetIn,
 } from '../game/dailyMissions.ts';
 import { sounds } from '../game/SoundEngine.ts';
 import { Target, Coins, Check, X, Footprints, Flame, Clock, Zap, Gift } from 'lucide-react';
@@ -20,18 +21,14 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({
   onRewardClaimed,
 }) => {
   const [missions, setMissions] = useState<DailyMission[]>(() => loadDailyMissions());
-  const [resetCountdown, setResetCountdown] = useState<string>('');
+  const [resetCountdown, setResetCountdown] = useState<string>(() => getNextUtcResetIn());
 
   React.useEffect(() => {
-    fetch('/api/daily-schedule')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && data.resetTimeFormatted) {
-          setResetCountdown(data.resetTimeFormatted);
-        }
-      })
-      .catch(() => {});
-  }, []);
+    if (!isOpen) return;
+    setResetCountdown(getNextUtcResetIn());
+    const timer = window.setInterval(() => setResetCountdown(getNextUtcResetIn()), 30000);
+    return () => window.clearInterval(timer);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
