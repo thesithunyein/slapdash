@@ -174,6 +174,105 @@ export const GameOverTitle3D: React.FC<{ className?: string }> = ({ className = 
   </svg>
 );
 
+/**
+ * Rank stamp badge: the S / A / B / C grade is drawn with the same 3D extruded
+ * gold lettering as the SWIPOSAUR logo, stamped into a grade-coloured tile.
+ */
+export const GradeStamp: React.FC<{ grade: string; badgeBg: string; className?: string }> = ({
+  grade,
+  badgeBg,
+  className = '',
+}) => (
+  <div
+    className={`relative w-16 h-16 sm:w-[74px] sm:h-[74px] shrink-0 rounded-[20px] bg-gradient-to-br ${badgeBg} border-2 border-white/45 shadow-[0_5px_0_rgba(0,0,0,0.45),0_10px_22px_rgba(0,0,0,0.55)] flex items-center justify-center overflow-hidden ${className}`}
+  >
+    {/* Glossy dome + inner rim */}
+    <div className="absolute inset-0 rounded-[18px] bg-gradient-to-b from-white/40 via-white/5 to-black/25 pointer-events-none" />
+    <div className="absolute inset-[3px] rounded-[16px] border border-white/25 pointer-events-none" />
+
+    <svg
+      viewBox="0 0 100 100"
+      className="relative w-[88%] h-[88%] overflow-visible drop-shadow-[0_3px_4px_rgba(0,0,0,0.55)]"
+      role="img"
+      aria-label={`Grade ${grade}`}
+    >
+      <defs>
+        <linearGradient id="gradeGoldFace" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="16%" stopColor="#FEF08A" />
+          <stop offset="46%" stopColor="#FACC15" />
+          <stop offset="80%" stopColor="#F59E0B" />
+          <stop offset="100%" stopColor="#D97706" />
+        </linearGradient>
+        <linearGradient id="gradeGoldBevel" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="45%" stopColor="#FEF08A" />
+          <stop offset="100%" stopColor="#F59E0B" />
+        </linearGradient>
+      </defs>
+
+      {/* 3D extrusion stack, deepest first */}
+      {[
+        { dy: 7, fill: '#451A03', stroke: '#451A03', sw: 9 },
+        { dy: 4.5, fill: '#78350F', stroke: '#78350F', sw: 8 },
+        { dy: 2, fill: '#B45309', stroke: '#B45309', sw: 7 },
+      ].map((layer) => (
+        <text
+          key={layer.dy}
+          x="50"
+          y={52 + layer.dy}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontFamily="'Lilita One', 'Fredoka', cursive, sans-serif"
+          fontWeight="900"
+          fontSize="52"
+          fill={layer.fill}
+          stroke={layer.stroke}
+          strokeWidth={layer.sw}
+          strokeLinejoin="round"
+        >
+          {grade}
+        </text>
+      ))}
+
+      {/* Gold letter face */}
+      <text
+        x="50"
+        y="52"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontFamily="'Lilita One', 'Fredoka', cursive, sans-serif"
+        fontWeight="900"
+        fontSize="52"
+        fill="url(#gradeGoldFace)"
+        stroke="#451A03"
+        strokeWidth="3.5"
+        strokeLinejoin="round"
+        style={{ paintOrder: 'stroke fill' }}
+      >
+        {grade}
+      </text>
+
+      {/* Glossy top bevel */}
+      <text
+        x="50"
+        y="51"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontFamily="'Lilita One', 'Fredoka', cursive, sans-serif"
+        fontWeight="900"
+        fontSize="52"
+        fill="none"
+        stroke="url(#gradeGoldBevel)"
+        strokeWidth="1.1"
+        opacity="0.85"
+      >
+        {grade}
+      </text>
+    </svg>
+  </div>
+);
+
 export const GameOverModal: React.FC<GameOverModalProps> = ({
   stats,
   onRestart,
@@ -315,19 +414,13 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           {/* Overall Performance Rating Badge */}
           <div className="w-full bg-gradient-to-r from-black/60 via-black/40 to-black/60 border-2 border-white/20 rounded-2xl p-3 mb-3.5 flex items-center justify-between shadow-inner">
             <div className="flex items-center gap-3">
-              {/* Big Gleaming Rank Stamp */}
-              <div
-                className={`w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${rating.badgeBg} border-2 border-white/40 flex items-center justify-center shadow-lg`}
-              >
-                <span className="font-['Lilita_One'] text-2xl sm:text-3xl text-white drop-shadow">
-                  {rating.grade}
-                </span>
-              </div>
+              {/* Big Gleaming Rank Stamp (logo lettering) */}
+              <GradeStamp grade={rating.grade} badgeBg={rating.badgeBg} />
               <div className="flex flex-col text-left">
                 <span className="text-[10px] text-white/70 uppercase font-bold tracking-wider">
                   OVERALL RATING
                 </span>
-                <span className="font-['Lilita_One'] text-xs sm:text-sm text-white tracking-wide">
+                <span className="font-['Lilita_One'] text-sm sm:text-base text-white tracking-wide drop-shadow">
                   {rating.title}
                 </span>
                 <div className="flex items-center gap-0.5 text-xs text-amber-400 mt-0.5">

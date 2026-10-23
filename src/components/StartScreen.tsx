@@ -10,6 +10,7 @@ import {
   Coins,
   Gift,
   HelpCircle,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 
 export interface PaceMode {
@@ -84,10 +85,10 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 
       {/* Top Header: Responsive Claymorphic Tropical Badges */}
       <header className="w-full flex items-center justify-between pointer-events-auto shrink-0 z-40 px-1 sm:px-4">
-        {/* Left Spacer (Settings button removed as requested) */}
+        {/* Left Spacer */}
         <div className="w-6 sm:w-10" />
 
-        {/* Top-Right: Coins, High Score, Daily Gift, Sound */}
+        {/* Top-Right: Coins, High Score, Daily Gift, Guide, Settings, Sound */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
           {/* Best Score Trophy */}
           <div className="bg-[#182335]/85 backdrop-blur-md border-2 border-white/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
@@ -152,6 +153,20 @@ export const StartScreen: React.FC<StartScreenProps> = ({
             <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#38BDF8]" />
           </button>
 
+          {/* Settings (moved here from the main menu) */}
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playClick();
+              onOpenSettings();
+            }}
+            title="Settings"
+            aria-label="Settings"
+            className="w-8 h-8 sm:w-10 sm:h-10 bg-[#182335]/90 hover:bg-[#202E44] text-white border-2 border-white/20 rounded-xl sm:rounded-2xl flex items-center justify-center cursor-pointer transition-all shadow-[0_4px_12px_rgba(0,0,0,0.4)] active:scale-95"
+          >
+            <SettingsIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FBBF24]" />
+          </button>
+
           {/* Audio Toggle */}
           <button
             type="button"
@@ -171,13 +186,13 @@ export const StartScreen: React.FC<StartScreenProps> = ({
       {/* Main Content Area: Centred Menu Column */}
       <div className="flex-1 flex items-center justify-center px-3 sm:px-8 md:px-16 pointer-events-none z-30 py-2 sm:py-4">
         {/* Centred Menu Column (100% transparent, zero background boxes or scrollbars) */}
-        <div className="flex flex-col items-start gap-1.5 sm:gap-2 pointer-events-auto max-w-[280px] sm:max-w-[340px] md:max-w-[380px] w-full bg-transparent">
-          {/* 3D SWIPOSAUR TAIL FRENZY Logo - big, prominent, crisp and mobile friendly */}
-          <div className="w-[115%] sm:w-[125%] -ml-1.5 sm:-ml-2.5 mb-2 sm:mb-3.5 transition-transform duration-300 hover:scale-[1.03] drop-shadow-[0_8px_20px_rgba(0,0,0,0.5)]">
+        <div className="flex flex-col items-center pointer-events-auto max-w-[300px] sm:max-w-[360px] md:max-w-[400px] w-full bg-transparent">
+          {/* 3D SWIPOSAUR TAIL FRENZY Logo: centred above the menu with real breathing room */}
+          <div className="w-full flex justify-center mb-8 sm:mb-11 md:mb-14 transition-transform duration-300 hover:scale-[1.03] drop-shadow-[0_8px_20px_rgba(0,0,0,0.5)]">
             <SwiposaurLogo size="hero" showSubtitle={false} />
           </div>
 
-          {/* Vertical Stacked Chunky Orange Buttons (Exact design from uploaded image) */}
+          {/* Vertical Stacked Chunky Orange Buttons */}
           <div className="flex flex-col gap-1.5 sm:gap-2.5 w-full">
             {/* 1. PLAY BUTTON (Hero primary button) */}
             <button
@@ -191,19 +206,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
               PLAY
             </button>
 
-            {/* 2. OPTIONS / SETTINGS BUTTON */}
-            <button
-              type="button"
-              onClick={() => {
-                sounds.playClick();
-                onOpenSettings();
-              }}
-              className="w-full py-2 sm:py-2.5 md:py-3 px-3.5 sm:px-5 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-xs sm:text-base md:text-lg tracking-wider uppercase rounded-xl sm:rounded-2xl md:rounded-3xl border-2 sm:border-3 border-[#FFE082] shadow-[0_3px_0px_#BF360C,0_6px_12px_rgba(0,0,0,0.4)] sm:shadow-[0_5px_0px_#BF360C,0_8px_16px_rgba(0,0,0,0.45)] active:translate-y-1 active:shadow-[0_1px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-center text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
-            >
-              OPTIONS
-            </button>
-
-            {/* 3. DINO SKINS BUTTON */}
+            {/* 2. DINO SKINS BUTTON */}
             <button
               type="button"
               onClick={() => {
@@ -215,7 +218,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
               DINO SKINS
             </button>
 
-            {/* 4. MAPS BUTTON */}
+            {/* 3. MAPS BUTTON */}
             <button
               type="button"
               onClick={() => {
@@ -227,7 +230,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
               MAPS
             </button>
 
-            {/* 5. MISSIONS BUTTON */}
+            {/* 4. MISSIONS BUTTON */}
             {onOpenDailyMissions && (
               <button
                 type="button"
@@ -246,7 +249,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
               </button>
             )}
 
-            {/* 6. LEADERBOARDS / HALL OF FAME */}
+            {/* 5. LEADERBOARDS / HALL OF FAME */}
             <button
               type="button"
               onClick={() => {
