@@ -33,7 +33,7 @@ soundtrack — is generated in code at runtime.
 
 | | |
 | --- | --- |
-| **Playable build** | `v1.0.0` (tag [`v1.0.0`](../../releases/tag/v1.0.0)) |
+| **Playable build** | `v1.0.0` jam build (tag [`v1.0.0`](../../releases/tag/v1.0.0)); `main` also carries post-jam polish |
 | **Live build** | <https://swiposaur.vercel.app/> |
 | **Engine** | React 19 + Three.js, custom voxel meshes, synthesized Web Audio |
 | **Entry point** | `index.html` → `src/main.tsx` |
