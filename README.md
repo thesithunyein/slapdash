@@ -5,7 +5,7 @@ critters to refill stamina, charge the Primal Roar and outrun the stampede.
 
 Built for **Digit7 Jam 2026** (HTML arcade game tournament) by **Sithu Nyein**.
 
-- Playable build: `v1.0.0` (see [Deployment](#deployment))
+- Playable build: `v1.0.0` (tag `v1.0.0` in this repository)
 - Engine: React 19 + Three.js, custom voxel meshes, synthesized Web Audio
 - Entry point: `index.html` → `src/main.tsx`
 
