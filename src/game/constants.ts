@@ -37,7 +37,7 @@ export const CHARACTER_SKINS: CharacterSkin[] = [
   {
     id: 'dino_green',
     name: 'Emerald Dino',
-    tagline: 'Jungle-trotting Partysaur with powerful tail smash',
+    tagline: 'Jungle-trotting Swiposaur with powerful tail smash',
     bodyColor: '#10B981',
     shirtColor: '#D1FAE5',
     pantsColor: '#047857',

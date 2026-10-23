@@ -670,20 +670,20 @@ export default function App() {
     setUnclaimedMissions(getUnclaimedMissionsCount());
   };
 
-  // Pointer drag & swipe steering on canvas
+  // Smooth, Responsive Mobile Runner Touch & Swipe Gestures (Subway Surfers style)
   const isPointerDownRef = useRef<boolean>(false);
   const pointerStartXRef = useRef<number>(0);
   const pointerStartYRef = useRef<number>(0);
   const pointerStartTimeRef = useRef<number>(0);
-  const swipeHandledRef = useRef<boolean>(false);
+  const totalSwipesInGestureRef = useRef<number>(0);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (gameState !== 'PLAYING') return;
     isPointerDownRef.current = true;
-    swipeHandledRef.current = false;
     pointerStartXRef.current = e.clientX;
     pointerStartYRef.current = e.clientY;
     pointerStartTimeRef.current = performance.now();
+    totalSwipesInGestureRef.current = 0;
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -691,55 +691,49 @@ export default function App() {
 
     const deltaX = e.clientX - pointerStartXRef.current;
     const deltaY = e.clientY - pointerStartYRef.current;
-    const elapsed = performance.now() - pointerStartTimeRef.current;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
 
-    // Fast flick / swipe detection for 3-lane switching, diagonal jumps & vaults
-    if (!swipeHandledRef.current && elapsed < 320) {
-      // 1. Diagonal Swipe UP-LEFT or UP-RIGHT -> Jump AND change lane simultaneously!
-      if (deltaY < -24 && Math.abs(deltaX) > 20) {
-        swipeHandledRef.current = true;
-        if (deltaX < 0) {
-          engineRef.current.changeLane(-1);
-        } else {
-          engineRef.current.changeLane(1);
-        }
-        engineRef.current.requestJump();
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          try { navigator.vibrate(18); } catch {}
-        }
-        return;
-      }
+    const SWIPE_THRESHOLD = 26; // Crisp, comfortable gesture threshold for mobile fingers
 
-      // 2. Pure Swipe UP -> Jump Vault
-      if (deltaY < -26 && Math.abs(deltaY) > Math.abs(deltaX) * 1.05) {
-        swipeHandledRef.current = true;
-        engineRef.current.requestJump();
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          try { navigator.vibrate(15); } catch {}
-        }
-        return;
+    // 1. Horizontal Swipe (Left / Right) - Switches smoothly between Left (0), Middle (1), and Right (2)
+    if (absX >= SWIPE_THRESHOLD && absX > absY * 0.70) {
+      if (deltaX < 0) {
+        // Swiping Left: Moves right lane -> middle, or middle -> left
+        engineRef.current.changeLane(-1);
+      } else {
+        // Swiping Right: Moves left lane -> middle, or middle -> right
+        engineRef.current.changeLane(1);
       }
-
-      // 3. Pure Horizontal Swipe Left / Right -> Lane switch
-      if (Math.abs(deltaX) > 24 && Math.abs(deltaX) > Math.abs(deltaY) * 0.9) {
-        swipeHandledRef.current = true;
-        if (deltaX < 0) {
-          engineRef.current.changeLane(-1);
-        } else {
-          engineRef.current.changeLane(1);
-        }
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          try { navigator.vibrate(14); } catch {}
-        }
-        return;
+      totalSwipesInGestureRef.current++;
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try { navigator.vibrate(12); } catch {}
       }
+      // Re-anchor start coordinates so continuous multi-swipes in one finger drag change lanes cleanly
+      pointerStartXRef.current = e.clientX;
+      pointerStartYRef.current = e.clientY;
+      return;
     }
 
-    const threshold = 6;
-    if (Math.abs(deltaX) > threshold) {
-      const steerStrength = Math.min(1.0, Math.max(-1.0, deltaX / 42));
-      engineRef.current.input.joystick.active = true;
-      engineRef.current.input.joystick.x = steerStrength;
+    // 2. Vertical Swipe UP -> Vault Jump!
+    if (deltaY <= -30 && absY > absX * 0.75) {
+      engineRef.current.requestJump();
+      totalSwipesInGestureRef.current++;
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try { navigator.vibrate(15); } catch {}
+      }
+      pointerStartXRef.current = e.clientX;
+      pointerStartYRef.current = e.clientY;
+      return;
+    }
+
+    // 3. Vertical Swipe DOWN -> Tail-Whip Slap!
+    if (deltaY >= 34 && absY > absX * 0.75) {
+      handleSlap();
+      totalSwipesInGestureRef.current++;
+      pointerStartXRef.current = e.clientX;
+      pointerStartYRef.current = e.clientY;
+      return;
     }
   };
 
@@ -756,21 +750,24 @@ export default function App() {
     const deltaX = e.clientX - pointerStartXRef.current;
     const deltaY = e.clientY - pointerStartYRef.current;
 
-    // Tap detection when user didn't swipe
-    if (!swipeHandledRef.current && elapsed < 260 && Math.abs(deltaX) < 18 && Math.abs(deltaY) < 18) {
+    // Tap detection when user tapped without swiping
+    if (totalSwipesInGestureRef.current === 0 && elapsed < 280 && Math.abs(deltaX) < 18 && Math.abs(deltaY) < 18) {
       const screenW = window.innerWidth;
       const clientX = e.clientX;
 
-      // Intuitive edge taps: tap left 28% to move left, right 28% to move right, center to slap
-      if (clientX < screenW * 0.28) {
+      // Intuitive 3-zone tap controls on mobile:
+      // Tap Left 30% -> Dodge Left
+      // Tap Right 30% -> Dodge Right
+      // Tap Center 40% -> Tail-Whip Slap!
+      if (clientX < screenW * 0.30) {
         engineRef.current?.changeLane(-1);
         if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          try { navigator.vibrate(12); } catch {}
+          try { navigator.vibrate(10); } catch {}
         }
-      } else if (clientX > screenW * 0.72) {
+      } else if (clientX > screenW * 0.70) {
         engineRef.current?.changeLane(1);
         if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          try { navigator.vibrate(12); } catch {}
+          try { navigator.vibrate(10); } catch {}
         }
       } else {
         handleSlap();
@@ -781,7 +778,7 @@ export default function App() {
   return (
     <div
       ref={containerRef}
-      className="relative w-screen h-[100dvh] overflow-hidden select-none bg-[#181A24] font-pixel touch-none overscroll-none"
+      className="relative w-screen h-[100dvh] overflow-hidden select-none bg-transparent font-['Fredoka'] touch-none overscroll-none"
     >
       {/* 3D WebGL Canvas */}
       <canvas
@@ -792,11 +789,6 @@ export default function App() {
         onPointerCancel={handlePointerUp}
         className="w-full h-full block touch-none cursor-pointer pixel-canvas"
       />
-
-      {/* Warm Tropical Resort Frame (Desktop only, edge-to-edge full bleed on mobile) */}
-      <div className="hidden md:block absolute inset-3 rounded-[34px] border-[5px] border-[#F97316]/50 shadow-[0_0_35px_rgba(249,115,22,0.3)] pointer-events-none z-30" />
-
-
 
       {/* Achievement Unlocked Toast Notification */}
       <AchievementToast

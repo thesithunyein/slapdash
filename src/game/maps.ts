@@ -15,7 +15,9 @@ export interface MapDefinition {
   ambientColor: number;
   dirLightColor: number;
   propType: 'market' | 'palm' | 'cactus' | 'pine' | 'cherry' | 'cyber';
-  weatherEffect?: 'none' | 'snow' | 'sakura' | 'sand' | 'cyber_rain';
+  weatherEffect: 'market_breeze' | 'sea_mist' | 'sand' | 'cyber_rain' | 'snow' | 'sakura';
+  cloudStyle: 'fluffy_white' | 'tropical_cumulus' | 'sunset_amber' | 'cyber_neon' | 'snow_blizzard' | 'twilight_mist';
+  celestialType: 'sun' | 'tropical_sun' | 'desert_sunset' | 'cyber_moon' | 'winter_sun' | 'golden_moon';
   badgeColor: string;
 }
 
@@ -28,7 +30,7 @@ export const GAME_MAPS: MapDefinition[] = [
     unlockLevel: 1,
     skyColor: 0x38bdf8,
     fogColor: 0x7dd3fc,
-    fogDensity: 0.007,
+    fogDensity: 0.0055,
     roadColor: 0x181a24,
     sidewalkColor: 0x94a3b8,
     curbColor: 0xe2e8f0,
@@ -37,7 +39,9 @@ export const GAME_MAPS: MapDefinition[] = [
     ambientColor: 0x7dd3fc,
     dirLightColor: 0xfffaed,
     propType: 'market',
-    weatherEffect: 'none',
+    weatherEffect: 'market_breeze',
+    cloudStyle: 'fluffy_white',
+    celestialType: 'sun',
     badgeColor: '#10B981',
   },
   {
@@ -48,7 +52,7 @@ export const GAME_MAPS: MapDefinition[] = [
     unlockLevel: 3,
     skyColor: 0x0ea5e9,
     fogColor: 0x38bdf8,
-    fogDensity: 0.006,
+    fogDensity: 0.005,
     roadColor: 0x334155,
     sidewalkColor: 0xfde68a, // Sandy warm sidewalk
     curbColor: 0xffedd5,
@@ -57,7 +61,9 @@ export const GAME_MAPS: MapDefinition[] = [
     ambientColor: 0x38bdf8,
     dirLightColor: 0xffedd5,
     propType: 'palm',
-    weatherEffect: 'none',
+    weatherEffect: 'sea_mist',
+    cloudStyle: 'tropical_cumulus',
+    celestialType: 'tropical_sun',
     badgeColor: '#06B6D4',
   },
   {
@@ -66,9 +72,9 @@ export const GAME_MAPS: MapDefinition[] = [
     theme: 'Sunset Terracotta Desert',
     tagline: 'Blazing twilight sunset through towering red canyons and desert cacti',
     unlockLevel: 8,
-    skyColor: 0xf97316,
-    fogColor: 0xfb923c,
-    fogDensity: 0.008,
+    skyColor: 0xea580c,
+    fogColor: 0xf97316,
+    fogDensity: 0.0065,
     roadColor: 0x292524,
     sidewalkColor: 0xd97706,
     curbColor: 0xfed7aa,
@@ -78,6 +84,8 @@ export const GAME_MAPS: MapDefinition[] = [
     dirLightColor: 0xffedd5,
     propType: 'cactus',
     weatherEffect: 'sand',
+    cloudStyle: 'sunset_amber',
+    celestialType: 'desert_sunset',
     badgeColor: '#F97316',
   },
   {
@@ -86,9 +94,9 @@ export const GAME_MAPS: MapDefinition[] = [
     theme: 'Synthwave Night Metropolis',
     tagline: 'Rain-slicked neon highways flanked by holographic skyscrapers & violet haze',
     unlockLevel: 15,
-    skyColor: 0x0f172a,
+    skyColor: 0x080b14,
     fogColor: 0x1e1b4b,
-    fogDensity: 0.009,
+    fogDensity: 0.008,
     roadColor: 0x090d16,
     sidewalkColor: 0x1e293b,
     curbColor: 0x06b6d4, // Glowing cyan curbs
@@ -98,6 +106,8 @@ export const GAME_MAPS: MapDefinition[] = [
     dirLightColor: 0xc084fc,
     propType: 'cyber',
     weatherEffect: 'cyber_rain',
+    cloudStyle: 'cyber_neon',
+    celestialType: 'cyber_moon',
     badgeColor: '#8B5CF6',
   },
   {
@@ -106,9 +116,9 @@ export const GAME_MAPS: MapDefinition[] = [
     theme: 'Snowbound Alpine Expressway',
     tagline: 'Sub-zero frosted highways lined with snow-covered pines and swirling flurries',
     unlockLevel: 25,
-    skyColor: 0x67e8f9,
-    fogColor: 0xcffafe,
-    fogDensity: 0.008,
+    skyColor: 0x38bdf8,
+    fogColor: 0xbae6fd,
+    fogDensity: 0.007,
     roadColor: 0x1e293b,
     sidewalkColor: 0xe0f2fe, // Frost snow
     curbColor: 0xffffff,
@@ -118,6 +128,8 @@ export const GAME_MAPS: MapDefinition[] = [
     dirLightColor: 0xf0fdfa,
     propType: 'pine',
     weatherEffect: 'snow',
+    cloudStyle: 'snow_blizzard',
+    celestialType: 'winter_sun',
     badgeColor: '#38BDF8',
   },
   {
@@ -126,9 +138,9 @@ export const GAME_MAPS: MapDefinition[] = [
     theme: 'Cherry Blossom Sanctuary',
     tagline: 'Moonlit cobblestone path guided by glowing crimson lanterns & pink sakura blossoms',
     unlockLevel: 35,
-    skyColor: 0x1e1b4b,
-    fogColor: 0x3b0764,
-    fogDensity: 0.007,
+    skyColor: 0x17122b,
+    fogColor: 0x2e1065,
+    fogDensity: 0.0065,
     roadColor: 0x1c1917,
     sidewalkColor: 0x44403c,
     curbColor: 0xf43f5e, // Crimson curb
@@ -138,6 +150,8 @@ export const GAME_MAPS: MapDefinition[] = [
     dirLightColor: 0xfef08a,
     propType: 'cherry',
     weatherEffect: 'sakura',
+    cloudStyle: 'twilight_mist',
+    celestialType: 'golden_moon',
     badgeColor: '#EC4899',
   },
 ];

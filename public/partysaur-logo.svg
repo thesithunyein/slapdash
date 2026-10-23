@@ -1,0 +1,226 @@
+<svg viewBox="30 0 560 185" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SWIPOSAUR: TAIL FRENZY 3D Vector Logo">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Lilita+One&amp;display=swap');
+      .swiposaur-3d-text {
+        font-family: 'Lilita One', 'Fredoka', cursive, Impact, sans-serif;
+      }
+    </style>
+    <!-- Top Spikes Gradient -->
+    <linearGradient id="crestRedGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FF4336" />
+      <stop offset="50%" stop-color="#DC2626" />
+      <stop offset="100%" stop-color="#7F1D1D" />
+    </linearGradient>
+    <linearGradient id="crestHighlight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFA39E" />
+      <stop offset="100%" stop-color="#EF4444" />
+    </linearGradient>
+
+    <!-- Tropical Leaves Gradient -->
+    <linearGradient id="jungleLeafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4ADE80" />
+      <stop offset="45%" stop-color="#16A34A" />
+      <stop offset="100%" stop-color="#14532D" />
+    </linearGradient>
+    <linearGradient id="leafVeinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#86EFAC" />
+      <stop offset="100%" stop-color="#15803D" />
+    </linearGradient>
+
+    <!-- Golden 3D Letter Fill Gradients -->
+    <linearGradient id="goldTopGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="15%" stop-color="#FEF08A" />
+      <stop offset="45%" stop-color="#FACC15" />
+      <stop offset="80%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <linearGradient id="goldBevelLight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="40%" stop-color="#FEF08A" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+    <linearGradient id="goldDeepExtrude" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#92400E" />
+      <stop offset="100%" stop-color="#451A03" />
+    </linearGradient>
+
+    <!-- Tiki Plank Wood Gradients -->
+    <linearGradient id="tikiPlankGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FB923C" />
+      <stop offset="25%" stop-color="#EA580C" />
+      <stop offset="75%" stop-color="#C2410C" />
+      <stop offset="100%" stop-color="#7C2D12" />
+    </linearGradient>
+    <linearGradient id="tikiMaskWood" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F97316" />
+      <stop offset="100%" stop-color="#9A3412" />
+    </linearGradient>
+  </defs>
+
+  <!-- Ground Ambient Glow -->
+  <ellipse cx="310" cy="115" rx="240" ry="45" fill="#000000" opacity="0.4" />
+
+  <!-- ======================================================== -->
+  <!-- LAYER 2: 5 Red Prehistoric Dinosaur Crest Spikes -->
+  <!-- ======================================================== -->
+  <g>
+    <!-- Center Spike (Tallest) -->
+    <polygon
+      points="310,2 334,58 286,58"
+      fill="url(#crestRedGrad)"
+      stroke="#3F0708"
+      stroke-width="4.5"
+      stroke-linejoin="round"
+    />
+    <polygon points="310,6 317,54 303,54" fill="url(#crestHighlight)" opacity="0.6" />
+
+    <!-- Left Mid Spike -->
+    <polygon
+      points="248,16 276,64 224,64"
+      fill="url(#crestRedGrad)"
+      stroke="#3F0708"
+      stroke-width="4.5"
+      stroke-linejoin="round"
+    />
+    <polygon points="248,20 256,60 240,60" fill="url(#crestHighlight)" opacity="0.6" />
+
+    <!-- Right Mid Spike -->
+    <polygon
+      points="372,16 400,64 348,64"
+      fill="url(#crestRedGrad)"
+      stroke="#3F0708"
+      stroke-width="4.5"
+      stroke-linejoin="round"
+    />
+    <polygon points="372,20 380,60 364,60" fill="url(#crestHighlight)" opacity="0.6" />
+
+    <!-- Outer Left Small Spike -->
+    <polygon
+      points="190,32 216,72 170,72"
+      fill="url(#crestRedGrad)"
+      stroke="#3F0708"
+      stroke-width="4"
+      stroke-linejoin="round"
+    />
+
+    <!-- Outer Right Small Spike -->
+    <polygon
+      points="430,32 450,72 404,72"
+      fill="url(#crestRedGrad)"
+      stroke="#3F0708"
+      stroke-width="4"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- LAYER 3: Tropical Jungle Foliage (Palms & Hibiscus) -->
+  <!-- ======================================================== -->
+  <!-- Left Palm Leaves -->
+  <g>
+    <path d="M72 104C34 82 28 46 50 28C72 38 80 64 82 88C98 64 124 66 134 84C110 106 88 116 72 104Z" fill="url(#jungleLeafGrad)" stroke="#064E3B" stroke-width="4" stroke-linejoin="round" />
+    <path d="M50 28C68 52 74 76 82 88" stroke="url(#leafVeinGrad)" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M82 88C100 80 114 78 134 84" stroke="url(#leafVeinGrad)" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- Left Tropical Hibiscus Flower -->
+    <circle cx="106" cy="106" r="14" fill="#F43F5E" stroke="#881337" stroke-width="2.5" />
+    <circle cx="106" cy="106" r="6" fill="#FBBF24" />
+    <circle cx="106" cy="106" r="3" fill="#FFFBEB" />
+  </g>
+
+  <!-- Right Palm Leaves -->
+  <g>
+    <path d="M548 104C586 82 592 46 570 28C548 38 540 64 538 88C522 64 496 66 486 84C510 106 532 116 548 104Z" fill="url(#jungleLeafGrad)" stroke="#064E3B" stroke-width="4" stroke-linejoin="round" />
+    <path d="M570 28C552 52 546 76 538 88" stroke="url(#leafVeinGrad)" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M538 88C520 80 506 78 486 84" stroke="url(#leafVeinGrad)" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- Right Tropical Hibiscus Flower -->
+    <circle cx="514" cy="106" r="14" fill="#F43F5E" stroke="#881337" stroke-width="2.5" />
+    <circle cx="514" cy="106" r="6" fill="#FBBF24" />
+    <circle cx="514" cy="106" r="3" fill="#FFFBEB" />
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- LAYER 4: 3D EXTRUDED LETTERING "SWIPOSAUR" -->
+  <!-- ======================================================== -->
+  <g transform="translate(310, 96)">
+    <!-- 3D Black Outer Shadow & Silhouette -->
+    <text x="0" y="16" text-anchor="middle" class="swiposaur-3d-text" font-size="68" font-weight="900" fill="#180A04" stroke="#180A04" stroke-width="14" stroke-linejoin="round" letter-spacing="2.5">
+      SWIPOSAUR
+    </text>
+
+    <!-- 3D Extrusion Stack Layers -->
+    <text x="0" y="12" text-anchor="middle" class="swiposaur-3d-text" font-size="68" font-weight="900" fill="#451A03" stroke="#451A03" stroke-width="10" stroke-linejoin="round" letter-spacing="2.5">SWIPOSAUR</text>
+    <text x="0" y="10" text-anchor="middle" class="swiposaur-3d-text" font-size="68" font-weight="900" fill="#451A03" stroke="#451A03" stroke-width="10" stroke-linejoin="round" letter-spacing="2.5">SWIPOSAUR</text>
+    <text x="0" y="8" text-anchor="middle" class="swiposaur-3d-text" font-size="68" font-weight="900" fill="#78350F" stroke="#78350F" stroke-width="6" stroke-linejoin="round" letter-spacing="2.5">SWIPOSAUR</text>
+    <text x="0" y="6" text-anchor="middle" class="swiposaur-3d-text" font-size="68" font-weight="900" fill="#92400E" stroke="#78350F" stroke-width="6" stroke-linejoin="round" letter-spacing="2.5">SWIPOSAUR</text>
+    <text x="0" y="4" text-anchor="middle" class="swiposaur-3d-text" font-size="68" font-weight="900" fill="#92400E" stroke="#78350F" stroke-width="6" stroke-linejoin="round" letter-spacing="2.5">SWIPOSAUR</text>
+
+    <!-- Front Extrusion Lip -->
+    <text x="0" y="2" text-anchor="middle" class="swiposaur-3d-text" font-size="68" font-weight="900" fill="#B45309" letter-spacing="2.5">
+      SWIPOSAUR
+    </text>
+
+    <!-- Front Letter Face with Rich Tropical Gold Gradient -->
+    <text x="0" y="0" text-anchor="middle" class="swiposaur-3d-text" font-size="68" font-weight="900" fill="url(#goldTopGrad)" stroke="#451A03" stroke-width="3.5" letter-spacing="2.5" style="paint-order: stroke fill;">
+      SWIPOSAUR
+    </text>
+
+    <!-- Top Glossy Bevel Accent -->
+    <text x="0" y="-1" text-anchor="middle" class="swiposaur-3d-text" font-size="68" font-weight="900" fill="none" stroke="url(#goldBevelLight)" stroke-width="1.2" letter-spacing="2.5" opacity="0.85">
+      SWIPOSAUR
+    </text>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- LAYER 5: Carved Tiki Wood Plank Banner for "TAIL FRENZY" -->
+  <!-- ======================================================== -->
+  <g transform="translate(135, 126)">
+    <!-- Carved Wooden Plank Body -->
+    <rect x="0" y="0" width="350" height="48" rx="18" fill="url(#tikiPlankGrad)" stroke="#FEF08A" stroke-width="3.5" />
+
+    <!-- Wood Grain Carving Details -->
+    <path d="M42 12C60 10 90 14 110 11" stroke="#7C2D12" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M230 36C260 38 290 35 312 37" stroke="#7C2D12" stroke-width="2.5" stroke-linecap="round" />
+    <circle cx="85" cy="34" r="3.5" fill="#7C2D12" />
+    <circle cx="280" cy="14" r="3" fill="#7C2D12" />
+
+    <!-- Left Tribal Tiki Mask Totem -->
+    <g transform="translate(12, 5)">
+      <rect x="0" y="0" width="28" height="38" rx="7" fill="url(#tikiMaskWood)" stroke="#FEF08A" stroke-width="2" />
+      <polygon points="14,1 19,7 9,7" fill="#22C55E" />
+      <circle cx="9" cy="14" r="3.5" fill="#FEF08A" stroke="#7C2D12" stroke-width="1" />
+      <circle cx="19" cy="14" r="3.5" fill="#FEF08A" stroke="#7C2D12" stroke-width="1" />
+      <circle cx="9" cy="14" r="1.5" fill="#000000" />
+      <circle cx="19" cy="14" r="1.5" fill="#000000" />
+      <rect x="6" y="24" width="16" height="8" rx="2" fill="#FFFFFF" stroke="#7C2D12" stroke-width="1.5" />
+      <line x1="14" y1="24" x2="14" y2="32" stroke="#7C2D12" stroke-width="1.5" />
+      <line x1="10" y1="24" x2="10" y2="32" stroke="#7C2D12" stroke-width="1.5" />
+      <line x1="18" y1="24" x2="18" y2="32" stroke="#7C2D12" stroke-width="1.5" />
+    </g>
+
+    <!-- Right Tribal Tiki Mask Totem -->
+    <g transform="translate(310, 5)">
+      <rect x="0" y="0" width="28" height="38" rx="7" fill="url(#tikiMaskWood)" stroke="#FEF08A" stroke-width="2" />
+      <polygon points="14,1 19,7 9,7" fill="#22C55E" />
+      <circle cx="9" cy="14" r="3.5" fill="#FEF08A" stroke="#7C2D12" stroke-width="1" />
+      <circle cx="19" cy="14" r="3.5" fill="#FEF08A" stroke="#7C2D12" stroke-width="1" />
+      <circle cx="9" cy="14" r="1.5" fill="#000000" />
+      <circle cx="19" cy="14" r="1.5" fill="#000000" />
+      <rect x="6" y="24" width="16" height="8" rx="2" fill="#FFFFFF" stroke="#7C2D12" stroke-width="1.5" />
+      <line x1="14" y1="24" x2="14" y2="32" stroke="#7C2D12" stroke-width="1.5" />
+      <line x1="10" y1="24" x2="10" y2="32" stroke="#7C2D12" stroke-width="1.5" />
+      <line x1="18" y1="24" x2="18" y2="32" stroke="#7C2D12" stroke-width="1.5" />
+    </g>
+
+    <!-- Subtitle Embossed Text: ★ TAIL FRENZY ★ -->
+    <text x="175" y="33" text-anchor="middle" class="swiposaur-3d-text" font-size="24" font-weight="900" fill="#FFFFFF" stroke="#541B07" stroke-width="4" letter-spacing="3" style="paint-order: stroke fill;">
+      ★ TAIL FRENZY ★
+    </text>
+    <text x="175" y="32" text-anchor="middle" class="swiposaur-3d-text" font-size="24" font-weight="900" fill="#FFFDF0" letter-spacing="3">
+      ★ TAIL FRENZY ★
+    </text>
+  </g>
+</svg>

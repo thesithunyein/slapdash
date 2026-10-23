@@ -247,7 +247,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Footer */}
         <div className="px-5 py-3 bg-[#160E08] border-t border-white/10 text-center text-xs text-[#FED7AA]/80">
-          Partysaur 3D Dino Party Runner v1.0.0
+          Swiposaur 3D Dino Party Runner v1.0.0
         </div>
       </div>
     </div>

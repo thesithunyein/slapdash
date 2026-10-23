@@ -1,276 +1,369 @@
-# SlapDash: 3D Retro Arcade Boulevard Runner
+<p align="center">
+  <img src="public/swiposaur-logo.svg" alt="SWIPOSAUR: Tail Frenzy 3D Logo" width="580" />
+</p>
 
-<div align="center">
+<p align="center">
+  <strong>Fast, hilarious 3D dinosaur runner where you swipe, tail-whip prehistoric critters, charge the Primal Roar, and outrun the enraged stampede!</strong>
+</p>
+
+<p align="center">
+  <a href="#-license"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge&logo=apache" alt="License Apache 2.0" /></a>
+  <a href="https://threejs.org/"><img src="https://img.shields.io/badge/3D_Engine-Three.js_r186-black.svg?style=for-the-badge&logo=three.js" alt="Three.js Engine" /></a>
+  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19.0.1-61DAFB.svg?style=for-the-badge&logo=react&logoColor=black" alt="React 19" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-7.0.2-3178C6.svg?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
+  <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind-CSS_v4.3-38B2AC.svg?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" /></a>
+  <img src="https://img.shields.io/badge/Target-Web_%7C_PWA_%7C_Mobile-F97316.svg?style=for-the-badge" alt="Platform Web/PWA/Mobile" />
+  <img src="https://img.shields.io/badge/FPS-60_Locked_WebGL-10B981.svg?style=for-the-badge" alt="60 FPS" />
+  <img src="https://img.shields.io/badge/Audio-Synthesized_Web_Audio-A855F7.svg?style=for-the-badge" alt="Web Audio API" />
+</p>
+
+---
+
+## 📖 Table of Contents
+
+- [🦖 Lore & Cinematic Premise](#-lore--cinematic-premise)
+- [✨ Key Features](#-key-features)
+- [🕹️ Controls & Input System](#️-controls--input-system)
+- [🦕 Dinosaur Roster & Species Matrix](#-dinosaur-roster--species-matrix)
+- [🌋 Biomes, Hazards & Power-Ups](#-biomes-hazards--power-ups)
+- [📊 Advanced System Architecture & Engine Diagrams](#-advanced-system-architecture--engine-diagrams)
+  - [1. Game Engine & Render Loop Architecture](#1-game-engine--render-loop-architecture)
+  - [2. Frame Execution & Collision Pipeline](#2-frame-execution--collision-pipeline)
+  - [3. Full-Stack Tournament & Leaderboard Flow](#3-full-stack-tournament--leaderboard-flow)
+- [🔊 Sound Synthesizer System](#-sound-synthesizer-system)
+- [📸 1080x1350 Verified Share Cards](#-1080x1350-verified-share-cards)
+- [🛠️ Tech Stack & Dependencies](#️-tech-stack--dependencies)
+- [🚀 Local Development & Deployment](#-local-development--deployment)
+- [📁 Project Tree](#-project-tree)
+- [📜 License](#-license)
+
+---
+
+## 🦖 Lore & Cinematic Premise
+
+In a vibrant prehistoric world untouched by the great extinction, the tropical valleys and ancient volcanic ruins are governed by one universal rule: **the dinosaur with the swiftest tail rules the roost!**
+
+You are **Swiposaur**, an agile, sun-loving dinosaur sporting party sunglasses and an unstoppable tail whip. While casually scavenging golden eggs, ancient fruit, and dino coins across the lively prehistoric bazaar, you’ve accidentally stepped on the toes of the grumpy tribal critters. Now, the entire valley has launched an all-out stampede on your tail!
+
+Dash across shifting lanes, tail-whip pesky raptors and market vendors, leap over burning magma boulders, slide underneath fallen giant ferns, and build up your **Primal Chaos Meter** to roar into unstoppable fever speed!
+
+---
+
+## ✨ Key Features
+
+- **⚡ Real-Time 3D Voxel Engine**: Custom-built on Three.js featuring dynamic shadows, voxel mesh construction, directional sun lighting, volumetric biome fog, and camera shake physics.
+- **🦖 6 Playable Dinosaur Champions**: Fully animated voxel models with custom dorsal crests, fangs, hats, and species passives (T-Rex, Spinosaurus, Golden Raptor, Emerald Swiposaur, Cyber Rex, Midnight Rex).
+- **🌴 4 Handcrafted Biomes**:
+  - *Prehistoric Jungle*: Vibrant flora, twisting roots, and ancient stone bridges.
+  - *Volcano Basin*: Scorched basalt, rivers of boiling magma, and raining embers.
+  - *Neon Dino-City*: Futuristic retro-cyber streetscape with high-tech barriers.
+  - *Desert Canyons*: Arid sandstone trenches, dusty winds, and tumbleweed hazards.
+- **💥 Deep Arcade Mechanics**:
+  - *Tail Whip & Critter Slaps*: Whack obstacles and enemies to gain instant combo multipliers.
+  - *Primal Roar / Chaos Meter*: Hit consecutive slaps to enter **Frenzy Mode** (invincible sprint, boosted points, screen-blurring speed).
+  - *Stampede Distance / Busted Meter*: Stumbling allows the mob behind you to catch up; keep sprint rhythm to evade arrest.
+- **🏆 Live Full-Stack Tournament Leaderboard**:
+  - Real-time Node/Express server tracking high-scores, maximum combos, and player ranks.
+  - Weekly UTC tournament reset schedules with automated rank gap calculations.
+  - Privacy-friendly gameplay telemetry.
+- **🎁 Daily Progression**:
+  - 7-day UTC-synchronized daily login rewards streak with escalating coin rewards.
+  - Rotating daily missions with claimable coin bounties.
+- **📱 PWA & Offline Readiness**: One-click home-screen install prompt, full-screen standalone mode, and responsive touch controls.
+
+---
+
+## 🕹️ Controls & Input System
+
+### Desktop / Keyboard
+| Key | Action | In-Game Mechanics |
+| --- | --- | --- |
+| `A` / `D` or `←` / `→` | **Steer Lane** | Smooth isometric lane transition (Left / Center / Right) |
+| `W` or `↑` | **Jump** | Vault over small rocks, barricades, and low critters |
+| `S` or `↓` | **Slide** | Duck under high tree trunks, hazard arches, and signposts |
+| `Space` / `F` / `Enter` | **Tail Whip / Slap** | Sweep tail to slap nearby pedestrians & obstacles for combo points |
+| `P` / `Esc` | **Pause** | Freeze game state and bring up pause menu |
+
+### Mobile / Touch Gestures
+- **Swipe Left / Right**: Instant lane dodge
+- **Swipe Up**: High jump
+- **Swipe Down**: Low duck & slide
+- **Tap Screen / Tail Button**: Heavy tail strike
+- **Virtual Gamepad**: Toggleable retro on-screen D-pad and buttons in Settings
+
+---
+
+## 🦕 Dinosaur Roster & Species Matrix
+
+| Dinosaur | Species Class | Colorway | Signature Ability | Speed Bonus | Unlock Cost |
+| :--- | :--- | :--- | :--- | :---: | :---: |
+| **Rexy Prime** | Tyrannosaur | Crimson / Ruby | Heavy Footstep, Baseline Endurance | `+0%` | *Default* |
+| **Bubbles Surf** | Spinosaurus | Ocean Cyan / Coral | Aquatic Agile Lane Shift | `+10%` | 200 🪙 |
+| **Goldie Bash** | Raptor | 24K Gold / Topaz | Golden Magnetism, Coin Multiplier | `+15%` | 350 🪙 |
+| **Emerald Swiposaur** | Stegosaur / Rex Hybrid | Jungle Green / Mint | Devastating Tail Smash Radius | `+20%` | 500 🪙 |
+| **Cyber Rex** | Mecha-Saur | Neon Purple / Cyan | High-Torque Boost & Cyber Glitch Shield | `+25%` | 800 🪙 |
+| **Midnight Rex** | Shadow Predator | Obsidian / Violet | Silent Prowl, Extended Chaos Frenzy | `+30%` | 1200 🪙 |
+
+---
+
+## 🌋 Biomes, Hazards & Power-Ups
+
+### World Biomes
+```
+  [Prehistoric Jungle] ──► [Volcano Basin] ──► [Neon Dino-City] ──► [Desert Canyons]
+  • Dense Palm Trees        • Basalt Pillars     • Hologram Pillars   • Sand Dunes
+  • Bamboo Roadblocks       • Lava Fissures      • Neon Barriers      • Cacti Barricades
+  • Jungle Pedestrians      • Fire Critters      • Drone Obstacles    • Bandit Critters
+```
+
+### Power-Ups & Collectibles
+- 🪙 **Dino Coins**: Universal currency for unlocking character skins and map stages.
+- ⚡ **Energy Spark**: Fills 35% of the Chaos Meter instantly.
+- 🧲 **Fossil Magnet**: Automatically draws all nearby coins and tokens toward your dino.
+- 🛡️ **Pangolin Shield**: Absorbs one obstacle impact without slowing your pace.
+- 🌶️ **Primal Pepper**: Triggers immediate Frenzy Mode overdrive for 8 seconds.
+
+---
+
+## 📊 Advanced System Architecture & Engine Diagrams
+
+### 1. Game Engine & Render Loop Architecture
+
+```mermaid
+graph TD
+    subgraph Browser["Client Browser Runtime"]
+        Input["User Input Engine<br/>(Touch / Keyboard / Mouse)"] --> Engine["GameEngine.ts<br/>(Core Physics & State Loop)"]
+        
+        Engine --> Physics["Collision & Lane Controller<br/>(AABB Intersections & Jump Physics)"]
+        Engine --> TrackGen["Procedural Track Generator<br/>(Chunks, Obstacles, Critters, Coins)"]
+        Engine --> State["Reactive State Store<br/>(Score, Combo, Chaos Meter, Stamina)"]
+        
+        Physics --> ThreeRenderer["ThreeGameRenderer.ts<br/>(WebGL 3D Scene Graph)"]
+        TrackGen --> ThreeRenderer
+        
+        ThreeRenderer --> VoxelMesh["DinoMeshBuilder.ts<br/>(Custom 3D Voxel Dinosaur Models)"]
+        ThreeRenderer --> Lighting["Dynamic Directional Sun & Ambient Lights"]
+        ThreeRenderer --> Canvas["HTML5 WebGL Canvas Viewport"]
+        
+        Engine --> Sound["SoundEngine.ts<br/>(Synthesized Web Audio API)"]
+        State --> ReactUI["React 19 HUD & UI Layer<br/>(StartScreen, Score, Modals)"]
+    end
+
+    subgraph Backend["Full-Stack Server (Express / tsx)"]
+        ReactUI --> API["REST Endpoints<br/>(/api/leaderboard, /api/daily-schedule)"]
+        API --> MemoryDB["In-Memory High-Score Register & Tournament Validator"]
+    end
+```
+
+### 2. Frame Execution & Collision Pipeline
 
 ```
-  ____  _             ____            _     
- / ___|| | __ _ _ __ |  _ \  __ _ ___| |__  
- \___ \| |/ _` | '_ \| | | |/ _` / __| '_ \ 
-  ___) | | (_| | |_) | |_| | (_| \__ \ | | |
- |____/|_|\__,_| .__/|____/ \__,_|___/_| |_|
-               |_|                          
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │                        60 FPS GAME ENGINE TICK                         │
+  └──────────────────────────────────┬─────────────────────────────────────┘
+                                     │
+           ┌─────────────────────────┴─────────────────────────┐
+           ▼                                                   ▼
+   [Gather Input Buffer]                               [Update Delta Time]
+   • Lane Steer (-1, 0, +1)                             • Standardized dt clamp
+   • Jump / Slide impulses                             • Game speed multiplier
+           │                                                   │
+           └─────────────────────────┬─────────────────────────┘
+                                     │
+                                     ▼
+                      [Update Player Physics & Pose]
+                      • Y-Axis Gravity & Jump Velocity
+                      • Lane Interpolation (Lerp X-Pos)
+                      • Tail Whip Sweep Arc (Radius check)
+                                     │
+                                     ▼
+                      [Update Track World Elements]
+                      • Spawn incoming road segments
+                      • Recycle despawned world chunks
+                      • Update pedestrian critter animations
+                                     │
+                                     ▼
+                       [AABB Collision Detection]
+               ┌─────────────────────┼─────────────────────┐
+               ▼                     ▼                     ▼
+       [Critter Hit]          [Obstacle Crash]      [Coin Picked Up]
+       • Check Tail Range     • Not Sliding/Jumping • +Score Value
+       • Whack! +Combo        • Busted Meter +35%   • +Coin Count
+       • Sound: playSlap()    • Sound: playCrash()  • Sound: playCoin()
+               │                     │                     │
+               └─────────────────────┼─────────────────────┘
+                                     │
+                                     ▼
+                        [Render Three.js 3D Scene]
+                        • Move Camera (Isometric Tilt)
+                        • Update Dynamic Shadows & Fog
+                        • Render WebGL Frame Buffer
 ```
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg?style=for-the-badge&logo=shield)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![Three.js](https://img.shields.io/badge/Three.js-r186-black.svg?style=for-the-badge&logo=three.js)](https://threejs.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB.svg?style=for-the-badge&logo=react)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-8.x-646CFF.svg?style=for-the-badge&logo=vite)](https://vitejs.dev/)
-[![PWA Ready](https://img.shields.io/badge/PWA-Installable-purple.svg?style=for-the-badge&logo=pwa)](https://web.dev/progressive-web-apps/)
-[![Web Audio API](https://img.shields.io/badge/Audio-Procedural_Synth-orange.svg?style=for-the-badge&logo=soundcharts)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+### 3. Full-Stack Tournament & Leaderboard Flow
 
-A fast-paced, hilarious 3D / 2.5D retro arcade runner where you slap quirky pedestrians to maintain stamina, navigate dynamic multi-lane boulevards across 4 biomes, leap over dangerous hazards, and outsmart a relentless Subway Surfers-style chasing police mob.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Player as 🎮 Player / Client
+    participant App as 🖥️ App.tsx / GameEngine
+    participant Server as ⚙️ Express Backend (server.ts)
+    participant Board as 🏆 Tournament Registry
 
-**Live Game Links**: [Primary Production](https://slapdash.sithunyein.com) | [Live Staging Preview](https://ais-pre-alfbjfea4crrbrwj2pcfeu-727803041253.asia-southeast1.run.app) | [GitHub Repository](https://github.com/thesithunyein/56)
-
-</div>
-
----
-
-## Table of Contents
-1. [Overview & Highlights](#overview--highlights)
-2. [Interactive Opening Mega Slap](#interactive-opening-mega-slap)
-3. [Gameplay Modes](#gameplay-modes)
-   - [Endless Rush Mode](#endless-rush-mode)
-   - [Stage Campaign Mode (10 Levels)](#stage-campaign-mode-10-levels)
-4. [4 Biomes & World Maps](#4-biomes--world-maps)
-5. [Controls and Keybindings](#controls-and-keybindings)
-6. [Core Mechanics](#core-mechanics)
-   - [The Stamina Mechanic](#the-stamina-mechanic)
-   - [Subway Surfers Two-Hit Chase Rule](#subway-surfers-two-hit-chase-rule)
-   - [Lane Centering & Escape Routes](#lane-centering--escape-routes)
-   - [Chaos Multiplier & 16x Fever Run](#chaos-multiplier--16x-fever-run)
-7. [Obstacle & Hazard Catalog](#obstacle--hazard-catalog)
-8. [Player Retention Systems](#player-retention-systems)
-   - [Daily Login Rewards](#daily-login-rewards)
-   - [Daily Missions](#daily-missions)
-   - [Achievements & Trophies](#achievements--trophies)
-   - [Runner Wardrobe (Skins)](#runner-wardrobe-skins)
-   - [Comprehensive Settings Suite](#comprehensive-settings-suite)
-9. [System Architecture](#system-architecture)
-10. [Local Development & Quick Start](#local-development--quick-start)
-11. [Digit7 Jam 2026 Compliance](#digit7-jam-2026-compliance)
-
----
-
-## Overview & Highlights
-
-**SlapDash** is built from the ground up for instantaneous browser play on mobile and desktop devices without installations, downloads, or external dependencies.
-
-- **Zero External Assets**: All 3D voxel meshes, street architecture, lighting shaders, and audio sound effects are generated procedurally in code via WebGL (Three.js) and the native Web Audio API. Total production footprint is **under 3 MB**.
-- **PWA (Progressive Web App)**: Installable directly to home screens on iOS, Android, and Desktop Chrome/Edge with offline capability.
-- **Dynamic Procedural Soundtrack**: Synthesizes real-time retro 8-bit chip music that dynamically accelerates from 110 BPM up to 165 BPM as Chaos level climbs.
-- **Physical Game Feel**: Combines a 70ms visceral hit-stop frame freeze, dynamic camera screen shake, native mobile haptic feedback, and comic particle explosions.
-
----
-
-## Interactive Opening Mega Slap
-
-Every run begins with an over-the-shoulder showdown against a smug rival standing squarely in the middle of the street wearing sunglasses and a stylish suit:
-
-```
-[ WAITING ]   --->   [ WIND-UP (380ms) ]   --->   [ IMPACT (70ms Hit-Stop) ]   --->   [ KNOCKOUT & SWOOP ]
-"You wouldn't         Arm draws far back;         💥 KA-POW! Mega Slap;               Sunglasses fly spinning;
- dare slap ME!"       Glove swells 1.8x;          White flash + 16 stars;             Victim hurtles backward;
- [TAP / SPACE]        Tension whoosh riser        Visceral screen shake               Camera swoops into sprint!
-```
-
-Players tap the screen, press `Space` / `Enter`, or tap **DELIVER MASSIVE SLAP!** to land the blow. If left untouched, an auto-safety timer delivers the strike after 2.4s so spectators are never stranded.
-
----
-
-## Gameplay Modes
-
-### Endless Rush Mode
-- Infinite arcade sprint with high-score tracking and leaderboard submission.
-- **3 Dynamic Pace Multipliers**:
-  - **CHILL (0.8x)**: Relaxed speed for casual strolling and sightseeing.
-  - **NORMAL (1.0x)**: The balanced, authentic tournament standard.
-  - **TURBO (1.3x)**: Hyperspeed for seasoned speedrunners and high-score chasers.
-
-### Stage Campaign Mode (10 Levels)
-A handcrafted 10-stage level progression system featuring distinct objectives and star criteria:
-- **Level 1**: Boulevard Rookie (Distance: 150m, Slaps: 3)
-- **Level 2**: Speeding Up (Distance: 250m, Slaps: 6)
-- **Level 3**: Obstacle Alley (Distance: 350m, Slaps: 10, Combos)
-- **Levels 4–10**: Progressively challenging objectives featuring tighter obstacle densities, night markets, and relentless police chasers. Earn 1, 2, or 3 stars per stage plus coin bounties!
-
----
-
-## 4 Biomes & World Maps
-
-Players can choose between four visually distinctive environments:
-
-| Biome | Atmosphere & Sky | Street Architecture | Specialty Hazards |
-| :--- | :--- | :--- | :--- |
-| **City Boulevard** | Vibrant midday cyan sky (`#38BDF8`), sunny haze | Travertine pavers, Parisian limestone facades, emerald cafe awnings | Fruit crates, construction barriers, rolling kegs |
-| **Night Market** | Dark violet dusk (`#1E1B4B`), neon lanterns, wet asphalt | Cyber street stalls, dim lanterns, illuminated storefronts | Dimly lit pushcarts, neon boost ramps |
-| **Cyber Highway** | Deep synthwave navy (`#0F172A`), digital speed lines | Glowing grid lines, neon cyan road dividers | Cyber barriers, high-speed energy obstacles |
-| **Desert Bazaar** | Warm terracotta sunset (`#F59E0B`), warm dunes | Earthy stone pavers, striped market fabric, brass ornaments | Spice carts, clay urns, wooden hurdles |
-
----
-
-## Controls and Keybindings
-
-### Mobile & Tablet Touch Controls
-- **Steer / Lane Switch**: Ergonomic virtual thumb joystick in lower-left corner, dedicated lane buttons (`◀` `▶`), or horizontal swipe left/right.
-- **Jump / Vault**: Tap the emerald **JUMP** button in lower-right or swipe up anywhere on screen to leap over crates, barrels, and hurdles.
-- **Slap / Kickoff**: Large tactile crimson **SLAP!** button in lower-right corner, or quick tap anywhere on screen.
-- **Haptic Vibration**: Native vibration feedback on slap impacts, stumbles, and lane shifts.
-
-### Desktop Keyboard & Mouse Controls
-- **Steer**: `A` / `D` or `ArrowLeft` / `ArrowRight` (clean lane shifting) or click-and-drag horizontally.
-- **Jump / Vault**: `W` or `ArrowUp` to jump over low obstacles.
-- **Slap / Kickoff**: `Spacebar`, `C`, or **Left-Click** anywhere on screen.
-- **Global Hotkeys**:
-  - `P` or `Escape`: Pause / Resume game
-  - `M`: Toggle Sound / Mute
-  - `F`: Toggle Fullscreen
-  - `H` or `?`: Open "How to Play" Guide
-  - `L`: Open Stage / Level Select
-
----
-
-## Core Mechanics
-
-### The Stamina Mechanic
-- **Continuous Drain**: Stamina depletes at approximately 3.3% per second (~30 seconds buffer from 100%).
-- **Replenish Energy**: Landing a slap on a sidewalk pedestrian awards **+35% stamina** (capped at 100%), plays a chime, and displays `+35 STAMINA`.
-- **Low Energy Warning**: When stamina drops below 25%, the HUD pulses red with an urgent heartbeat alert: *SLAP TO RECHARGE*.
-- **Exhaustion**: If stamina hits 0%, the runner collapses, triggering *GAME OVER: OUT OF STAMINA*.
-
-### Subway Surfers Two-Hit Chase Rule
-```
-[ CLEAN RUNNING ] ---> (Hit Obstacle 1) ---> [ POLICE ON-SCREEN ] ---> (Hit Obstacle 2) ---> [ BUSTED / GAME OVER ]
-        ^                                              |
-        +------------ (Run Cleanly for 6.0s) ----------+
-```
-1. **Off-Screen Stealth**: While running cleanly, the officer trails 180 units behind camera out of view.
-2. **First Stumble**: Colliding with an obstacle slows you down, sounds a police whistle, and surges the officer directly onto screen (~40 units behind).
-3. **Danger Window**: An urgent HUD alert warns: *CHASER ON-SCREEN! 1 MORE HIT = BUSTED*.
-4. **Second Stumble**: Hitting another obstacle while the chaser is on-screen results in an immediate tackle and *Busted Game Over*.
-5. **Clean Escape**: Dodging obstacles for 6.0 consecutive seconds shakes off the officer, granting an *ESCAPED CHASER +150* bonus.
-
-### Lane Centering & Escape Routes
-- **Discrete Multi-Lane System**: Moving left or right smoothly snaps the runner squarely into the center of the lane. No ambiguous drifting.
-- **Guaranteed Escape Paths**: Obstacle waves occupy at most 2–3 lanes, always leaving open escape routes marked by breadcrumb coin trails.
-- **Platform Risk vs. Reward**: Sidewalk platforms host bystanders to slap, but feature tighter hazard margins. Center lanes are safer for dodging but contain no pedestrians.
-
-### Chaos Multiplier & 16x Fever Run
-Consecutive slaps escalate the score multiplier:
-- **25% Chaos**: `2x` Multiplier
-- **50% Chaos**: `4x` Multiplier
-- **75% Chaos**: `8x` Multiplier
-- **100% Chaos**: **16x FEVER RUN**!
-  - 5.5 seconds of invulnerable turbo sprint.
-  - Smashes through all obstacles without stumbling.
-  - Locks stamina at 100%.
-  - Doubled coin values and psychedelic emerald lighting.
-
----
-
-## Obstacle & Hazard Catalog
-
-| Obstacle | Visual Description | Hazard Behavior | Avoidance Strategy |
-| :--- | :--- | :--- | :--- |
-| **Fruit Crate** | Wooden produce crate piled with voxel apples and oranges | Stationary solid block | Swerve into adjacent escape lane or leap over with Jump |
-| **Construction Barrier** | Heavy orange and white striped barricade | Tall obstacle spanning a full lane | Cannot leap over; must swerve into an open lane |
-| **Rolling Barrel** | Wooden keg with copper bands rolling toward runner | Dynamic rolling hazard with predictable lane velocity | Dodge laterally or time a clean aerial jump |
-| **Market Pushcart** | Merchant wooden pushcart with striped fabric canopy | Wide obstacle with side clearance requirements | Maintain distance and steer into coin-marked escape path |
-| **Boost Ramp** | Sloped wooden ramp with glowing neon directional arrows | Launch trigger: catapults runner into high-altitude air | Run directly into ramp for high leap bonus |
-
----
-
-## Player Retention Systems
-
-### Daily Login Rewards
-A 7-day reward calendar tracking consecutive check-ins in `localStorage`, awarding increasing coin bounties and skin unlocks with a visible notification indicator on the start screen.
-
-### Daily Missions
-Refreshes daily with 3 tailored objectives (e.g., *Slap 15 pedestrians*, *Score 10,000 points*, *Achieve a 5x combo streak*) with one-click reward claims.
-
-### Achievements & Trophies
-12 trackable trophies (First Slap, Combo Master, Fever Frenzy, Obstacle Evader, Longest Escape, Coin Hoarder, etc.) complete with animated real-time toast alerts during runs.
-
-### Runner Wardrobe (Skins)
-6 distinct runner cosmetics purchasable using in-game coins:
-- **Default Runner**: Classic green athletic tee & blue shorts.
-- **Yangon Dasher**: Traditional Myanmar longyi & headband (+0.3 speed bonus).
-- **Golden Champion**: Shimmering gold armor & champion crown (+0.6 speed bonus).
-- **Market Ninja**: Stealthy black shinobi gear (+0.4 speed bonus).
-- **Retro Sprinter**: 80s neon synthwave tracksuit (+0.3 speed bonus).
-- **Cyber Phantom**: Translucent electric blue tech suit (+0.5 speed bonus).
-
-### Comprehensive Settings Suite
-- **Audio**: Separate sliders for Master Volume, Sound FX, Background Music, and Mute.
-- **Graphics**: Quality presets (High, Medium, Low), Camera Shake toggle, Reduced Motion mode, and Character Focus illumination ring.
-- **Controls**: Virtual joystick toggle (Auto/Always/Hidden), Lane Buttons toggle, and analog sensitivity adjustment.
-
----
-
-## System Architecture
-
-```
-+---------------------------------------------------------------------------------+
-|                                SlapDash Client                                  |
-+---------------------------------------+-----------------------------------------+
-                                        |
-              +-------------------------+-------------------------+
-              v                         v                         v
-    +-------------------+     +-------------------+     +-------------------+
-    |   Input System    |     |    Game Engine    |     |  Procedural Web   |
-    |  - Touch Joystick |---->|  - State Machine  |<--->|  Audio Synthesizer|
-    |  - Swipe / Tap    |     |  - Stamina Drain  |     |  - Dynamic BPM    |
-    |  - Keyboard A/D   |     |  - Subway Chaser  |     |  - Sound FX       |
-    |  - Native Haptics |     |  - Multi-Lanes    |     |  - 0 External MP3s|
-    +-------------------+     +---------+---------+     +-------------------+
-                                        |
-              +-------------------------+-------------------------+
-              v                         v                         v
-    +-------------------+     +-------------------+     +-------------------+
-    |   Three.js 3D     |     |  React 19 / HUD   |     | Full-Stack Proxy  |
-    |  WebGL Renderer   |     |  - Neo-Brutalist  |     |  - Leaderboard API|
-    |  - Voxel Geometry |     |  - Daily Missions |     |  - PWA Manifest   |
-    |  - 4 Biomes       |     |  - Level Select   |     |  - LocalStorage   |
-    |  - Camera Shake   |     |  - Achievement UI |     |    Persistence    |
-    +-------------------+     +-------------------+     +-------------------+
+    Note over Player,App: Player finishes run (Stage Clear or Busted)
+    App->>Server: POST /api/leaderboard { name, score, maxCombo, skinId }
+    Server->>Server: Validate score integrity & sanitize name string
+    Server->>Board: Insert record & re-sort descending
+    Server->>Server: Compute global rank & gap to next competitor
+    Server-->>App: 200 OK { rank, totalEntries, nextPlayerAbove, entries }
+    App->>Player: Display GameOverModal with animated leaderboard standing
 ```
 
 ---
 
-## Local Development & Quick Start
+## 🔊 Sound Synthesizer System
 
-### Prerequisites
-- Node.js 18+ or Bun
+Swiposaur features a **100% code-synthesized audio engine** built on the browser’s native **Web Audio API**. There are zero external audio files to download, resulting in lightning-fast load times and authentic arcade chip-sound dynamics:
 
-### Installation & Run
+- **Slap / Tail Strike**: Modulated bandpass sweep with noise burst.
+- **Jump**: Ascending pitch triangle oscillator (`180Hz ➔ 420Hz`).
+- **Slide**: Low-pass whoosh filtered sweep.
+- **Coin Collect**: Twin high-pitch sine arpeggio (`987Hz ➔ 1318Hz`).
+- **Frenzy Overdrive**: Resonant pulse wave chord progression with stereo vibrato.
+- **Crash / Game Over**: Decaying white noise explosion with sub-bass rumble.
+
+---
+
+## 📸 1080x1350 Verified Share Cards
+
+Swiposaur includes an in-engine **Verified 8-Bit Arcade Scorecard Generator** (`shareCard.ts`). At the end of any run, players can generate a pixel-crisp, high-definition (1080×1350) official run certificate:
+
+- **Official Arcade Ribbon Header**: `★ OFFICIAL ARCADE RECORD ★`
+- **Large Format Score Display**: Monospace retro score formatting
+- **Stats Grid**: Slap count, maximum combo streak, distance traveled, and frenzy activations
+- **Player Signature & Verification Timestamp**: Authenticated date stamp
+- **One-Click Download**: Direct canvas-to-blob PNG export ready for Instagram, X, Discord, or TikTok
+
+---
+
+## 🛠️ Tech Stack & Dependencies
+
+### Core Frameworks
+| Dependency | Version | Purpose |
+| :--- | :--- | :--- |
+| **React** | `^19.0.1` | Declarative UI, modals, HUD, and screen routing |
+| **Three.js** | `^0.186.1` | 3D WebGL renderer, voxel geometry, camera controller |
+| **TypeScript** | `^7.0.2` | Type safety across physics, entities, and server schemas |
+| **Express** | `^4.21.2` | Full-stack REST API server and tournament leaderboard |
+| **Tailwind CSS** | `^4.3.3` | Modern utility styling for claymorphic arcade UI |
+| **Vite** | `^8.3.0` | Ultra-fast development bundling and production build pipeline |
+| **tsx** | `^4.21.0` | Node.js TypeScript execution for the full-stack server |
+| **Lucide React** | `^0.546.0` | Crisp UI icons |
+
+---
+
+## 🚀 Local Development & Deployment
+
+### 1. Requirements
+- **Node.js**: v18.0.0 or higher
+- **npm** or **bun**
+
+### 2. Installation & Running
+
 ```bash
-# Clone the repository
-git clone https://github.com/thesithunyein/56.git
-cd 56
+# 1. Clone repository
+git clone https://github.com/thesithunyein/1122.git swiposaur
+cd swiposaur
 
-# Install dependencies
+# 2. Install dependencies
 npm install
 
-# Start development server
+# 3. Start development server (serves Vite & API on http://localhost:3000)
 npm run dev
-# Server starts at http://localhost:3000
+```
 
-# Build production bundle
+### 3. Production Build
+
+```bash
+# Build production client bundle
 npm run build
 
-# Validate TypeScript
-npm run lint
+# Start production server
+npm start
 ```
 
 ---
 
-## Digit7 Jam 2026 Compliance
+## 📁 Project Tree
 
-- **Organized by**: Digit7s Myanmar
-- **Submission Title**: SlapDash
-- **Developer**: Sithu Nyein (`sithunyein.mailto@gmail.com`)
-- **Technology**: 100% Browser-Playable HTML5 / WebGL (Three.js) & Web Audio API
-- **Bundle Footprint**: < 3 MB (Complies with the 200 MB maximum threshold)
-- **Security & Privacy**: Zero tracking, zero third-party cookies, zero unapproved external network requests.
-- **AI Tool Disclosure**: Built with Google AI Studio Build (Gemini 2.5 / Flash) for mathematical projection and procedural synthesis design, with full human review, testing, and creative art direction.
+```
+swiposaur/
+├── api/
+│   └── leaderboard.ts              # Serverless leaderboard endpoint
+├── public/
+│   ├── swiposaur-logo.svg          # 3D Vector brand logo (Lilita One, extruded)
+│   ├── partysaur-logo.svg          # Vector asset alias
+│   ├── apple-touch-icon.png        # High-res 512x512 PWA icon
+│   └── assets/                     # Graphic resources and document guides
+├── server.ts                       # Express backend server with Vite dev middleware
+├── src/
+│   ├── components/                 # React UI components
+│   │   ├── SwiposaurLogo.tsx       # 3D Interactive tilted logo
+│   │   ├── StartScreen.tsx         # Main arcade menu & difficulty selector
+│   │   ├── HUD.tsx                 # Score, combo multiplier & stamina display
+│   │   ├── GameOverModal.tsx       # Run summary, rank badges, share card modal
+│   │   ├── LeaderboardModal.tsx    # Live tournament standings dialog
+│   │   ├── SkinsModal.tsx          # Dinosaur character shop
+│   │   ├── LevelSelectModal.tsx    # Campaign level map selector
+│   │   ├── MapSelectModal.tsx      # World biome selector
+│   │   ├── DailyRewardsModal.tsx   # UTC 7-day streak claim modal
+│   │   ├── DailyMissionsModal.tsx  # Daily mission objectives modal
+│   │   ├── AchievementsModal.tsx   # Trophies & milestone badges
+│   │   ├── TouchControls.tsx       # On-screen swipe pads & buttons
+│   │   ├── PWAInstallModal.tsx     # Home-screen install prompt
+│   │   └── SettingsModal.tsx       # Audio toggles and graphic settings
+│   ├── game/                       # Core engine & mechanics
+│   │   ├── GameEngine.ts           # Game loop, collision logic, spawning
+│   │   ├── ThreeGameRenderer.ts    # Three.js WebGL scene & lighting pipeline
+│   │   ├── DinoMeshBuilder.ts      # Voxel mesh builders for all species
+│   │   ├── SoundEngine.ts          # Pure Web Audio synthesizer
+│   │   ├── shareCard.ts            # High-res 1080x1350 canvas certificate generator
+│   │   ├── levels.ts               # Campaign progression definitions
+│   │   ├── maps.ts                 # Biome parameters and obstacle tables
+│   │   ├── constants.ts            # Skins, speeds, and default leaderboards
+│   │   └── types.ts                # TypeScript game types and interfaces
+│   ├── App.tsx                     # Main game container and state coordinator
+│   ├── main.tsx                    # React DOM entry point
+│   └── index.css                   # Tailwind CSS & global arcade rules
+├── index.html                      # HTML5 entry point with game metadata
+├── metadata.json                   # Applet configuration & metadata
+├── package.json                    # Dependencies & full-stack scripts
+├── tsconfig.json                   # TypeScript configuration
+└── vite.config.ts                  # Vite build setup
+```
+
+---
+
+## 📜 License
+
+```
+Copyright 2026 Swiposaur Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+---
+
+<p align="center">
+  Built with ❤️ for arcade game lovers. Have fun dodging, tail-whipping, and climbing the Swiposaur leaderboards! 🦖🏆
+</p>

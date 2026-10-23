@@ -68,7 +68,7 @@ app.get('/api/leaderboard', (_req, res) => {
     totalEntries: globalLeaderboard.length,
     entries: sorted,
     tournament: {
-      season: 'Season 1: Dino Resort Mayhem Blitz',
+      season: 'Season 1: Swiposaur Tail Frenzy Blitz',
       endsInHours: hoursRemaining,
       topReward: '500 Dino Coins + Golden Dino Trophy',
       activeParticipants: globalLeaderboard.length + 142,
@@ -189,7 +189,7 @@ async function startServer() {
   }
 
   httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`SlapDash Full-Stack server running at http://0.0.0.0:${PORT}`);
+    console.log(`Swiposaur Full-Stack server running at http://0.0.0.0:${PORT}`);
   });
 }
 

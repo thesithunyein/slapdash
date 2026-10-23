@@ -28,7 +28,7 @@ import {
 } from './constants.ts';
 import { sounds } from './SoundEngine.ts';
 import { ThreeGameRenderer } from './ThreeGameRenderer.ts';
-import { LevelDefinition, getLevel, calculateLevelStars, saveLevelResult, loadLevelProgress } from './levels.ts';
+import { LevelDefinition, getLevel, calculateLevelStars, saveLevelResult, loadLevelProgress, getObstaclesForLevel } from './levels.ts';
 import { MapDefinition, GAME_MAPS, getMapById } from './maps.ts';
 import { Achievement, evaluateAchievements, loadAchievementStorage } from './achievements.ts';
 import { GameSettings, loadSettings } from './settings.ts';
@@ -488,6 +488,8 @@ export class GameEngine {
       x: 0,
       y: 0,
       z: 0,
+      prevX: 0,
+      prevY: 0,
       vx: 0,
       vz: 0,
       speed: calculatedBase,
@@ -497,6 +499,7 @@ export class GameEngine {
       slapHand: 'right',
       slapProgress: 0,
       slipTimer: 0,
+      invulnerableTimer: 0,
       feverTime: 0,
       skin: this.selectedSkin,
       runCycle: 0,
@@ -627,9 +630,13 @@ export class GameEngine {
       this.stats.stamina = Math.round(p.stamina);
     }
 
-    // 2a. Stumble / Slip timer
+    // 2a. Stumble / Slip timer & Recovery Invulnerability
     if (p.slipTimer > 0) {
       p.slipTimer -= dtFactor;
+    }
+    if (p.invulnerableTimer && p.invulnerableTimer > 0) {
+      p.invulnerableTimer -= 0.016 * dtFactor;
+      if (p.invulnerableTimer < 0) p.invulnerableTimer = 0;
     }
 
     // 2b. Vertical Jump Elevation Physics
@@ -653,6 +660,8 @@ export class GameEngine {
       // Rough sidewalk curb friction on outer edges
       currentSpeed *= 0.88;
     }
+    p.prevY = p.y;
+    p.prevX = p.x;
     p.speed = currentSpeed;
     p.y += p.speed * dtFactor;
     this.stats.distanceRun = Math.floor(p.y / 10);
@@ -794,11 +803,20 @@ export class GameEngine {
       this.stats.mobDistance = Math.round(p.y - leadChaser.y);
     }
 
-    // 8. Obstacle Collisions & Traps
+    // 8. Obstacle Movements & Traps
+    const playerHalfW = 20;
+    const playerHalfD = 18;
+    const pPrevY = p.prevY ?? p.y;
+    const pPrevX = p.prevX ?? p.x;
+    const pMinY = Math.min(pPrevY, p.y) - playerHalfD;
+    const pMaxY = Math.max(pPrevY, p.y) + playerHalfD;
+    const pMinX = Math.min(pPrevX, p.x) - playerHalfW;
+    const pMaxX = Math.max(pPrevX, p.x) + playerHalfW;
+
     for (const obs of this.obstacles) {
       // Dynamic Shifting Hazard Blocks slide smoothly across lanes
       if (obs.type === 'shifting_block' || obs.isShifting) {
-        if (!obs.vx) obs.vx = 1.6;
+        if (!obs.vx) obs.vx = 1.8;
         obs.x += obs.vx * dtFactor;
         const minX = obs.shiftMinX ?? -95;
         const maxX = obs.shiftMaxX ?? 95;
@@ -811,97 +829,181 @@ export class GameEngine {
         }
       }
 
+      // Rolling Barrels & Boulders with realistic road bounce
       if (obs.type === 'barrel' || obs.type === 'loop_boulder') {
-        obs.y -= (obs.rollSpeed ?? 1.8) * dtFactor;
-        obs.rotation = (obs.rotation ?? 0) + 0.12 * dtFactor;
+        obs.y -= (obs.rollSpeed ?? 2.0) * dtFactor;
+        obs.rotation = (obs.rotation ?? 0) + 0.16 * dtFactor;
+        obs.z = Math.abs(Math.sin((obs.rotation ?? 0) * 2)) * 0.8;
         if (obs.vx) {
           obs.x += obs.vx * dtFactor;
-          // Bounce off sidewalk curb barriers (-215 to 215)
-          if (obs.x < -215) {
-            obs.x = -215;
+          if (obs.x < -110) {
+            obs.x = -110;
             obs.vx = Math.abs(obs.vx);
-          } else if (obs.x > 215) {
-            obs.x = 215;
+          } else if (obs.x > 110) {
+            obs.x = 110;
             obs.vx = -Math.abs(obs.vx);
           }
         }
       }
 
-      if (obs.hit) continue;
-      const dy = Math.abs(p.y - obs.y);
-      const dx = Math.abs(p.x - obs.x);
-
-      // Launch Ramp Trigger (Standard ramp or Terminal launch pad)
-      if ((obs.type === 'ramp' || obs.type === 'terminal_ramp') && dy < 24 && dx < 24) {
-        obs.hit = true;
-        sounds.playJump();
-        p.vz = 8.8; // High launch jump!
-        this.renderer.triggerShake(4);
-        this.boostJumpsCount++;
-        this.stats.boostJumpsCount = this.boostJumpsCount;
-        this.stats.score += 150 * this.stats.chaosMultiplier;
-        this.addFloatingText(p.x, p.y + 20, obs.type === 'terminal_ramp' ? 'TURBO LAUNCH!' : 'BOOST JUMP!', '#10B981', 24);
-        this.spawnParticleExplosion(obs.x, obs.y, '#34D399', 12, 'sparkle');
-        this.triggerAchievementCheck({ rampHit: true });
-        continue;
+      // Market Cart subtle street rattle
+      if (obs.type === 'cart') {
+        obs.rotationZ = Math.sin(p.y * 0.05 + obs.id) * 0.04;
       }
 
-      // If player is in the air jumping over ground obstacles (shifting blocks, crates, barrels, bugs, spikes, carts)
-      if (p.z > 3.8 && obs.type !== 'firewall') {
-        if (dy < 28 && dx < (obs.width / 2 + 12)) {
-          obs.hit = true;
-          this.stats.score += 80 * this.stats.chaosMultiplier;
-          sounds.playJump();
-          this.addFloatingText(p.x, p.y + 25, 'VAULT OVER! +80', '#10B981', 18);
-          this.spawnParticleExplosion(p.x, p.y, '#34D399', 6, 'sparkle');
+      // Tumbling physics for hit obstacles
+      if (obs.hit) {
+        if (obs.hitVx || obs.hitVy || obs.hitVz) {
+          obs.x += (obs.hitVx || 0) * dtFactor;
+          obs.y += (obs.hitVy || 0) * dtFactor;
+          obs.z = Math.max(0, (obs.z || 0) + (obs.hitVz || 0) * dtFactor);
+          obs.hitVz = (obs.hitVz || 0) - 0.55 * dtFactor; // gravity
+          obs.rotation = (obs.rotation ?? 0) + (obs.rotVx ?? 0.25) * dtFactor;
+          obs.rotationY = (obs.rotationY ?? 0) + (obs.rotVy ?? 0.18) * dtFactor;
+          obs.rotationZ = (obs.rotationZ ?? 0) + (obs.rotVz ?? 0.12) * dtFactor;
         }
         continue;
       }
 
-      // Tight, fair collision box so near-misses and quick lane switches don't clip accidentally
-      if (dy < 17 && dx < (obs.width / 2 - 3)) {
+      // Continuous Swept Collision Bounds
+      const obsHalfW = Math.max(20, (obs.width || 46) / 2);
+      const obsHalfD = Math.max(16, (obs.height || 34) / 2);
+      const obsMinY = obs.y - obsHalfD;
+      const obsMaxY = obs.y + obsHalfD;
+      const obsMinX = obs.x - obsHalfW;
+      const obsMaxX = obs.x + obsHalfW;
+
+      const overlapY = pMaxY >= obsMinY && pMinY <= obsMaxY;
+      const overlapX = pMaxX >= obsMinX && pMinX <= obsMaxX;
+
+      if (overlapY && overlapX) {
+        // Launch Ramp Trigger (Standard ramp or Terminal launch pad)
+        if (obs.type === 'ramp' || obs.type === 'terminal_ramp') {
+          obs.hit = true;
+          sounds.playJump();
+          p.vz = obs.type === 'terminal_ramp' ? 9.6 : 8.6; // Launch jump!
+          this.renderer.triggerShake(4);
+          this.boostJumpsCount++;
+          this.stats.boostJumpsCount = this.boostJumpsCount;
+          this.stats.score += 150 * this.stats.chaosMultiplier;
+          this.addFloatingText(p.x, p.y + 20, obs.type === 'terminal_ramp' ? 'TURBO LAUNCH!' : 'BOOST JUMP!', '#10B981', 24);
+          this.spawnParticleExplosion(obs.x, obs.y, '#34D399', 12, 'sparkle');
+          this.triggerAchievementCheck({ rampHit: true });
+          continue;
+        }
+
+        // Height clearance check: can this obstacle be jumped over?
+        // High obstacles (barrier, shifting block, cart, firewall, crates) CANNOT be jumped over!
+        const clearanceHeight =
+          obs.clearanceHeight ??
+          (obs.type === 'spikes'
+            ? 5.0
+            : obs.type === 'bug'
+            ? 4.5
+            : obs.type === 'barrel'
+            ? 6.5
+            : obs.type === 'loop_boulder'
+            ? 7.0
+            : 16.0); // Barriers, shifting blocks, carts, and firewalls are high hazards
+
+        if (p.z >= clearanceHeight) {
+          // Clean vault over low obstacle!
+          if (!obs.vaulted) {
+            obs.vaulted = true;
+            this.stats.score += 80 * this.stats.chaosMultiplier;
+            sounds.playJump();
+            this.addFloatingText(p.x, p.y + 25, 'VAULT OVER! +80', '#10B981', 18);
+            this.spawnParticleExplosion(p.x, p.y, '#34D399', 6, 'sparkle');
+          }
+          continue;
+        }
+
+        // If player is currently in post-hit recovery grace period, ignore collision
+        if (p.invulnerableTimer && p.invulnerableTimer > 0) {
+          continue;
+        }
+
+        // REAL COLLISION HIT!
         obs.hit = true;
+
         if (this.stats.feverActive) {
-          // Ram through obstacle with explosive stars in fever mode!
+          // SMASH through obstacle with explosive stars in fever mode!
+          obs.hitVx = (Math.random() - 0.5) * 8;
+          obs.hitVy = 16 + Math.random() * 6;
+          obs.hitVz = 12 + Math.random() * 4;
+          obs.rotVx = 0.4;
+          obs.rotVy = 0.3;
+          obs.rotVz = 0.2;
           sounds.playWhack();
-          this.renderer.triggerShake(5);
-          this.spawnParticleExplosion(obs.x, obs.y, '#FDE047', 12);
+          this.renderer.triggerShake(7);
+          this.spawnParticleExplosion(obs.x, obs.y, '#FDE047', 14);
           this.addFloatingText(obs.x, obs.y, 'SMASH!', '#FDE047', 22);
           this.stats.score += 200 * this.stats.chaosMultiplier;
         } else {
+          // Obstacle tumble physics on stumble
+          obs.hitVx = p.x < obs.x ? 5 : -5;
+          obs.hitVy = 7;
+          obs.hitVz = 6;
+          obs.rotVx = 0.3;
+          obs.rotVz = 0.25;
+
           // SUBWAY SURFERS TWO-HIT RULE:
+          // If stampede mob was already right behind you on-screen -> BUSTED!
           if (this.stats.chaserOnScreen) {
-            // Hit a second obstacle in a row while chaser is on-screen!
             sounds.playWhack();
-            this.renderer.triggerShake(14);
-            this.addFloatingText(p.x, p.y + 20, 'BUSTED! CAUGHT!', '#EF4444', 26);
+            this.renderer.triggerShake(16);
+            this.addFloatingText(p.x, p.y + 20, 'BUSTED! CAUGHT!', '#EF4444', 28);
             this.triggerGameOver('BUSTED');
             return;
-          } else {
-            // First obstacle hit: Stumble & summon chaser onto screen!
-            this.stats.chaserOnScreen = true;
-            this.stats.chaserAlertTimer = 6.0; // 6 seconds to run cleanly to escape
-
-            // Instantly surge lead chaser close enough to appear right on screen behind player
-            if (this.chasers.length > 0) {
-              this.chasers[0].y = p.y - 42;
-              this.chasers[0].x = p.x;
-            }
-
-            sounds.playWhack();
-            sounds.playPoliceWhistle();
-            this.onHurtFlash?.();
-            this.renderer.triggerShake(9);
-            p.slipTimer = 25; // stumble slowdown
-            this.stats.comboStreak = 0;
-            this.addFloatingText(p.x, p.y + 20, 'CHASER ALERT! 1 MORE HIT = BUSTED!', '#EF4444', 20);
-            this.spawnParticleExplosion(obs.x, obs.y, '#EF4444', 12, 'star');
           }
+
+          // Damage Calculation:
+          // Tall barriers = -45 HP (heavy impact)
+          // Low obstacles = -35 HP (trip impact)
+          const isHeavy =
+            obs.type === 'barrier' ||
+            obs.type === 'shifting_block' ||
+            obs.type === 'cart' ||
+            obs.type === 'firewall';
+          const damage = isHeavy ? 45 : 35;
+
+          p.stamina = Math.max(0, p.stamina - damage);
+          this.stats.stamina = Math.round(p.stamina);
+          this.onHurtFlash?.();
+          sounds.playWhack();
+
+          // If stamina depleted by obstacle damage: Dino collapses!
+          if (p.stamina <= 0) {
+            this.renderer.triggerShake(16);
+            this.addFloatingText(p.x, p.y + 20, `OUT OF ENERGY! -${damage} HP`, '#EF4444', 26);
+            this.triggerGameOver('EXHAUSTED');
+            return;
+          }
+
+          // First trip with energy left:
+          // 1. Grant 1.2s of post-hit recovery grace (flicker) so you don't get instantly double-hit
+          p.invulnerableTimer = 1.2;
+          p.slipTimer = 30; // stumble slowdown
+          this.stats.comboStreak = 0;
+
+          // 2. Mob stampede surges right onto your heels!
+          this.stats.chaserOnScreen = true;
+          this.stats.chaserAlertTimer = 6.0; // 6 seconds to run cleanly to shake off chaser
+          if (this.chasers.length > 0) {
+            this.chasers[0].y = p.y - 42;
+            this.chasers[0].x = p.x;
+          }
+
+          sounds.playPoliceWhistle();
+          this.renderer.triggerShake(isHeavy ? 14 : 10);
+          this.addFloatingText(p.x, p.y + 20, `HURT! -${damage} HP! MOB ALERT!`, '#EF4444', 22);
+          this.spawnParticleExplosion(obs.x, obs.y, '#EF4444', 14, 'star');
         }
-      } else if (!obs.hit && !obs.nearMissChecked && obs.type !== 'ramp') {
+      } else if (!obs.hit && !obs.nearMissChecked && obs.type !== 'ramp' && obs.type !== 'terminal_ramp') {
         // High-Skill Near-Miss Dodge Bonus (+50 pts & crisp whoosh sound)
-        const obsHalfW = obs.width / 2;
-        if (dy < 24 && dx >= (obsHalfW + 12) && dx <= (obsHalfW + 36)) {
+        const dy = Math.abs(p.y - obs.y);
+        const dx = Math.abs(p.x - obs.x);
+        if (dy < 24 && dx >= (obsHalfW + 6) && dx <= (obsHalfW + 36)) {
           obs.nearMissChecked = true;
           this.nearMissesCount++;
           this.stats.nearMissesCount = this.nearMissesCount;
@@ -1378,22 +1480,9 @@ export class GameEngine {
 
     const occupiedLanes = new Set<number>(chosenLanes);
 
-    // Obstacle types: rich combination with high chance of positive jump ramps
-    const obstacleTypes: ObstacleType[] = [
-      'ramp',
-      'terminal_ramp',
-      'crate',
-      'barrel',
-      'spikes',
-      'loop_boulder',
-      'barrier',
-      'firewall',
-      'cart',
-      'watermelon',
-      'planter',
-      'hydrant',
-      'shifting_block',
-    ];
+    // Dynamic Level & Biome Specific Obstacles
+    const levelObstacleInfo = getObstaclesForLevel(this.currentLevel, this.currentMap.id);
+    const obstacleTypes: ObstacleType[] = levelObstacleInfo.obstacles;
 
     for (let i = 0; i < chosenLanes.length; i++) {
       const ox = chosenLanes[i];
@@ -1402,24 +1491,38 @@ export class GameEngine {
 
       let width = 46;
       let height = 34;
-      if (type === 'shifting_block' || type === 'barrier' || type === 'firewall') {
+      if (
+        type === 'shifting_block' ||
+        type === 'barrier' ||
+        type === 'firewall' ||
+        type === 'canyon_mesa' ||
+        type === 'holo_barrier' ||
+        type === 'zen_barrier' ||
+        type === 'torii_gate'
+      ) {
         width = 54;
         height = 36;
       } else if (type === 'ramp' || type === 'terminal_ramp') {
         width = 46;
         height = 30;
-      } else if (type === 'cart') {
-        width = 50;
+      } else if (type === 'cart' || type === 'cherry_wagon' || type === 'timber_sled') {
+        width = 52;
         height = 34;
-      } else if (type === 'barrel' || type === 'loop_boulder') {
-        width = 40;
+      } else if (type === 'surf_rack' || type === 'beach_lounger' || type === 'cactus_cluster' || type === 'dino_skull') {
+        width = 48;
+        height = 36;
+      } else if (type === 'tiki_totem' || type === 'stone_lantern' || type === 'cyber_server' || type === 'drone_hazard') {
+        width = 44;
+        height = 38;
+      } else if (type === 'ice_spikes' || type === 'snow_bale') {
+        width = 48;
+        height = 34;
+      } else if (type === 'cafe_table' || type === 'watermelon' || type === 'coconut_crate') {
+        width = 46;
         height = 32;
       } else if (type === 'spikes') {
         width = 42;
         height = 28;
-      } else if (type === 'bug') {
-        width = 38;
-        height = 26;
       }
 
       const isShifting = type === 'shifting_block';

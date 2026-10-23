@@ -11,14 +11,14 @@ interface LogoProps {
  * Pure Vector 3D Dinosaur Emblem Mark (Head with Party Shades & Tropical Leaves)
  * 100% Code-rendered SVG - Zero <img> tags, zero raster assets, crisp on all screens.
  */
-export const PartysaurVectorMark: React.FC<{ className?: string }> = ({ className = '' }) => (
+export const SwiposaurVectorMark: React.FC<{ className?: string }> = ({ className = '' }) => (
   <svg
     viewBox="0 0 120 120"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
     className={`select-none ${className}`}
     role="img"
-    aria-label="Partysaur 3D Dino Emblem"
+    aria-label="Swiposaur 3D Dino Emblem"
   >
     <defs>
       <linearGradient id="markCrest" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -137,11 +137,11 @@ export const PartysaurVectorMark: React.FC<{ className?: string }> = ({ classNam
 );
 
 /**
- * 3D Interactive Vector Logo Component: PARTYSAUR: DINO MAYHEM
+ * 3D Interactive Vector Logo Component: SWIPOSAUR: TAIL FRENZY
  * Built entirely with SVG vector paths and CSS 3D transformation depth.
  * Zero raster image tags, interactive tilt physics, glossy specular gleam, and tropical tiki details.
  */
-export const Partysaur3DLogo: React.FC<LogoProps> = ({
+export const Swiposaur3DLogo: React.FC<LogoProps> = ({
   className = '',
   size = 'md',
   showSubtitle = true,
@@ -198,14 +198,19 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
         }}
       >
         <svg
-          viewBox="0 0 620 200"
+          viewBox="30 0 560 185"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-auto drop-shadow-[0_16px_36px_rgba(0,0,0,0.65)] overflow-visible"
+          className="w-full h-auto overflow-visible"
           role="img"
-          aria-label="PARTYSAUR: DINO MAYHEM 3D Vector Logo"
+          aria-label="SWIPOSAUR: TAIL FRENZY 3D Vector Logo"
         >
           <defs>
+            <style>{`
+              .swiposaur-3d-text {
+                font-family: 'Lilita One', 'Fredoka', cursive, sans-serif !important;
+              }
+            `}</style>
             {/* Top Spikes Gradient */}
             <linearGradient id="crestRedGrad" x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%" stopColor="#FF4336" />
@@ -230,10 +235,10 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
 
             {/* Golden 3D Letter Fill Gradients */}
             <linearGradient id="goldTopGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#FFFBEB" />
+              <stop offset="0%" stopColor="#FFFFFF" />
               <stop offset="15%" stopColor="#FEF08A" />
-              <stop offset="50%" stopColor="#FBBF24" />
-              <stop offset="85%" stopColor="#F59E0B" />
+              <stop offset="45%" stopColor="#FACC15" />
+              <stop offset="80%" stopColor="#F59E0B" />
               <stop offset="100%" stopColor="#D97706" />
             </linearGradient>
             <linearGradient id="goldBevelLight" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -257,25 +262,12 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
               <stop offset="0%" stopColor="#F97316" />
               <stop offset="100%" stopColor="#9A3412" />
             </linearGradient>
-
-            {/* Ambient Shadow Filter */}
-            <filter id="logoShadow" x="-15%" y="-15%" width="130%" height="130%">
-              <feDropShadow dx="0" dy="12" stdDeviation="8" floodColor="#000000" floodOpacity="0.6" />
-            </filter>
-            <filter id="woodShadow" x="-10%" y="-10%" width="120%" height="120%">
-              <feDropShadow dx="0" dy="6" stdDeviation="4" floodColor="#000000" floodOpacity="0.5" />
-            </filter>
           </defs>
-
-          {/* ======================================================== */}
-          {/* LAYER 1: Deep Ground / Backdrop Shadow */}
-          {/* ======================================================== */}
-          <ellipse cx="310" cy="188" rx="260" ry="12" fill="#000000" opacity="0.45" />
 
           {/* ======================================================== */}
           {/* LAYER 2: 5 Red Prehistoric Dinosaur Crest Spikes */}
           {/* ======================================================== */}
-          <g filter="url(#logoShadow)">
+          <g>
             {/* Center Spike (Tallest) */}
             <polygon
               points="310,2 334,58 286,58"
@@ -329,7 +321,7 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
           {/* LAYER 3: Tropical Jungle Foliage (Palms & Hibiscus) */}
           {/* ======================================================== */}
           {/* Left Palm Leaves */}
-          <g filter="url(#woodShadow)">
+          <g>
             <path
               d="M72 104C34 82 28 46 50 28C72 38 80 64 82 88C98 64 124 66 134 84C110 106 88 116 72 104Z"
               fill="url(#jungleLeafGrad)"
@@ -347,7 +339,7 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
           </g>
 
           {/* Right Palm Leaves */}
-          <g filter="url(#woodShadow)">
+          <g>
             <path
               d="M548 104C586 82 592 46 570 28C548 38 540 64 538 88C522 64 496 66 486 84C510 106 532 116 548 104Z"
               fill="url(#jungleLeafGrad)"
@@ -365,44 +357,44 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
           </g>
 
           {/* ======================================================== */}
-          {/* LAYER 4: 3D EXTRUDED LETTERING "PARTYSAUR" */}
+          {/* LAYER 4: 3D EXTRUDED LETTERING "SWIPOSAUR" */}
           {/* Multi-pass depth extrusion stack creating genuine 3D block letters */}
           {/* ======================================================== */}
           <g transform="translate(310, 96)">
             {/* 3D Black Outer Shadow & Silhouette */}
             <text
               x="0"
-              y="18"
+              y="16"
               textAnchor="middle"
-              fontFamily="'Lilita One', 'Fredoka', 'Bungee', cursive, sans-serif"
-              fontSize="78"
+              className="swiposaur-3d-text"
+              fontSize="68"
               fontWeight="900"
               fill="#180A04"
               stroke="#180A04"
-              strokeWidth="16"
+              strokeWidth="14"
               strokeLinejoin="round"
-              letterSpacing="3"
+              letterSpacing="2.5"
             >
-              PARTYSAUR
+              SWIPOSAUR
             </text>
 
             {/* 3D Extrusion Stack Layers (from deepest to nearest) */}
-            {[14, 12, 10, 8, 6, 4].map((offsetY, idx) => (
+            {[12, 10, 8, 6, 4].map((offsetY, idx) => (
               <text
                 key={offsetY}
                 x="0"
                 y={offsetY}
                 textAnchor="middle"
-                fontFamily="'Lilita One', 'Fredoka', 'Bungee', cursive, sans-serif"
-                fontSize="78"
+                className="swiposaur-3d-text"
+                fontSize="68"
                 fontWeight="900"
-                fill={idx < 2 ? '#451A03' : idx < 4 ? '#78350F' : '#92400E'}
+                fill={idx < 2 ? '#451A03' : idx < 3 ? '#78350F' : '#92400E'}
                 stroke={idx < 2 ? '#451A03' : '#78350F'}
-                strokeWidth={idx < 3 ? '12' : '8'}
+                strokeWidth={idx < 2 ? '10' : '6'}
                 strokeLinejoin="round"
-                letterSpacing="3"
+                letterSpacing="2.5"
               >
-                PARTYSAUR
+                SWIPOSAUR
               </text>
             ))}
 
@@ -411,13 +403,13 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
               x="0"
               y="2"
               textAnchor="middle"
-              fontFamily="'Lilita One', 'Fredoka', 'Bungee', cursive, sans-serif"
-              fontSize="78"
+              className="swiposaur-3d-text"
+              fontSize="68"
               fontWeight="900"
               fill="#B45309"
-              letterSpacing="3"
+              letterSpacing="2.5"
             >
-              PARTYSAUR
+              SWIPOSAUR
             </text>
 
             {/* Front Letter Face with Rich Tropical Gold Gradient */}
@@ -425,16 +417,16 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
               x="0"
               y="0"
               textAnchor="middle"
-              fontFamily="'Lilita One', 'Fredoka', 'Bungee', cursive, sans-serif"
-              fontSize="78"
+              className="swiposaur-3d-text"
+              fontSize="68"
               fontWeight="900"
               fill="url(#goldTopGrad)"
               stroke="#451A03"
-              strokeWidth="4"
-              letterSpacing="3"
+              strokeWidth="3.5"
+              letterSpacing="2.5"
               style={{ paintOrder: 'stroke fill' }}
             >
-              PARTYSAUR
+              SWIPOSAUR
             </text>
 
             {/* Top Glossy Bevel Accent */}
@@ -442,26 +434,23 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
               x="0"
               y="-1"
               textAnchor="middle"
-              fontFamily="'Lilita One', 'Fredoka', 'Bungee', cursive, sans-serif"
-              fontSize="78"
+              className="swiposaur-3d-text"
+              fontSize="68"
               fontWeight="900"
               fill="none"
               stroke="url(#goldBevelLight)"
-              strokeWidth="1.5"
-              letterSpacing="3"
+              strokeWidth="1.2"
+              letterSpacing="2.5"
               opacity="0.85"
             >
-              PARTYSAUR
+              SWIPOSAUR
             </text>
           </g>
 
           {/* ======================================================== */}
           {/* LAYER 5: Carved Tiki Wood Plank Banner for "DINO MAYHEM" */}
           {/* ======================================================== */}
-          <g transform="translate(135, 126)" filter="url(#woodShadow)">
-            {/* Deep Drop Shadow under plank */}
-            <rect x="6" y="8" width="350" height="48" rx="18" fill="#000000" opacity="0.6" />
-
+          <g transform="translate(135, 126)">
             {/* Carved Wooden Plank Body with Rings */}
             <rect
               x="0"
@@ -514,7 +503,7 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
               <line x1="18" y1="24" x2="18" y2="32" stroke="#7C2D12" strokeWidth="1.5" />
             </g>
 
-            {/* Subtitle Embossed Text: ★ DINO MAYHEM ★ */}
+            {/* Subtitle Embossed Text: ★ TAIL FRENZY ★ */}
             <text
               x="175"
               y="33"
@@ -528,7 +517,7 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
               letterSpacing="3"
               style={{ paintOrder: 'stroke fill' }}
             >
-              ★ DINO MAYHEM ★
+              ★ TAIL FRENZY ★
             </text>
             {/* Golden Star Accents */}
             <text
@@ -541,7 +530,7 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
               fill="#FFFDF0"
               letterSpacing="3"
             >
-              ★ DINO MAYHEM ★
+              ★ TAIL FRENZY ★
             </text>
           </g>
         </svg>
@@ -562,15 +551,21 @@ export const Partysaur3DLogo: React.FC<LogoProps> = ({
 /**
  * Standard exported aliases - all using pure 2D/3D code rendering without any <img> tags!
  */
-export const PartysaurVectorBanner = Partysaur3DLogo;
-export const GameLogoBanner = Partysaur3DLogo;
-export const GameLogoIcon = PartysaurVectorMark;
-export const PartysaurLogo = Partysaur3DLogo;
+export const SwiposaurVectorBanner = Swiposaur3DLogo;
+export const SwiposaurLogo = Swiposaur3DLogo;
+export const SwiposaurMark = SwiposaurVectorMark;
+
+export const PartysaurVectorBanner = Swiposaur3DLogo;
+export const GameLogoBanner = Swiposaur3DLogo;
+export const GameLogoIcon = SwiposaurVectorMark;
+export const PartysaurLogo = Swiposaur3DLogo;
+export const PartysaurVectorMark = SwiposaurVectorMark;
+export const Partysaur3DLogo = Swiposaur3DLogo;
 
 export const SlapDashPixelMark = GameLogoIcon;
 export const SlapDashMark = GameLogoIcon;
-export const SlapDashVectorMark = PartysaurVectorMark;
-export const SlapDashVectorBanner = Partysaur3DLogo;
-export const SlapDashLogo = PartysaurLogo;
+export const SlapDashVectorMark = SwiposaurVectorMark;
+export const SlapDashVectorBanner = Swiposaur3DLogo;
+export const SlapDashLogo = SwiposaurLogo;
 
-export default Partysaur3DLogo;
+export default Swiposaur3DLogo;

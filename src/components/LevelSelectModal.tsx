@@ -147,6 +147,9 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
                   <h4 className="font-['Lilita_One'] text-sm text-white line-clamp-1">
                     {def.title}
                   </h4>
+                  <span className="inline-block my-1 px-2 py-0.5 bg-black/40 border border-amber-500/30 rounded-md text-[9px] font-bold text-amber-300">
+                    ⚠️ {def.obstacleThemeName}
+                  </span>
                   <p className="text-[11px] text-[#FED7AA]/80 line-clamp-1">
                     {def.description}
                   </p>

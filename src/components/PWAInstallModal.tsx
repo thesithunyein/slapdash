@@ -84,7 +84,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({ isOpen, onClos
           <div className="flex items-center gap-3.5 p-3.5 bg-[#25180E] rounded-2xl border border-white/10">
             <img
               src="/apple-touch-icon.png"
-              alt="Partysaur"
+              alt="Swiposaur"
               className="w-16 h-16 rounded-2xl shadow-md border-2 border-[#F97316] object-cover"
               onError={(e) => {
                 // fallback if image not present
@@ -93,7 +93,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({ isOpen, onClos
             />
             <div className="flex-1">
               <h3 className="font-['Lilita_One'] text-base text-white">
-                PARTYSAUR: Dino Mayhem
+                SWIPOSAUR: Tail Frenzy
               </h3>
               <p className="text-xs text-[#FED7AA]/80">
                 Action-packed 3D dinosaur runner with zero lag
@@ -120,7 +120,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({ isOpen, onClos
           {isInstalled && (
             <div className="p-3 bg-[#10B981]/20 border-2 border-[#10B981] rounded-2xl flex items-center gap-2.5 text-[#A7F3D0] text-xs font-['Lilita_One']">
               <CheckCircle2 className="w-5 h-5 text-[#10B981]" />
-              <span>Partysaur is installed! Launch it from your home screen for fullscreen immersion.</span>
+              <span>Swiposaur is installed! Launch it from your home screen for fullscreen immersion.</span>
             </div>
           )}
 

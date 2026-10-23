@@ -1,7 +1,8 @@
 import React from 'react';
 import { GameStats } from '../game/types.ts';
 import { sounds } from '../game/SoundEngine.ts';
-import { RotateCcw, Home, Trophy, Award } from 'lucide-react';
+import { RotateCcw, Home, Award } from 'lucide-react';
+import { LeaderboardAdvancedIcon } from './GameIcons.tsx';
 
 interface GameOverModalProps {
   stats: GameStats;
@@ -12,7 +13,166 @@ interface GameOverModalProps {
   onRetryLeaderboard?: () => void;
 }
 
-import { DinoVectorIcon } from './GameIcons.tsx';
+/**
+ * Authentic 3D Extruded Vector 'GAME OVER' Header matching the Swiposaur Logo Font & 3D Depth
+ */
+export const GameOverTitle3D: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <svg
+    viewBox="0 0 420 110"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`w-full max-w-[310px] sm:max-w-[370px] h-auto overflow-visible select-none drop-shadow-[0_8px_20px_rgba(0,0,0,0.65)] ${className}`}
+    role="img"
+    aria-label="GAME OVER"
+  >
+    <defs>
+      <linearGradient id="goCrestRedGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#FF4336" />
+        <stop offset="50%" stopColor="#DC2626" />
+        <stop offset="100%" stopColor="#7F1D1D" />
+      </linearGradient>
+      <linearGradient id="goCrestHighlight" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#FFA39E" />
+        <stop offset="100%" stopColor="#EF4444" />
+      </linearGradient>
+
+      {/* Tropical Leaves */}
+      <linearGradient id="goJungleLeafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#4ADE80" />
+        <stop offset="45%" stopColor="#16A34A" />
+        <stop offset="100%" stopColor="#14532D" />
+      </linearGradient>
+
+      {/* Golden 3D Letter Fill Gradients matching Swiposaur Logo */}
+      <linearGradient id="goGoldTopGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#FFFFFF" />
+        <stop offset="15%" stopColor="#FEF08A" />
+        <stop offset="45%" stopColor="#FACC15" />
+        <stop offset="80%" stopColor="#F59E0B" />
+        <stop offset="100%" stopColor="#D97706" />
+      </linearGradient>
+      <linearGradient id="goGoldBevelLight" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#FFFFFF" />
+        <stop offset="40%" stopColor="#FEF08A" />
+        <stop offset="100%" stopColor="#F59E0B" />
+      </linearGradient>
+    </defs>
+
+    {/* Prehistoric Spikes on top (matching Swiposaur crest) */}
+    <g>
+      <polygon points="210,2 226,34 194,34" fill="url(#goCrestRedGrad)" stroke="#3F0708" strokeWidth="3.5" strokeLinejoin="round" />
+      <polygon points="210,5 215,31 205,31" fill="url(#goCrestHighlight)" opacity="0.6" />
+
+      <polygon points="168,10 186,38 150,38" fill="url(#goCrestRedGrad)" stroke="#3F0708" strokeWidth="3" strokeLinejoin="round" />
+      <polygon points="252,10 270,38 234,38" fill="url(#goCrestRedGrad)" stroke="#3F0708" strokeWidth="3" strokeLinejoin="round" />
+
+      <polygon points="128,20 144,42 112,42" fill="url(#goCrestRedGrad)" stroke="#3F0708" strokeWidth="2.5" strokeLinejoin="round" />
+      <polygon points="292,20 308,42 276,42" fill="url(#goCrestRedGrad)" stroke="#3F0708" strokeWidth="2.5" strokeLinejoin="round" />
+    </g>
+
+    {/* Small Tropical Leaves at edges */}
+    <g>
+      <path d="M48 64C26 50 20 28 34 16C50 22 54 40 56 56Z" fill="url(#goJungleLeafGrad)" stroke="#064E3B" strokeWidth="2.5" strokeLinejoin="round" />
+      <circle cx="58" cy="56" r="6" fill="#F43F5E" stroke="#881337" strokeWidth="1.5" />
+      <circle cx="58" cy="56" r="2" fill="#FBBF24" />
+
+      <path d="M372 64C394 50 400 28 386 16C370 22 366 40 364 56Z" fill="url(#goJungleLeafGrad)" stroke="#064E3B" strokeWidth="2.5" strokeLinejoin="round" />
+      <circle cx="362" cy="56" r="6" fill="#F43F5E" stroke="#881337" strokeWidth="1.5" />
+      <circle cx="362" cy="56" r="2" fill="#FBBF24" />
+    </g>
+
+    {/* Ground Glow Shadow */}
+    <ellipse cx="210" cy="85" rx="160" ry="12" fill="#000000" opacity="0.4" />
+
+    {/* 3D Extrusion Stack for "GAME OVER" */}
+    <g transform="translate(210, 72)">
+      {/* 3D Silhouette & Deep Ambient Shadow */}
+      <text
+        x="0"
+        y="16"
+        textAnchor="middle"
+        fontFamily="'Lilita One', 'Fredoka', cursive, sans-serif"
+        fontSize="56"
+        fontWeight="900"
+        fill="#180A04"
+        stroke="#180A04"
+        strokeWidth="14"
+        strokeLinejoin="round"
+        letterSpacing="2.5"
+      >
+        GAME OVER
+      </text>
+
+      {/* Multi-layered 3D Extrusion Depth Layers */}
+      {[12, 10, 8, 6, 4].map((offsetY, idx) => (
+        <text
+          key={offsetY}
+          x="0"
+          y={offsetY}
+          textAnchor="middle"
+          fontFamily="'Lilita One', 'Fredoka', cursive, sans-serif"
+          fontSize="56"
+          fontWeight="900"
+          fill={idx < 2 ? '#451A03' : idx < 3 ? '#78350F' : '#92400E'}
+          stroke={idx < 2 ? '#451A03' : '#78350F'}
+          strokeWidth={idx < 2 ? '10' : '6'}
+          strokeLinejoin="round"
+          letterSpacing="2.5"
+        >
+          GAME OVER
+        </text>
+      ))}
+
+      {/* Front Extrusion Lip */}
+      <text
+        x="0"
+        y="2"
+        textAnchor="middle"
+        fontFamily="'Lilita One', 'Fredoka', cursive, sans-serif"
+        fontSize="56"
+        fontWeight="900"
+        fill="#B45309"
+        letterSpacing="2.5"
+      >
+        GAME OVER
+      </text>
+
+      {/* Front Letter Face with Rich Tropical Gold Gradient */}
+      <text
+        x="0"
+        y="0"
+        textAnchor="middle"
+        fontFamily="'Lilita One', 'Fredoka', cursive, sans-serif"
+        fontSize="56"
+        fontWeight="900"
+        fill="url(#goGoldTopGrad)"
+        stroke="#451A03"
+        strokeWidth="3.5"
+        letterSpacing="2.5"
+        style={{ paintOrder: 'stroke fill' }}
+      >
+        GAME OVER
+      </text>
+
+      {/* Glossy Bevel Highlight */}
+      <text
+        x="0"
+        y="-1"
+        textAnchor="middle"
+        fontFamily="'Lilita One', 'Fredoka', cursive, sans-serif"
+        fontSize="56"
+        fontWeight="900"
+        fill="none"
+        stroke="url(#goGoldBevelLight)"
+        strokeWidth="1.2"
+        letterSpacing="2.5"
+        opacity="0.85"
+      >
+        GAME OVER
+      </text>
+    </g>
+  </svg>
+);
 
 export const GameOverModal: React.FC<GameOverModalProps> = ({
   stats,
@@ -21,23 +181,123 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 }) => {
   const isNewBest = stats.score > 0 && stats.score >= stats.highScore;
 
+  const getReasonBadge = () => {
+    if (stats.gameOverReason === 'BUSTED') {
+      return {
+        label: 'STAMPEDE BUSTED!',
+        sub: 'Caught by the Enraged Stampede Mob!',
+        bg: 'from-[#EF4444] to-[#B91C1C]',
+        border: 'border-[#FCA5A5]',
+      };
+    }
+    if (stats.gameOverReason === 'EXHAUSTED') {
+      return {
+        label: 'OUT OF ENERGY!',
+        sub: 'Tail-whip critters along the run to recharge stamina!',
+        bg: 'from-[#F59E0B] to-[#D97706]',
+        border: 'border-[#FDE68A]',
+      };
+    }
+    return {
+      label: 'RUN COMPLETED!',
+      sub: `Dashed ${Math.round(stats.distanceRun)} meters across the resort!`,
+      bg: 'from-[#10B981] to-[#047857]',
+      border: 'border-[#A7F3D0]',
+    };
+  };
+
+  const reasonInfo = getReasonBadge();
+
+  // Compute overall performance grade, rank, and metrics
+  const computeOverallRating = () => {
+    const score = stats.score;
+    const dist = stats.distanceRun;
+    const slaps = stats.slapsCount;
+    const combo = stats.maxCombo;
+
+    if (score >= 4500 || (dist >= 500 && combo >= 10)) {
+      return {
+        grade: 'S+',
+        title: 'APEX PRIMAL LEGEND',
+        stars: 5,
+        gradeColor: 'text-[#38BDF8]',
+        badgeBg: 'from-[#0284C7] to-[#0369A1]',
+        reflexGrade: 'GODLIKE',
+        slapGrade: `${slaps} Slaps`,
+        survivalGrade: `${Math.round(dist)}m Sprint`,
+        summary: 'Flawless reflexes and total street mastery!',
+      };
+    }
+    if (score >= 2600 || (dist >= 350 && combo >= 6)) {
+      return {
+        grade: 'S',
+        title: 'MASTER DINO DRIFTER',
+        stars: 5,
+        gradeColor: 'text-[#34D399]',
+        badgeBg: 'from-[#059669] to-[#047857]',
+        reflexGrade: 'EXCELLENT',
+        slapGrade: `${slaps} Slaps`,
+        survivalGrade: `${Math.round(dist)}m Sprint`,
+        summary: 'Incredible agility and ruthless tail attacks!',
+      };
+    }
+    if (score >= 1400 || dist >= 220) {
+      return {
+        grade: 'A',
+        title: 'SPEEDWAY CHAMPION',
+        stars: 4,
+        gradeColor: 'text-[#F97316]',
+        badgeBg: 'from-[#EA580C] to-[#C2410C]',
+        reflexGrade: 'GREAT',
+        slapGrade: `${slaps} Slaps`,
+        survivalGrade: `${Math.round(dist)}m Sprint`,
+        summary: 'Smooth obstacle evasion with sharp reflexes!',
+      };
+    }
+    if (score >= 600 || dist >= 120) {
+      return {
+        grade: 'B',
+        title: 'RISING ROARER',
+        stars: 3,
+        gradeColor: 'text-[#A855F7]',
+        badgeBg: 'from-[#7E22CE] to-[#6B21A8]',
+        reflexGrade: 'GOOD',
+        slapGrade: `${slaps} Slaps`,
+        survivalGrade: `${Math.round(dist)}m Sprint`,
+        summary: 'Good momentum! Vault higher and dodge closer for maximum score.',
+      };
+    }
+    return {
+      grade: 'C',
+      title: 'STAMPEDE ROOKIE',
+      stars: 2,
+      gradeColor: 'text-[#94A3B8]',
+      badgeBg: 'from-[#475569] to-[#334155]',
+      reflexGrade: 'ROOKIE',
+      slapGrade: `${slaps} Slaps`,
+      survivalGrade: `${Math.round(dist)}m Sprint`,
+      summary: 'Keep practicing lane switches and jump vaulting!',
+    };
+  };
+
+  const rating = computeOverallRating();
+
   return (
-    <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-50 pointer-events-auto p-4 select-none animate-fadeIn font-['Fredoka']">
+    <div className="absolute inset-0 bg-black/65 backdrop-blur-md flex flex-col items-center justify-center z-50 pointer-events-auto p-4 select-none animate-fadeIn font-['Fredoka']">
       <div className="w-full max-w-sm sm:max-w-md flex flex-col items-center">
-        {/* Title */}
-        <div className="text-center mb-3">
-          <div className="w-14 h-14 mx-auto mb-1 flex items-center justify-center bg-gradient-to-br from-[#EF4444] to-[#B91C1C] rounded-2xl border-2 border-white/40 shadow-lg animate-bounce">
-            <DinoVectorIcon className="w-9 h-9" bodyColor="#FFF" bellyColor="#FEF08A" />
+        {/* Title Header: 3D Vector 'GAME OVER' matching SWIPOSAUR Logo */}
+        <div className="text-center mb-1 flex flex-col items-center w-full">
+          <GameOverTitle3D className="mb-0.5" />
+
+          {/* Outcome Reason Pill Badge */}
+          <div
+            className={`mt-2 px-3.5 py-1 bg-gradient-to-r ${reasonInfo.bg} border-2 ${reasonInfo.border} rounded-full text-white font-['Lilita_One'] text-xs sm:text-sm tracking-wider uppercase shadow-[0_4px_12px_rgba(0,0,0,0.5)]`}
+          >
+            {reasonInfo.label}
           </div>
-          <h2 className="font-['Lilita_One'] text-3xl sm:text-4xl text-[#FEF08A] tracking-wider uppercase drop-shadow-[0_4px_16px_rgba(249,115,22,0.8)]">
-            {stats.gameOverReason === 'BUSTED' ? 'STAMPEDE BUSTED!' : 'RUN COMPLETED!'}
-          </h2>
-          <p className="text-xs sm:text-sm font-medium text-[#FED7AA] mt-1">
-            {stats.gameOverReason === 'EXHAUSTED'
-              ? 'Out of Dino Energy · Tail-whip critters to recharge!'
-              : stats.gameOverReason === 'BUSTED'
-              ? 'Caught by the Enraged Stampede Mob!'
-              : `Dashed ${Math.round(stats.distanceRun)} meters across the resort!`}
+
+          <p className="text-xs sm:text-sm font-medium text-[#FED7AA] mt-1.5 drop-shadow">
+            {reasonInfo.sub}
           </p>
         </div>
 
@@ -47,14 +307,46 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           <span className="text-[11px] text-[#FED7AA] uppercase font-bold tracking-widest mb-0.5">
             Final Dinosaur Score
           </span>
-          <span className="font-['Lilita_One'] text-4xl sm:text-5xl text-[#FEF08A] tracking-tight mb-2 drop-shadow">
+          <span className="font-['Lilita_One'] text-4xl sm:text-5xl text-white tracking-tight mb-2 drop-shadow">
             {stats.score.toLocaleString()}
           </span>
+
+          {/* Overall Performance Rating Badge */}
+          <div className="w-full bg-gradient-to-r from-black/60 via-black/40 to-black/60 border-2 border-white/20 rounded-2xl p-3 mb-3.5 flex items-center justify-between shadow-inner">
+            <div className="flex items-center gap-3">
+              {/* Big Gleaming Rank Stamp */}
+              <div
+                className={`w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${rating.badgeBg} border-2 border-white/40 flex items-center justify-center shadow-lg`}
+              >
+                <span className="font-['Lilita_One'] text-2xl sm:text-3xl text-white drop-shadow">
+                  {rating.grade}
+                </span>
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] text-white/70 uppercase font-bold tracking-wider">
+                  OVERALL RATING
+                </span>
+                <span className="font-['Lilita_One'] text-xs sm:text-sm text-white tracking-wide">
+                  {rating.title}
+                </span>
+                <div className="flex items-center gap-0.5 text-xs text-amber-400 mt-0.5">
+                  {'★'.repeat(rating.stars)}
+                  {'☆'.repeat(5 - rating.stars)}
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden sm:flex flex-col items-end text-right">
+              <span className="text-[9px] text-white/70 font-bold uppercase">Reflexes</span>
+              <span className="font-['Lilita_One'] text-xs text-[#38BDF8]">{rating.reflexGrade}</span>
+              <span className="text-[9px] text-white/50 text-right mt-0.5 max-w-[110px] truncate">{rating.summary}</span>
+            </div>
+          </div>
 
           {/* New Record Banner */}
           {isNewBest && (
             <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-[#FBBF24] to-[#F59E0B] text-black rounded-full text-xs font-['Lilita_One'] shadow-md animate-pulse mb-3 border border-white/40">
-              <Trophy className="w-4 h-4 fill-black text-black" />
+              <LeaderboardAdvancedIcon className="w-4 h-4 shrink-0 drop-shadow-xs" />
               <span>NEW PERSONAL BEST!</span>
             </div>
           )}
@@ -84,7 +376,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 
             <div>
               <div className="text-[10px] text-[#FED7AA] font-bold uppercase">Dino Coins</div>
-              <div className="text-lg text-[#FEF08A] font-['Lilita_One'] mt-0.5">
+              <div className="text-lg text-white font-['Lilita_One'] mt-0.5">
                 +{stats.coins}
               </div>
             </div>

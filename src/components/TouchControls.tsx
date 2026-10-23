@@ -434,7 +434,7 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
               <span>WHIP!</span>
             </span>
           </button>
-          <span className="text-[8px] font-['Fredoka'] font-bold text-[#FEF08A] uppercase tracking-wider">
+          <span className="text-[8px] font-['Fredoka'] font-bold text-white/90 uppercase tracking-wider">
             {isIntroActive ? 'Hit Target' : 'Tail-Whip'}
           </span>
         </div>

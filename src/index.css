@@ -1,23 +1,13 @@
 @import "tailwindcss";
 
-@layer base {
-  *, *::before, *::after {
-    font-family: 'Press Start 2P', monospace !important;
-  }
-
-  html, body {
-    font-family: 'Press Start 2P', monospace !important;
-    letter-spacing: 0.04em;
-    line-height: 1.6;
-    image-rendering: pixelated;
-  }
-
-  h1, h2, h3, h4, h5, h6, button, input, select, textarea, span, p, div, label, kbd {
-    font-family: 'Press Start 2P', monospace !important;
-  }
+/* Ensure no native browser scrollbar tracks appear anywhere */
+::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Retro Dino Pixel Gaming Utilities */
-.font-pixel, .font-game, .font-bubbly, .font-round, .font-ui, .font-sniglet {
-  font-family: 'Press Start 2P', monospace !important;
-}

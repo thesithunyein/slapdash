@@ -128,26 +128,30 @@ export const BiomeGraphicPreview: React.FC<BiomeGraphicPreviewProps> = ({ mapId,
     case 'market':
     default:
       return (
-        <div className={`w-full relative bg-gradient-to-b from-[#38BDF8] via-[#7DD3FC] to-[#FDE047] flex items-center justify-center overflow-hidden ${className}`}>
+        <div className={`w-full relative bg-gradient-to-b from-[#38BDF8] via-[#7DD3FC] to-[#FBBF24] flex items-center justify-center overflow-hidden ${className}`}>
           <svg className="w-full h-full" viewBox="0 0 320 140" fill="none" preserveAspectRatio="none">
-            {/* Bright Tropical Sun */}
-            <circle cx="160" cy="30" r="22" fill="#F59E0B" />
-            <circle cx="160" cy="30" r="30" fill="#FEF08A" opacity="0.4" />
-            {/* Azure Ocean */}
-            <rect x="0" y="70" width="320" height="30" fill="#0284C7" />
-            {/* Golden Sand */}
-            <rect x="0" y="95" width="320" height="45" fill="#FDE047" />
-            {/* Tiki Cabana */}
-            <polygon points="120,95 160,70 200,95" fill="#D97706" />
-            <rect x="135" y="95" width="50" height="30" fill="#F97316" />
-            {/* Palm Trees */}
-            <rect x="30" y="55" width="8" height="65" rx="3" fill="#B45309" />
-            <circle cx="34" cy="50" r="22" fill="#10B981" />
-            <rect x="275" y="55" width="8" height="65" rx="3" fill="#B45309" />
-            <circle cx="279" cy="50" r="22" fill="#10B981" />
+            {/* Radiant Golden Sun & Puffy Voxel Clouds */}
+            <circle cx="240" cy="30" r="18" fill="#F59E0B" />
+            <circle cx="240" cy="30" r="26" fill="#FEF08A" opacity="0.4" />
+            {/* Voxel Clouds */}
+            <rect x="40" y="22" width="45" height="14" rx="4" fill="#FFFFFF" opacity="0.9" />
+            <rect x="52" y="14" width="22" height="12" rx="3" fill="#FFFFFF" opacity="0.95" />
+            <rect x="130" y="32" width="38" height="12" rx="4" fill="#FFFFFF" opacity="0.85" />
+            {/* Full Mediterranean Townhouses */}
+            <rect x="25" y="55" width="60" height="70" fill="#B45309" />
+            <polygon points="20,55 55,40 90,55" fill="#7C2D12" />
+            {/* Striped Market Awning */}
+            <polygon points="20,85 85,85 80,95 25,95" fill="#EF4444" />
+            <rect x="95" y="45" width="70" height="80" fill="#0284C7" />
+            {/* Golden Dome */}
+            <ellipse cx="130" cy="45" rx="20" ry="14" fill="#FACC15" />
+            <rect x="175" y="60" width="55" height="65" fill="#991B1B" />
+            <polygon points="170,60 202,48 235,60" fill="#7C2D12" />
+            {/* Fresh Pavement Road */}
+            <rect x="0" y="125" width="320" height="15" fill="#181A24" />
           </svg>
           <div className="absolute bottom-2 left-3 bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded text-[11px] font-['Lilita_One'] text-[#FEF08A]">
-            SUNKEN PALMS BEACH RESORT
+            BAZAAR BOULEVARD & TOWNHOUSES
           </div>
         </div>
       );

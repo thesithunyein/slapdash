@@ -5,8 +5,8 @@ import {
   claimDailyMission,
 } from '../game/dailyMissions.ts';
 import { sounds } from '../game/SoundEngine.ts';
-import { Target, Coins, Check, X, Footprints, Flame, ShieldAlert, Award, Clock, Zap, Trophy } from 'lucide-react';
-import { DinoVectorIcon } from './GameIcons.tsx';
+import { Target, Coins, Check, X, Footprints, Flame, Clock, Zap, Gift } from 'lucide-react';
+import { DinoVectorIcon, Missions3DIcon } from './GameIcons.tsx';
 
 interface DailyMissionsModalProps {
   isOpen: boolean;
@@ -45,10 +45,12 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({
     }
   };
 
+  const completedCount = missions.filter((m) => m.completed).length;
+
   const renderIcon = (type: DailyMission['iconType']) => {
     switch (type) {
       case 'slap':
-        return <Zap className="w-5 h-5 text-[#FBBF24] fill-[#FBBF24]" />;
+        return <Zap className="w-5 h-5 text-[#FACC15] fill-[#FACC15]" />;
       case 'run':
         return <Footprints className="w-5 h-5 text-[#34D399]" />;
       case 'fever':
@@ -63,25 +65,25 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md select-none animate-fadeIn font-['Fredoka']">
-      <div className="relative w-full max-w-lg bg-gradient-to-b from-[#2A1E14] via-[#1E1712] to-[#140F0C] border-3 border-[#F97316] shadow-[0_12px_36px_rgba(0,0,0,0.8)] rounded-3xl flex flex-col max-h-[92vh] overflow-hidden text-[#FFF8E7]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md select-none animate-fadeIn font-['Fredoka']">
+      <div className="relative w-full max-w-lg bg-gradient-to-b from-[#241911] via-[#1A120D] to-[#120B07] border-3 border-[#F97316] shadow-[0_16px_48px_rgba(0,0,0,0.85)] rounded-3xl flex flex-col max-h-[90vh] overflow-hidden text-[#FFF8E7]">
         {/* Header */}
-        <div className="bg-[#19110B] border-b-2 border-[#F97316]/40 px-5 py-4 flex items-center justify-between">
+        <div className="bg-[#140D08] border-b-2 border-[#F97316]/40 px-5 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-gradient-to-br from-[#FFA726] to-[#E65100] border-2 border-[#FFE082] rounded-2xl flex items-center justify-center shadow-md">
-              <Target className="w-6 h-6 text-white stroke-[2.5]" />
+            <div className="w-11 h-11 bg-gradient-to-br from-[#FFA726] to-[#E65100] border-2 border-[#FFE082] rounded-2xl flex items-center justify-center shadow-md shrink-0">
+              <Missions3DIcon className="w-7 h-7" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-['Lilita_One'] text-xl text-[#FEF08A] tracking-wider uppercase">
-                  DINO MAYHEM MISSIONS
+                  DAILY MISSIONS
                 </h2>
-                <span className="text-[10px] font-['Lilita_One'] bg-[#38BDF8] text-black px-2 py-0.5 rounded-full border border-white/40">
-                  24H
+                <span className="text-xs font-['Lilita_One'] text-[#FED7AA]">
+                  ({completedCount}/{missions.length})
                 </span>
               </div>
               <span className="text-xs text-[#FED7AA] font-medium block">
-                Tail-whip targets & complete dinosaur feats for bounties
+                Complete daily runs to earn free coin bounties
               </span>
             </div>
           </div>
@@ -93,88 +95,86 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({
               onClose();
             }}
             aria-label="Close"
-            className="w-9 h-9 bg-[#EF4444] hover:bg-[#F87171] text-white border-2 border-white/40 shadow-md active:scale-95 rounded-2xl cursor-pointer flex items-center justify-center transition-all"
+            className="w-8 h-8 sm:w-9 sm:h-9 bg-[#EF4444] hover:bg-[#F87171] text-white border-2 border-white/40 shadow-md active:scale-95 rounded-2xl cursor-pointer flex items-center justify-center transition-all"
           >
-            <X className="w-5 h-5 stroke-[2.5]" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
           </button>
         </div>
 
-        {/* Mission List */}
-        <div className="p-4 sm:p-5 overflow-y-auto space-y-3">
+        {/* Clean Missions List */}
+        <div className="p-4 sm:p-5 overflow-y-auto space-y-2.5">
           {missions.map((m) => {
             const percent = Math.min(100, Math.round((m.current / m.target) * 100));
 
             return (
               <div
                 key={m.id}
-                className={`p-3.5 bg-[#1D140D] border-2 rounded-2xl shadow-sm flex flex-col gap-2.5 transition-all ${
+                className={`p-3.5 rounded-2xl border-2 flex items-center justify-between gap-3 transition-all ${
                   m.completed && !m.claimed
-                    ? 'border-[#10B981] ring-2 ring-[#10B981]/40 bg-gradient-to-b from-[#1C2C1D] to-[#141F15]'
-                    : 'border-white/10'
-                } ${m.claimed ? 'opacity-65' : ''}`}
+                    ? 'bg-gradient-to-r from-[#1E2B1E] to-[#142015] border-[#10B981] ring-1 ring-[#10B981]/50 shadow-sm'
+                    : m.claimed
+                    ? 'bg-[#150E09]/70 border-white/10 opacity-70'
+                    : 'bg-[#1D140D] border-white/15'
+                }`}
               >
-                <div className="flex items-start justify-between gap-2.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#2D1B0F] border-2 border-[#F97316]/50 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
-                      {renderIcon(m.iconType)}
-                    </div>
-                    <div>
-                      <h3 className="font-['Lilita_One'] text-sm sm:text-base text-white tracking-wide">
-                        {m.title}
-                      </h3>
-                      <p className="text-xs text-[#FED7AA]/80 leading-snug">
-                        {m.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Reward Coin Badge */}
-                  <div className="flex items-center gap-1 font-['Lilita_One'] text-xs font-bold text-[#FACC15] bg-[#2D1B0F] border-2 border-[#F59E0B]/60 px-2.5 py-1 rounded-xl shrink-0 shadow-xs">
-                    <Coins className="w-3.5 h-3.5 fill-[#FACC15]" />
-                    <span>+{m.rewardCoins}</span>
-                  </div>
+                {/* Left: Icon */}
+                <div className="w-10 h-10 bg-[#2D1B0F] border border-white/20 rounded-xl flex items-center justify-center shrink-0 shadow-inner">
+                  {renderIcon(m.iconType)}
                 </div>
 
-                {/* Progress bar */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px] text-[#FED7AA] font-medium">
-                    <span>Target Progress</span>
-                    <span className="font-['Lilita_One'] text-white">
-                      {m.current} / {m.target} ({percent}%)
+                {/* Center: Mission info & progress */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <h3 className="font-['Lilita_One'] text-sm sm:text-base text-white tracking-wide">
+                      {m.title}
+                    </h3>
+                    <div className="flex items-center gap-1 font-['Lilita_One'] text-xs text-[#FACC15] shrink-0">
+                      <Coins className="w-3.5 h-3.5 fill-[#FACC15]" />
+                      <span>+{m.rewardCoins}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] sm:text-xs text-[#FED7AA]/90 font-medium leading-snug mb-1.5">
+                    {m.description}
+                  </p>
+
+                  {/* Clean Progress Line */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-2.5 bg-black/60 rounded-full overflow-hidden border border-white/10 p-0.5">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          m.completed
+                            ? 'bg-gradient-to-r from-[#10B981] to-[#34D399]'
+                            : 'bg-gradient-to-r from-[#FFA726] to-[#FB8C00]'
+                        }`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                    <span className="font-['Lilita_One'] text-xs text-white shrink-0">
+                      {m.current}/{m.target}
                     </span>
                   </div>
-                  <div className="w-full h-3 bg-black/60 rounded-full overflow-hidden border border-white/15 p-0.5">
-                    <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        m.completed
-                          ? 'bg-gradient-to-r from-[#10B981] to-[#34D399]'
-                          : 'bg-gradient-to-r from-[#FFA726] to-[#FB8C00]'
-                      }`}
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
                 </div>
 
-                {/* Action button */}
-                <div className="pt-1 flex justify-end">
+                {/* Right: Action Button */}
+                <div className="shrink-0 pl-1">
                   {m.claimed ? (
-                    <div className="flex items-center gap-1 font-['Lilita_One'] text-xs text-[#10B981] bg-[#10B981]/15 px-3 py-1.5 rounded-xl border border-[#10B981]/50">
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      <span>BOUNTY CLAIMED</span>
+                    <div className="flex items-center gap-1 font-['Lilita_One'] text-[11px] text-[#10B981] bg-[#10B981]/15 px-2.5 py-1 rounded-xl border border-[#10B981]/40">
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>DONE</span>
                     </div>
                   ) : m.completed ? (
                     <button
                       type="button"
                       onClick={() => handleClaim(m.id)}
-                      className="px-4 py-2 bg-gradient-to-b from-[#10B981] to-[#047857] hover:from-[#34D399] hover:to-[#059669] text-white border-2 border-[#A7F3D0] shadow-md active:scale-95 rounded-xl font-['Lilita_One'] text-xs flex items-center gap-1.5 cursor-pointer transition-all animate-pulse"
+                      className="px-3.5 py-1.5 bg-gradient-to-b from-[#10B981] to-[#047857] hover:from-[#34D399] hover:to-[#059669] text-white border border-[#A7F3D0] shadow-sm active:scale-95 rounded-xl font-['Lilita_One'] text-xs flex items-center gap-1 cursor-pointer transition-all animate-pulse"
                     >
-                      <Trophy className="w-4 h-4 text-[#FEF08A] fill-[#FEF08A]" />
-                      <span>CLAIM +{m.rewardCoins} DINO COINS</span>
+                      <span>CLAIM</span>
                     </button>
                   ) : (
-                    <div className="text-[11px] font-['Lilita_One'] text-[#94A3B8] uppercase tracking-wider px-2 py-1">
-                      IN PROGRESS
-                    </div>
+                    <span className="text-[10px] font-['Lilita_One'] text-[#94A3B8] px-2 py-1 bg-black/30 rounded-lg">
+                      {percent}%
+                    </span>
                   )}
                 </div>
               </div>
@@ -183,17 +183,15 @@ export const DailyMissionsModal: React.FC<DailyMissionsModalProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className="bg-[#19110B] border-t-2 border-[#F97316]/40 px-5 py-3 flex items-center justify-between text-xs text-[#FED7AA] font-medium">
+        <div className="bg-[#140D08] border-t-2 border-[#F97316]/40 px-5 py-3 flex items-center justify-between text-xs text-[#FED7AA] font-medium shrink-0">
           <span className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-[#38BDF8]" />
-            Midnight UTC Reset
+            Resets Daily at Midnight UTC
           </span>
-          {resetCountdown ? (
+          {resetCountdown && (
             <span className="text-[#38BDF8] font-['Lilita_One'] text-xs tracking-wider">
-              Resets in {resetCountdown}
+              {resetCountdown} remaining
             </span>
-          ) : (
-            <span className="text-[#10B981] font-bold">Synced</span>
           )}
         </div>
       </div>

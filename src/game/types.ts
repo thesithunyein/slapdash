@@ -38,6 +38,8 @@ export interface Player {
   x: number;
   y: number;
   z: number;
+  prevX?: number;
+  prevY?: number;
   vx: number;
   vz: number;
   speed: number;
@@ -47,6 +49,7 @@ export interface Player {
   slapHand: 'left' | 'right';
   slapProgress: number;
   slipTimer: number;
+  invulnerableTimer?: number;
   feverTime: number;
   skin: CharacterSkin;
   runCycle: number;
@@ -89,26 +92,51 @@ export interface Chaser {
 }
 
 export type ObstacleType =
+  // Universal / Jump Ramps & Hazards
   | 'ramp'
   | 'terminal_ramp'
-  | 'crate'
-  | 'barrel'
-  | 'bug'
-  | 'spikes'
-  | 'cart'
-  | 'loop_boulder'
   | 'barrier'
   | 'shifting_block'
-  | 'firewall'
+  | 'spikes'
+  | 'barrel'
+  | 'loop_boulder'
+  | 'bug'
+  // Market Boulevard (Levels 1-4)
+  | 'crate'
+  | 'cart'
+  | 'cafe_table'
   | 'watermelon'
   | 'planter'
   | 'hydrant'
-  | 'cafe_table';
+  // Sunny Palm Bay (Levels 5-9)
+  | 'surf_rack'
+  | 'tiki_totem'
+  | 'coconut_crate'
+  | 'beach_lounger'
+  // Mirage Canyon (Levels 10-17)
+  | 'canyon_mesa'
+  | 'dino_skull'
+  | 'cactus_cluster'
+  | 'firewall'
+  // Cyber Shibuya (Levels 18-24)
+  | 'holo_barrier'
+  | 'cyber_server'
+  | 'drone_hazard'
+  // Frosty Alps (Levels 25-34)
+  | 'ice_spikes'
+  | 'snow_bale'
+  | 'timber_sled'
+  // Sacred Lantern Way (Levels 35+)
+  | 'torii_gate'
+  | 'stone_lantern'
+  | 'cherry_wagon'
+  | 'zen_barrier';
 
 export interface Obstacle {
   id: number;
   x: number;
   y: number;
+  z?: number;
   type: ObstacleType;
   width: number;
   height: number;
@@ -119,7 +147,17 @@ export interface Obstacle {
   shiftMinX: number;
   shiftMaxX: number;
   rotation?: number;
+  rotationY?: number;
+  rotationZ?: number;
   nearMissChecked?: boolean;
+  vaulted?: boolean;
+  clearanceHeight?: number;
+  hitVx?: number;
+  hitVy?: number;
+  hitVz?: number;
+  rotVx?: number;
+  rotVy?: number;
+  rotVz?: number;
 }
 
 export interface Coin {

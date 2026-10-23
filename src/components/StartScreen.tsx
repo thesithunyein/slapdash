@@ -2,17 +2,15 @@ import React from 'react';
 import { CharacterSkin } from '../game/types.ts';
 import { MapDefinition } from '../game/maps.ts';
 import { sounds } from '../game/SoundEngine.ts';
-import { PartysaurLogo } from './SlapDashLogo.tsx';
+import { SwiposaurLogo } from './SwiposaurLogo.tsx';
+import { LeaderboardAdvancedIcon } from './GameIcons.tsx';
 import {
-  Trophy,
   Volume2,
   VolumeX,
   Coins,
   Gift,
   HelpCircle,
 } from 'lucide-react';
-
-import { DinoVectorIcon } from './GameIcons.tsx';
 
 export interface PaceMode {
   id: 'CRUISE' | 'RUSH' | 'MAYHEM';
@@ -82,45 +80,24 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 }) => {
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-between p-2 sm:p-5 md:p-6 pointer-events-none select-none overflow-hidden pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))]">
-      {/* 3D Gameplay Scene Passthrough Layer: Menu background directly matches live 3D gameplay */}
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        {/* Cinematic arcade top and bottom vignettes to keep UI buttons ultra crisp while letting 3D track show through */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#111927]/85 via-black/15 to-[#111927]/60 pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.55)_100%)] pointer-events-none" />
-      </div>
+      {/* 3D Gameplay Scene Passthrough Layer: Completely transparent so the vivid 3D world, dynamic sky, clouds, and architecture shine through */}
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none" />
 
       {/* Top Header: Responsive Claymorphic Tropical Badges */}
       <header className="w-full flex items-center justify-between pointer-events-auto shrink-0 z-40 px-1 sm:px-4">
-        {/* Top-Left: Active Dinosaur Pill */}
-        <button
-          type="button"
-          onClick={() => {
-            sounds.playClick();
-            onOpenSkins();
-          }}
-          className="flex items-center gap-1.5 sm:gap-2 bg-[#FF7B1C]/90 hover:bg-[#FF8F3D] text-white border-2 border-[#FFE8A3] px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.35)] backdrop-blur-md active:scale-95 transition-all cursor-pointer"
-        >
-          <DinoVectorIcon bodyColor={selectedSkin.bodyColor} bellyColor={selectedSkin.shirtColor} className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
-          <div className="flex flex-col text-left">
-            <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-[#FEF08A] leading-tight">
-              Runner
-            </span>
-            <span className="text-[11px] sm:text-xs md:text-sm font-['Lilita_One'] text-white leading-tight truncate max-w-[90px] sm:max-w-none">
-              {selectedSkin.name}
-            </span>
-          </div>
-        </button>
+        {/* Left Spacer (Settings button removed as requested) */}
+        <div className="w-6 sm:w-10" />
 
         {/* Top-Right: Coins, High Score, Daily Gift, Sound */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
           {/* Best Score Trophy */}
-          <div className="bg-[#182335]/85 backdrop-blur-md border-2 border-[#FBBF24]/60 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
-            <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FDE047] fill-[#FACC15] shrink-0 drop-shadow" />
+          <div className="bg-[#182335]/85 backdrop-blur-md border-2 border-white/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
+            <LeaderboardAdvancedIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 drop-shadow" />
             <div className="flex flex-col">
               <span className="text-[7px] sm:text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider leading-none">
                 Best
               </span>
-              <span className="font-['Lilita_One'] text-[11px] sm:text-xs md:text-sm text-[#FEF08A] leading-none mt-0.5">
+              <span className="font-['Lilita_One'] text-[11px] sm:text-xs md:text-sm text-white leading-none mt-0.5">
                 {highScore > 0 ? highScore.toLocaleString() : '0'}
               </span>
             </div>
@@ -128,12 +105,12 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 
           {/* Dino Fossils & Coins */}
           <div className="bg-[#182335]/85 backdrop-blur-md border-2 border-[#F97316]/60 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
-            <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FACC15] fill-[#FACC15] shrink-0 drop-shadow" />
+            <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white fill-white/80 shrink-0 drop-shadow" />
             <div className="flex flex-col">
               <span className="text-[7px] sm:text-[8px] font-bold text-[#94A3B8] uppercase tracking-wider leading-none">
                 Coins
               </span>
-              <span className="font-['Lilita_One'] text-[11px] sm:text-xs md:text-sm text-[#FBBF24] leading-none mt-0.5">
+              <span className="font-['Lilita_One'] text-[11px] sm:text-xs md:text-sm text-white leading-none mt-0.5">
                 {totalCoins.toLocaleString()}
               </span>
             </div>
@@ -150,11 +127,11 @@ export const StartScreen: React.FC<StartScreenProps> = ({
               title="Daily Dino Egg Hatch"
               className={`h-8 sm:h-10 px-2 sm:px-3 bg-[#182335]/90 hover:bg-[#202E44] border-2 rounded-xl sm:rounded-2xl flex items-center gap-1.5 cursor-pointer transition-all shadow-[0_4px_12px_rgba(0,0,0,0.4)] active:scale-95 ${
                 isDailyAvailable
-                  ? 'border-[#FACC15] text-[#FACC15] ring-2 ring-[#FACC15]/50 animate-pulse'
+                  ? 'border-[#F97316] text-[#F97316] ring-2 ring-[#F97316]/50 animate-pulse'
                   : 'border-white/20 text-white'
               }`}
             >
-              <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-[#FACC15]" />
+              <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-[#F97316]" />
               <span className="text-xs font-['Lilita_One'] hidden md:inline text-white">REWARDS</span>
               {isDailyAvailable && (
                 <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping" />
@@ -194,11 +171,11 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 
       {/* Main Content Area: Left Stack Menu matching reference screenshot */}
       <div className="flex-1 flex items-center justify-start px-2 sm:px-8 md:px-16 pointer-events-none z-30 py-2 sm:py-4">
-        {/* Left-Aligned Menu Column (Optimized with responsive scaling so it never overflows on mobile) */}
-        <div className="flex flex-col items-start gap-1.5 sm:gap-2.5 pointer-events-auto max-w-[210px] sm:max-w-[260px] md:max-w-xs w-full max-h-[calc(100vh-5rem)] overflow-y-auto no-scrollbar">
-          {/* 3D PARTYSALUR DINO MAYHEM Logo above the buttons */}
-          <div className="w-full max-w-[190px] sm:max-w-[240px] md:max-w-[280px] -ml-1 -mb-1 sm:-mb-2 transition-transform duration-300 hover:scale-[1.02]">
-            <PartysaurLogo size="sm" showSubtitle={false} />
+        {/* Left-Aligned Menu Column (100% transparent, zero background boxes or scrollbars) */}
+        <div className="flex flex-col items-start gap-1.5 sm:gap-2 pointer-events-auto max-w-[280px] sm:max-w-[340px] md:max-w-[380px] w-full bg-transparent">
+          {/* 3D SWIPOSAUR TAIL FRENZY Logo - big, prominent, crisp and mobile friendly */}
+          <div className="w-[115%] sm:w-[125%] -ml-1.5 sm:-ml-2.5 mb-2 sm:mb-3.5 transition-transform duration-300 hover:scale-[1.03] drop-shadow-[0_8px_20px_rgba(0,0,0,0.5)]">
+            <SwiposaurLogo size="hero" showSubtitle={false} />
           </div>
 
           {/* Vertical Stacked Chunky Orange Buttons (Exact design from uploaded image) */}
@@ -234,36 +211,21 @@ export const StartScreen: React.FC<StartScreenProps> = ({
                 sounds.playClick();
                 onOpenSkins();
               }}
-              className="relative w-full py-2 sm:py-2.5 md:py-3 px-3.5 sm:px-5 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-xs sm:text-base md:text-lg tracking-wider uppercase rounded-xl sm:rounded-2xl md:rounded-3xl border-2 sm:border-3 border-[#FFE082] shadow-[0_3px_0px_#BF360C,0_6px_12px_rgba(0,0,0,0.4)] sm:shadow-[0_5px_0px_#BF360C,0_8px_16px_rgba(0,0,0,0.45)] active:translate-y-1 active:shadow-[0_1px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-center gap-1.5 sm:gap-2 text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
+              className="w-full py-2 sm:py-2.5 md:py-3 px-3.5 sm:px-5 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-xs sm:text-base md:text-lg tracking-wider uppercase rounded-xl sm:rounded-2xl md:rounded-3xl border-2 sm:border-3 border-[#FFE082] shadow-[0_3px_0px_#BF360C,0_6px_12px_rgba(0,0,0,0.4)] sm:shadow-[0_5px_0px_#BF360C,0_8px_16px_rgba(0,0,0,0.45)] active:translate-y-1 active:shadow-[0_1px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-center text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
             >
-              <span>DINO SKINS</span>
-              <span
-                className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full border border-white sm:border-2 shadow-xs"
-                style={{ backgroundColor: selectedSkin.bodyColor }}
-                title={selectedSkin.name}
-              />
+              DINO SKINS
             </button>
 
-            {/* 4. MAPS / BIOMES BUTTON */}
+            {/* 4. MAPS BUTTON */}
             <button
               type="button"
               onClick={() => {
                 sounds.playClick();
                 onOpenMapSelect();
               }}
-              className="w-full py-2 sm:py-2.5 md:py-3 px-3.5 sm:px-5 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-xs sm:text-base md:text-lg tracking-wider uppercase rounded-xl sm:rounded-2xl md:rounded-3xl border-2 sm:border-3 border-[#FFE082] shadow-[0_3px_0px_#BF360C,0_6px_12px_rgba(0,0,0,0.4)] sm:shadow-[0_5px_0px_#BF360C,0_8px_16px_rgba(0,0,0,0.45)] active:translate-y-1 active:shadow-[0_1px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-between text-left drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
+              className="w-full py-2 sm:py-2.5 md:py-3 px-3.5 sm:px-5 bg-gradient-to-b from-[#FFA726] via-[#FB8C00] to-[#E65100] hover:from-[#FFB74D] hover:to-[#EF6C00] text-white font-['Lilita_One'] text-xs sm:text-base md:text-lg tracking-wider uppercase rounded-xl sm:rounded-2xl md:rounded-3xl border-2 sm:border-3 border-[#FFE082] shadow-[0_3px_0px_#BF360C,0_6px_12px_rgba(0,0,0,0.4)] sm:shadow-[0_5px_0px_#BF360C,0_8px_16px_rgba(0,0,0,0.45)] active:translate-y-1 active:shadow-[0_1px_0px_#BF360C] cursor-pointer transition-all flex items-center justify-center text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
             >
-              <div className="flex items-center gap-1.5 truncate">
-                <span>MAPS:</span>
-                <span className="text-[#FEF08A] truncate">{currentMap ? currentMap.name : 'BIOMES'}</span>
-              </div>
-              {currentMap && (
-                <span
-                  className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 rounded-full border border-white sm:border-2 shadow-xs shrink-0 ml-1.5"
-                  style={{ backgroundColor: currentMap.badgeColor }}
-                  title={currentMap.name}
-                />
-              )}
+              MAPS
             </button>
 
             {/* 5. MISSIONS BUTTON */}

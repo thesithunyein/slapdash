@@ -3,7 +3,7 @@ import { X, Check, Lock, Compass } from 'lucide-react';
 import { GAME_MAPS, MapDefinition } from '../game/maps.ts';
 import { sounds } from '../game/SoundEngine.ts';
 import { BiomeGraphicPreview } from './BiomeGraphicPreview.tsx';
-import { PalmVectorIcon } from './GameIcons.tsx';
+import { PalmVectorIcon, IslandBiomes3DIcon } from './GameIcons.tsx';
 
 interface MapSelectModalProps {
   currentMapId: string;
@@ -24,8 +24,8 @@ export const MapSelectModal: React.FC<MapSelectModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-5 bg-[#19110B] border-b-2 border-[#F97316]/40">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-gradient-to-br from-[#38BDF8] to-[#0284C7] text-white flex items-center justify-center border-2 border-[#BAE6FD] rounded-2xl shadow-md">
-              <PalmVectorIcon className="w-6 h-6 text-white" />
+            <div className="w-11 h-11 bg-gradient-to-br from-[#38BDF8] to-[#0284C7] text-white flex items-center justify-center border-2 border-[#BAE6FD] rounded-2xl shadow-md shrink-0">
+              <IslandBiomes3DIcon className="w-7 h-7" />
             </div>
             <div>
               <span className="text-[10px] text-[#38BDF8] uppercase font-bold tracking-wider block">
@@ -102,10 +102,7 @@ export const MapSelectModal: React.FC<MapSelectModalProps> = ({
                     <h3 className="font-['Lilita_One'] text-base sm:text-lg text-white">
                       {map.name}
                     </h3>
-                    <span
-                      className="text-[10px] font-['Lilita_One'] px-2 py-0.5 rounded-full text-white"
-                      style={{ backgroundColor: map.badgeColor }}
-                    >
+                    <span className="text-[11px] font-['Lilita_One'] text-[#FED7AA]/75">
                       {map.theme}
                     </span>
                   </div>

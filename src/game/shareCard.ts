@@ -13,7 +13,7 @@ export interface ShareCardData {
   paceName: string;
 }
 
-export const SHARE_NAME_KEY = 'slapdash_name';
+export const SHARE_NAME_KEY = 'swiposaur_name';
 
 export function sanitizeName(raw: string): string {
   const clean = raw.trim().replace(/[^a-zA-Z0-9 _-]/g, '').slice(0, 16);
@@ -67,14 +67,14 @@ export function buildShareCard(data: ShareCardData): Promise<Blob> {
     // 4. Game Title in Retro Pixel Font
     ctx.fillStyle = '#000000';
     ctx.font = "900 68px 'Press Start 2P', monospace";
-    ctx.fillText('SLAPDASH', 546, 246);
+    ctx.fillText('SWIPOSAUR', 546, 246);
 
     ctx.fillStyle = '#F6C445';
-    ctx.fillText('SLAPDASH', 540, 240);
+    ctx.fillText('SWIPOSAUR', 540, 240);
 
     ctx.fillStyle = '#38BDF8';
     ctx.font = "700 18px 'Press Start 2P', monospace";
-    ctx.fillText('8-BIT BOULEVARD ARCADE RUNNER', 540, 300);
+    ctx.fillText('3D DINO ARCADE RUNNER', 540, 300);
 
     // 5. Giant Retro Pixel Score Box
     const boxX = 120;
@@ -169,7 +169,7 @@ export function buildShareCard(data: ShareCardData): Promise<Blob> {
       month: 'short',
       day: 'numeric',
     });
-    ctx.fillText(`VERIFIED ON ${dateStr} · SLAPDASH ARCADE`, 540, footerY + 45);
+    ctx.fillText(`VERIFIED ON ${dateStr} · SWIPOSAUR ARCADE`, 540, footerY + 45);
 
     // Export Canvas to Blob
     canvas.toBlob((blob) => {
