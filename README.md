@@ -41,6 +41,14 @@ soundtrack) is generated in code at runtime.
 
 ---
 
+## Screenshots
+
+<img src="docs/screenshots/01-start-screen.png" alt="Swiposaur title screen: a voxel city street with the PLAY, Dino Skins, Maps, Missions and Hall of Fame menu buttons" width="100%" />
+
+*The title screen: three lanes, sidewalk critters, and the run waiting behind the PLAY button.*
+
+---
+
 ## How it works
 
 ### The loop
