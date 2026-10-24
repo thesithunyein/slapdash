@@ -231,6 +231,9 @@ ever creates one record.
 - Ramps are optional boost pads in the open lane and only launch a grounded runner.
 - The open lane never moves more than one lane between segments, so the corridor is
   always reachable at the current speed.
+- Obstacle rows arrive about one second apart at every speed: the world-unit gap
+  widens with the runner (300 units at the start, ~520-620 at the speed cap), so
+  distance adds density without the warning window collapsing.
 - Global leaderboard of every player's highest score, one row per player. A new device
   gets a generated name such as `IRON_TALON77`; players can rename themselves in
   Settings at any time.

@@ -32,7 +32,7 @@ import { LevelDefinition, getLevel, calculateLevelStars, saveLevelResult, loadLe
 import { MapDefinition, GAME_MAPS, getMapById } from './maps.ts';
 import { Achievement, evaluateAchievements, loadAchievementStorage } from './achievements.ts';
 import { GameSettings, isTouchEnvironment, loadSettings } from './settings.ts';
-import { resolveCorridorSpawn, resolveObstacleSpawn } from './obstacleDensity.ts';
+import { getRowGapUnits, getSpawnLookaheadUnits, resolveCorridorSpawn, resolveObstacleSpawn } from './obstacleDensity.ts';
 import {
   JUMP_VELOCITY,
   RAMP_VELOCITY,
@@ -352,12 +352,15 @@ export class GameEngine {
     };
     const activeBoss = bossProfiles[this.currentMap.id] || bossProfiles.market;
 
-    // Pre-populate initial street with active obstacles, coins, and fruit targets
+    // Pre-populate initial street with active obstacles, coins, and fruit targets.
+    // Same time-based cadence as the live spawner, seeded with the shortest gap so
+    // the opening is identical on every run.
+    const openingGap = getRowGapUnits(this.player.baseSpeed, () => 0);
     this.lastFreeLaneIndex = null;
     this.nextSpawnY = 240;
     for (let i = 0; i < 4; i++) {
-      this.spawnMarketSegment(240 + i * 300);
-      this.nextSpawnY = 240 + (i + 1) * 300;
+      this.spawnMarketSegment(240 + i * openingGap);
+      this.nextSpawnY = 240 + (i + 1) * openingGap;
     }
 
     // Initialize Intro Cinematic Slap Sequence: target positioned squarely in the middle of the road!
@@ -1085,12 +1088,13 @@ export class GameEngine {
     // 11-12. Update Particles, Popups, and Shockwaves
     this.updateParticlesAndTexts(dtFactor);
 
-    // 13. Continuous Street Spawning with tight, rhythmic obstacle flow
-    if (p.y + 700 > this.nextSpawnY) {
+    // 13. Continuous street spawning at a constant cadence in time.
+    // The gap and the lookahead are converted through the current speed, so a
+    // faster run sees the same warning window and the same ~1 s between rows
+    // instead of the 0.56 s the old flat 300-360 unit gap produced at the cap.
+    if (p.y + getSpawnLookaheadUnits(p.speed) > this.nextSpawnY) {
       this.spawnMarketSegment(this.nextSpawnY);
-      // Wide enough gaps that a reaction plus a full two-lane change always fits,
-      // even at the late-game speed cap: 300 units is ~0.56s at 540 units/s.
-      this.nextSpawnY += 300 + Math.random() * 60;
+      this.nextSpawnY += getRowGapUnits(p.speed);
     }
 
     // 14. Cleanup off-screen entities behind player (lead chaser is always preserved)

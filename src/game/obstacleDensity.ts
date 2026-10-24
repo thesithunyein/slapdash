@@ -43,6 +43,50 @@ export interface ObstacleSpawnDecision {
   laneCount: number;
 }
 
+/**
+ * Spawn rhythm, measured in seconds instead of world units.
+ *
+ * The runner accelerates from 5.2 to 9.0 units per frame over a run. When rows
+ * were spaced by a flat 300-360 world units, that same gap covered 0.96 s at the
+ * start but only 0.56 s at the speed cap, so speed, density and a shrinking
+ * warning window all stacked on one dial. Converting through the current speed
+ * keeps the cadence and the warning window constant, and leaves density as the
+ * only distance-based difficulty knob.
+ */
+export const BASE_RUN_SPEED = 5.2; // units per 60 Hz frame (312 units/s)
+const UNITS_PER_SECOND_AT_BASE = BASE_RUN_SPEED * 60;
+
+/** Seconds between obstacle rows: the old 300-360 units at the starting speed. */
+export const ROW_INTERVAL_MIN_SECONDS = 300 / UNITS_PER_SECOND_AT_BASE; // 0.96 s
+export const ROW_INTERVAL_JITTER_SECONDS = 60 / UNITS_PER_SECOND_AT_BASE; // 0.19 s
+
+/** Seconds of road a row stays visible before it reaches the player (700 units at start). */
+export const SPAWN_LOOKAHEAD_SECONDS = 700 / UNITS_PER_SECOND_AT_BASE; // 2.24 s
+
+function unitsPerSecond(speed: number): number {
+  const safe = Number.isFinite(speed) && speed > 0 ? speed : BASE_RUN_SPEED;
+  return safe * 60;
+}
+
+/**
+ * World-unit gap before the next obstacle row.
+ *
+ * `speed` is the player's per-frame speed, `rand` is injected for deterministic
+ * tests. At the starting speed this reproduces the previous 300-360 units; at the
+ * 9.0 cap it widens to roughly 518-622 units so the row still arrives ~1 s later.
+ */
+export function getRowGapUnits(speed: number, rand: () => number = Math.random): number {
+  return unitsPerSecond(speed) * (ROW_INTERVAL_MIN_SECONDS + rand() * ROW_INTERVAL_JITTER_SECONDS);
+}
+
+/**
+ * How far ahead a row is spawned, in world units, so it stays visible for the
+ * same number of seconds no matter how fast the runner is going.
+ */
+export function getSpawnLookaheadUnits(speed: number): number {
+  return unitsPerSecond(speed) * SPAWN_LOOKAHEAD_SECONDS;
+}
+
 export function getObstacleRule(distance: number, touchInput: boolean): ObstacleRule | null {
   // Safe start: the first 40m never spawn obstacles in either mode.
   if (!Number.isFinite(distance) || distance <= 40) return null;

@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BASE_RUN_SPEED,
   DESKTOP_OBSTACLE_RULES,
+  ROW_INTERVAL_JITTER_SECONDS,
+  ROW_INTERVAL_MIN_SECONDS,
+  SPAWN_LOOKAHEAD_SECONDS,
   TOUCH_OBSTACLE_RULES,
   getObstacleRule,
+  getRowGapUnits,
+  getSpawnLookaheadUnits,
   resolveCorridorSpawn,
   resolveObstacleSpawn,
 } from '../src/game/obstacleDensity.ts';
@@ -161,6 +167,60 @@ describe('obstacle density distributions', () => {
       if (decision.laneCount === 2) doubleLaneSegments++;
     }
     expect(doubleLaneSegments / obstacleSegments).toBeCloseTo(0.1, 1);
+  });
+});
+
+describe('time-based spawn cadence', () => {
+  const CAP_SPEED = 9.0; // base 5.2 + the 3.8 speed cap
+
+  it('reproduces the old 300-360 unit gap at the starting speed', () => {
+    expect(getRowGapUnits(BASE_RUN_SPEED, () => 0)).toBeCloseTo(300, 5);
+    expect(getRowGapUnits(BASE_RUN_SPEED, () => 0.999999)).toBeCloseTo(360, 3);
+  });
+
+  it('widens the gap with speed so rows keep arriving about a second apart', () => {
+    for (const speed of [BASE_RUN_SPEED, 6.7, 8.0, CAP_SPEED]) {
+      const secondsPerRow = getRowGapUnits(speed, () => 0) / (speed * 60);
+      expect(secondsPerRow).toBeCloseTo(ROW_INTERVAL_MIN_SECONDS, 6);
+      expect(secondsPerRow).toBeGreaterThanOrEqual(0.96);
+      expect(secondsPerRow).toBeLessThanOrEqual(1.15);
+    }
+
+    // At the cap the gap is 1.45x wider in world units, not 1.45x shorter in time.
+    expect(getRowGapUnits(CAP_SPEED, () => 0)).toBeCloseTo(519.23, 2);
+    expect(getRowGapUnits(CAP_SPEED, () => 0.999999)).toBeCloseTo(623.08, 2);
+  });
+
+  it('keeps the warning window constant as the runner speeds up', () => {
+    expect(getSpawnLookaheadUnits(BASE_RUN_SPEED) / (BASE_RUN_SPEED * 60)).toBeCloseTo(
+      SPAWN_LOOKAHEAD_SECONDS,
+      6
+    );
+    expect(getSpawnLookaheadUnits(CAP_SPEED) / (CAP_SPEED * 60)).toBeCloseTo(
+      SPAWN_LOOKAHEAD_SECONDS,
+      6
+    );
+    // 700 units at 312 units/s becomes ~1,211.5 units at 540 units/s.
+    expect(getSpawnLookaheadUnits(BASE_RUN_SPEED)).toBeCloseTo(700, 5);
+    expect(getSpawnLookaheadUnits(CAP_SPEED)).toBeCloseTo(1211.54, 2);
+  });
+
+  it('falls back to the starting speed for nonsense input', () => {
+    for (const speed of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(getRowGapUnits(speed, () => 0)).toBeCloseTo(300, 5);
+      expect(getSpawnLookaheadUnits(speed)).toBeCloseTo(700, 5);
+    }
+  });
+
+  it('uses the jitter window exactly once per call', () => {
+    let calls = 0;
+    const rand = () => {
+      calls++;
+      return 0.5;
+    };
+    getRowGapUnits(BASE_RUN_SPEED, rand);
+    expect(calls).toBe(1);
+    expect(ROW_INTERVAL_JITTER_SECONDS).toBeCloseTo(0.19, 2);
   });
 });
 

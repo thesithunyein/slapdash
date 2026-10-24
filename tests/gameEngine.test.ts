@@ -227,6 +227,54 @@ describe('jump and ramp physics', () => {
   });
 });
 
+describe('spawn cadence at speed', () => {
+  it('uses a wider world gap at the speed cap so rows still arrive about a second apart', () => {
+    const engine = makeEngine();
+    engine.startGame();
+    engine.introState.active = false;
+
+    const p = engine.player;
+    p.y = 13_000; // past the 1,267 m speed cap
+    p.prevY = p.y;
+    p.z = 0;
+    p.vz = 0;
+    p.stamina = 100;
+
+    const before = (engine as unknown as { nextSpawnY: number }).nextSpawnY;
+    (engine as unknown as { update(dtFactor: number): void }).update(1);
+    const after = (engine as unknown as { nextSpawnY: number }).nextSpawnY;
+
+    expect(p.speed).toBeCloseTo(9, 5);
+
+    const gap = after - before;
+    expect(gap).toBeGreaterThan(500);
+    expect(gap).toBeLessThan(630);
+    expect(gap / (p.speed * 60)).toBeGreaterThanOrEqual(0.95);
+    expect(gap / (p.speed * 60)).toBeLessThanOrEqual(1.16);
+  });
+
+  it('spawns rows earlier at the cap, so the warning window does not collapse', () => {
+    const engine = makeEngine();
+    engine.startGame();
+    engine.introState.active = false;
+
+    const p = engine.player;
+    p.y = 13_000;
+    p.prevY = p.y;
+    p.z = 0;
+    p.vz = 0;
+    p.stamina = 100;
+
+    // 900 units ahead is inside today's 1,212-unit lookahead at the cap, but was
+    // outside the old fixed 700, which is exactly the regression this guards.
+    const state = engine as unknown as { nextSpawnY: number; update(dtFactor: number): void };
+    state.nextSpawnY = p.y + 900;
+    state.update(1);
+
+    expect(state.nextSpawnY).toBeGreaterThan(p.y + 900);
+  });
+});
+
 describe('personal best banner', () => {
   it('does not flag a score that only ties the previous best', () => {
     const engine = makeEngine();
