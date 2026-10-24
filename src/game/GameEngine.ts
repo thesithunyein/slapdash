@@ -32,7 +32,15 @@ import { LevelDefinition, getLevel, calculateLevelStars, saveLevelResult, loadLe
 import { MapDefinition, GAME_MAPS, getMapById } from './maps.ts';
 import { Achievement, evaluateAchievements, loadAchievementStorage } from './achievements.ts';
 import { GameSettings, isTouchEnvironment, loadSettings } from './settings.ts';
-import { resolveObstacleSpawn } from './obstacleDensity.ts';
+import { resolveCorridorSpawn, resolveObstacleSpawn } from './obstacleDensity.ts';
+import {
+  JUMP_VELOCITY,
+  RAMP_VELOCITY,
+  TERMINAL_RAMP_VELOCITY,
+  canClearObstacle,
+  canLaunchFromRamp,
+  isRampType,
+} from './obstacleRules.ts';
 
 export class GameEngine {
   private canvas: HTMLCanvasElement;
@@ -131,6 +139,8 @@ export class GameEngine {
   public paceMultiplier: number = 1.0;
   private hitFreezeMs: number = 0;
   private passiveRunTimer: number = 0;
+  /** Lane kept open by the previous obstacle segment, for a reachable corridor. */
+  private lastFreeLaneIndex: number | null = null;
   // Opening grace window (seconds) after the intro cinematic. While it runs the
   // street is clear, the mob is off-camera and a mistake cannot end the run.
   private graceTimer: number = 0;
@@ -343,10 +353,11 @@ export class GameEngine {
     const activeBoss = bossProfiles[this.currentMap.id] || bossProfiles.market;
 
     // Pre-populate initial street with active obstacles, coins, and fruit targets
-    this.nextSpawnY = 180;
+    this.lastFreeLaneIndex = null;
+    this.nextSpawnY = 240;
     for (let i = 0; i < 4; i++) {
-      this.spawnMarketSegment(180 + i * 200);
-      this.nextSpawnY = 180 + (i + 1) * 200;
+      this.spawnMarketSegment(240 + i * 300);
+      this.nextSpawnY = 240 + (i + 1) * 300;
     }
 
     // Initialize Intro Cinematic Slap Sequence: target positioned squarely in the middle of the road!
@@ -539,7 +550,7 @@ export class GameEngine {
     const p = this.player;
     if (!p) return;
     if (p.z <= 0.6 && p.vz <= 0.2) {
-      p.vz = 7.2;
+      p.vz = JUMP_VELOCITY;
       sounds.playJump();
       this.spawnParticleExplosion(p.x, p.y, '#E2E8F0', 6, 'cloud');
     }
@@ -634,19 +645,14 @@ export class GameEngine {
       }
     }
 
-    // 2. Health / Stamina Depletion
-    // "Each time the player lands a slap, their health/stamina is replenished.
-    // If they stop slapping, their health will gradually deplete, eventually leading to a game over."
-    if (!this.stats.feverActive) {
-      // Depletes ~3.3% per second at ~60fps
-      p.stamina = Math.max(0, p.stamina - 0.035 * dtFactor);
-      this.stats.stamina = Math.round(p.stamina);
-      if (p.stamina <= 0) {
-        this.triggerGameOver('EXHAUSTED');
-        return;
-      }
-    } else {
-      this.stats.stamina = Math.round(p.stamina);
+    // 2. Health / Stamina
+    // Stamina is the only life system: obstacles cost it, landed whips restore
+    // it. There is deliberately no passive drain, so a clean run never ends on
+    // a timer the player cannot see or influence.
+    this.stats.stamina = Math.round(p.stamina);
+    if (p.stamina <= 0) {
+      this.triggerGameOver('EXHAUSTED');
+      return;
     }
 
     // 2a. Stumble / Slip timer & Recovery Invulnerability
@@ -776,13 +782,11 @@ export class GameEngine {
       this.stats.chaserAlertTimer = 0;
     }
 
-    // 7. Update Chaser Pursuit
-    // Rules from prompt:
-    // - Chaser/mob is always following behind the player.
-    // - If player successfully navigates past obstacles, they are NOT visible on screen (staying back ~180 units).
-    // - Hitting a single obstacle causes them to appear on-screen (~40 units behind, breathing down your neck!).
-    // - If they are visible on-screen and player hits a second obstacle -> BUSTED (caught)!
-    // - If player runs cleanly for 6 seconds without hitting an obstacle, chaser falls back off-screen again.
+    // 7. Chaser pursuit (pressure, not a hidden life bar)
+    // - The mob always trails the player, off-camera at ~220 units.
+    // - A stumble brings them onto your heels (~72 units) for 6 seconds.
+    // - Six clean seconds shakes them off for +150 and they fall back out of view.
+    // - Stamina is the only way to lose; the mob is the visible consequence of a hit.
     if (this.chasers.length > 0) {
       const leadChaser = this.chasers[0];
 
@@ -904,11 +908,14 @@ export class GameEngine {
       const overlapX = pMaxX >= obsMinX && pMinX <= obsMaxX;
 
       if (overlapY && overlapX) {
-        // Launch Ramp Trigger (Standard ramp or Terminal launch pad)
-        if (obs.type === 'ramp' || obs.type === 'terminal_ramp') {
+        // Launch Ramp Trigger (Standard ramp or Terminal launch pad). Ramps only
+        // launch a grounded runner: jumping over one must not re-launch you in
+        // mid-air, which is what made the dino appear to float.
+        if (isRampType(obs.type)) {
+          if (!canLaunchFromRamp(p.z, p.vz)) continue;
           obs.hit = true;
           sounds.playJump();
-          p.vz = obs.type === 'terminal_ramp' ? 9.6 : 8.6; // Launch jump!
+          p.vz = obs.type === 'terminal_ramp' ? TERMINAL_RAMP_VELOCITY : RAMP_VELOCITY;
           this.renderer.triggerShake(4);
           this.boostJumpsCount++;
           this.stats.boostJumpsCount = this.boostJumpsCount;
@@ -919,21 +926,15 @@ export class GameEngine {
           continue;
         }
 
-        // Height clearance check: can this obstacle be jumped over?
-        // High obstacles (barrier, shifting block, cart, firewall, crates) CANNOT be jumped over!
-        const clearanceHeight =
-          obs.clearanceHeight ??
-          (obs.type === 'spikes'
-            ? 5.0
-            : obs.type === 'bug'
-            ? 4.5
-            : obs.type === 'barrel'
-            ? 6.5
-            : obs.type === 'loop_boulder'
-            ? 7.0
-            : 16.0); // Barriers, shifting blocks, carts, and firewalls are high hazards
+        // One height rule for every prop: low market clutter clears when the
+        // feet are above its top, solid props are taller than a jump and must be
+        // dodged. This replaces the old shared `16` that made every wall jumpable.
+        const clearsObstacle =
+          obs.clearanceHeight !== undefined
+            ? p.z >= obs.clearanceHeight
+            : canClearObstacle(obs.type, p.z);
 
-        if (p.z >= clearanceHeight) {
+        if (clearsObstacle) {
           // Clean vault over low obstacle!
           if (!obs.vaulted) {
             obs.vaulted = true;
@@ -967,10 +968,11 @@ export class GameEngine {
           this.addFloatingText(obs.x, obs.y, 'SMASH!', '#FDE047', 22);
           this.stats.score += 200 * this.stats.chaosMultiplier;
         } else {
-          // Obstacle tumble physics on stumble
-          obs.hitVx = p.x < obs.x ? 5 : -5;
-          obs.hitVy = 7;
-          obs.hitVz = 6;
+          // Obstacle knock-away on stumble: sideways and slightly up, not a pop
+          // that reads as the prop launching itself at the dino.
+          obs.hitVx = p.x < obs.x ? 6 : -6;
+          obs.hitVy = 5;
+          obs.hitVz = 2.5;
           obs.rotVx = 0.3;
           obs.rotVz = 0.25;
 
@@ -1086,7 +1088,9 @@ export class GameEngine {
     // 13. Continuous Street Spawning with tight, rhythmic obstacle flow
     if (p.y + 700 > this.nextSpawnY) {
       this.spawnMarketSegment(this.nextSpawnY);
-      this.nextSpawnY += 200 + Math.random() * 35;
+      // Wide enough gaps that a reaction plus a full two-lane change always fits,
+      // even at the late-game speed cap: 300 units is ~0.56s at 540 units/s.
+      this.nextSpawnY += 300 + Math.random() * 60;
     }
 
     // 14. Cleanup off-screen entities behind player (lead chaser is always preserved)
@@ -1460,52 +1464,35 @@ export class GameEngine {
       });
     }
 
-    // 2. Balanced Obstacle Spawning with Easy Start
-    // - Desktop keeps the shipped curve: 70% / 82% / 90% obstacle segments.
-    // - Touch uses a lighter curve (52% / 62% / 72%, mostly single-lane) because
-    //   swipe input needs more reaction room between obstacle decisions than a
-    //   keyboard does. See obstacleDensity.ts for the full table.
-    // Either way a segment occupies at most 2 of 3 lanes, so one route is open,
-    // and a hit only costs stamina (heavy hazards more than low ones).
-    const { isObstacleSegment, laneCount: obstacleLaneCount } = resolveObstacleSpawn(
-      dist,
-      this.touchInputMode
-    );
-    const chosenLanes: number[] = [];
-
-    if (isObstacleSegment) {
-      // Balanced lane weights so all 3 lanes feel exciting and open
-      const laneWeights = [1.2, 1.0, 1.2];
-      const availableLaneIndices = [0, 1, 2];
-
-      for (let o = 0; o < obstacleLaneCount; o++) {
-        let totalW = 0;
-        for (const idx of availableLaneIndices) totalW += laneWeights[idx];
-        let roll = Math.random() * totalW;
-        let selectedIdx = availableLaneIndices[0];
-        for (const idx of availableLaneIndices) {
-          roll -= laneWeights[idx];
-          if (roll <= 0) {
-            selectedIdx = idx;
-            break;
-          }
-        }
-        chosenLanes.push(lanes[selectedIdx]);
-        const removePos = availableLaneIndices.indexOf(selectedIdx);
-        if (removePos !== -1) availableLaneIndices.splice(removePos, 1);
-      }
+    // 2. Balanced obstacle spawning with a clear opening.
+    // - Desktop: 55% / 65% / 75% obstacle segments.
+    // - Touch: 42% / 52% / 62%, mostly single-lane, because a swipe needs more
+    //   reaction room between obstacle decisions than a keypress does.
+    // See obstacleDensity.ts for the full table.
+    // Either way a segment occupies at most 2 of 3 lanes. The open lane is
+    // chosen next to the previous segment's open lane, so the escape route is
+    // always reachable; a path that exists only on paper is not a path.
+    const spawnDecision = resolveObstacleSpawn(dist, this.touchInputMode);
+    const corridor = resolveCorridorSpawn(this.lastFreeLaneIndex, spawnDecision.laneCount);
+    if (spawnDecision.isObstacleSegment) {
+      this.lastFreeLaneIndex = corridor.freeLane;
     }
 
+    const chosenLanes: number[] = corridor.occupiedLanes.map((index) => lanes[index]);
     const occupiedLanes = new Set<number>(chosenLanes);
 
     // Dynamic Level & Biome Specific Obstacles
     const levelObstacleInfo = getObstaclesForLevel(this.currentLevel, this.currentMap.id);
-    const obstacleTypes: ObstacleType[] = levelObstacleInfo.obstacles;
+    // Ramps are boost pads, not blockers: they are spawned in the open lane
+    // below instead of being picked as an obstacle you are forced into.
+    const obstacleTypes: ObstacleType[] = levelObstacleInfo.obstacles.filter(
+      (type) => !isRampType(type)
+    );
 
     for (let i = 0; i < chosenLanes.length; i++) {
       const ox = chosenLanes[i];
-      const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-      const oy = targetY + 45 + i * 20;
+      const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)] ?? 'barrier';
+      const oy = targetY + 40 + i * 28;
 
       let width = 46;
       let height = 34;
@@ -1564,7 +1551,25 @@ export class GameEngine {
       });
     }
 
-    // 3. Gold Coins mark the open escape routes squarely!
+    // 3. A ramp in the open lane is an optional boost, never a forced launch.
+    if (spawnDecision.isObstacleSegment && obstacleTypes.length > 0 && Math.random() > 0.72) {
+      this.obstacles.push({
+        id: this.entityIdCounter++,
+        x: lanes[corridor.freeLane],
+        y: targetY + 130,
+        type: Math.random() > 0.55 ? 'terminal_ramp' : 'ramp',
+        width: 46,
+        height: 30,
+        hit: false,
+        rollSpeed: 0,
+        vx: 0,
+        isShifting: false,
+        shiftMinX: -100,
+        shiftMaxX: 100,
+      });
+    }
+
+    // 4. Gold Coins mark the open escape routes squarely!
     const openLanes = lanes.filter((l) => !occupiedLanes.has(l));
     if (openLanes.length > 0) {
       const numCoinLanes = Math.min(openLanes.length, Math.random() > 0.45 ? 2 : 1);
@@ -1584,7 +1589,7 @@ export class GameEngine {
       }
     }
 
-    // 4. Occasional Powerup (Soda / Soap)
+    // 5. Occasional Powerup (Soda / Soap)
     if (Math.random() > 0.82) {
       const puType = Math.random() > 0.5 ? 'soda' : 'soap';
       const puLane = openLanes.length > 0 ? openLanes[0] : lanes[1];

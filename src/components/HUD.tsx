@@ -25,7 +25,6 @@ export const HUD: React.FC<HUDProps> = ({
   const chaosPercent = Math.min(100, Math.max(0, stats.chaosLevel));
   const stamina = stats.stamina ?? 100;
   const isLowStamina = stamina <= 25;
-  const hitsLeft = Math.max(1, Math.ceil(stamina / 45));
 
   return (
     <>
@@ -49,7 +48,7 @@ export const HUD: React.FC<HUDProps> = ({
             </span>
             <AlertTriangle className="w-4 h-4 text-white fill-white shrink-0" />
             <span className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wider">
-              STAMPEDE ON YOUR TAIL! {hitsLeft} {hitsLeft === 1 ? 'HIT' : 'HITS'} TO BUSTED!
+              STAMPEDE ON YOUR TAIL! RUN CLEAN TO SHAKE THEM OFF!
             </span>
           </div>
         </div>

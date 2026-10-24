@@ -73,10 +73,10 @@ flowchart LR
    mega tail-whip and puts the camera behind the dino.
 2. **Safe start (6 s).** The road is clear, the mob is off-camera and a mistake cannot
    end the run: the first obstacle is never a blind death.
-3. **Three-hit stamina.** A stumble costs 35–45 stamina. From full health that is three
-   mistakes; each hit also spawns the chasing stampede for 6 seconds unless you run clean.
+3. **Three-hit stamina.** A stumble costs 35–45 stamina and each hit spawns the chasing
+   stampede for 6 seconds unless you run clean. Stamina only drops on hits, so a clean
+   run never dies to a hidden timer.
 4. **Whip to survive.** A landed whip refunds +35 stamina and charges the roar meter.
-   Miss everything and stamina drains until the run ends.
 5. **Roar multiplier.** The meter steps `1x → 2x → 4x → 8x → 16x`; every point of score
    rides on it, so chaining whips is worth more than surviving passively.
 
@@ -224,8 +224,13 @@ ever creates one record.
 - Persistence: high score, coins, skins, levels, achievements, daily rewards and missions
   are stored locally (`localStorage`).
 - Mobile-first layout: safe-area insets, 360×640 minimum viewport, large touch targets.
-- Touch input uses a gentler obstacle curve than desktop (52/62/72% coverage instead of
-  70/82/90%) so swipes get more reaction room; desktop difficulty is unchanged.
+- Touch input uses a gentler obstacle curve than desktop (42/52/62% coverage instead of
+  55/65/75%) so swipes get more reaction room.
+- Jumping clears low street clutter (crates, barrels, barriers, spikes). Carts, shifting
+  blocks, gates and other solid props must be dodged instead.
+- Ramps are optional boost pads in the open lane and only launch a grounded runner.
+- The open lane never moves more than one lane between segments, so the corridor is
+  always reachable at the current speed.
 - Global leaderboard of every player's highest score, one row per player. A new device
   gets a generated name such as `IRON_TALON77`; players can rename themselves in
   Settings at any time.

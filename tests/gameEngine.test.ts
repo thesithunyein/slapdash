@@ -20,6 +20,7 @@ vi.mock('../src/game/ThreeGameRenderer.ts', () => {
 });
 
 import { GameEngine } from '../src/game/GameEngine.ts';
+import { isRampType } from '../src/game/obstacleRules.ts';
 
 function setTouchEnvironment(touch: boolean): void {
   Object.defineProperty(window, 'matchMedia', {
@@ -57,8 +58,10 @@ function sampleSegments(engine: GameEngine, distance: number, trials: number) {
   for (let i = 0; i < trials; i++) {
     engine.obstacles = [];
     (engine as unknown as { spawnMarketSegment(y: number): void }).spawnMarketSegment(400 + i * 180);
-    if (engine.obstacles.length > 0) obstacleSegments++;
-    if (engine.obstacles.length === 2) doubleLaneSegments++;
+    // A boost ramp in the open lane is not a blocker, so it must not count here.
+    const blockers = engine.obstacles.filter((obstacle) => !isRampType(obstacle.type));
+    if (blockers.length > 0) obstacleSegments++;
+    if (blockers.length === 2) doubleLaneSegments++;
   }
   return { obstacleRate: obstacleSegments / trials, doubleLaneShare: doubleLaneSegments / Math.max(1, obstacleSegments) };
 }
@@ -90,29 +93,137 @@ describe('GameEngine touch mode', () => {
   it('uses the reduced touch obstacle rules', () => {
     setTouchEnvironment(true);
     const engine = makeEngine();
-    const opening = sampleSegments(engine, 40, 2500);
+    const opening = sampleSegments(engine, 50, 2500);
     const late = sampleSegments(engine, 400, 2500);
 
-    expect(opening.obstacleRate).toBeGreaterThan(0.46);
-    expect(opening.obstacleRate).toBeLessThan(0.58);
-    expect(late.obstacleRate).toBeGreaterThan(0.66);
-    expect(late.obstacleRate).toBeLessThan(0.78);
-    expect(late.doubleLaneShare).toBeGreaterThan(0.08);
-    expect(late.doubleLaneShare).toBeLessThan(0.22);
+    expect(opening.obstacleRate).toBeGreaterThan(0.36);
+    expect(opening.obstacleRate).toBeLessThan(0.48);
+    expect(late.obstacleRate).toBeGreaterThan(0.56);
+    expect(late.obstacleRate).toBeLessThan(0.68);
+    expect(late.doubleLaneShare).toBeGreaterThan(0.05);
+    expect(late.doubleLaneShare).toBeLessThan(0.15);
   });
 
   it('keeps the original desktop obstacle rules', () => {
     setTouchEnvironment(false);
     const engine = makeEngine();
-    const opening = sampleSegments(engine, 40, 2500);
+    const opening = sampleSegments(engine, 50, 2500);
     const late = sampleSegments(engine, 400, 2500);
 
-    expect(opening.obstacleRate).toBeGreaterThan(0.65);
-    expect(opening.obstacleRate).toBeLessThan(0.75);
-    expect(late.obstacleRate).toBeGreaterThan(0.86);
-    expect(late.obstacleRate).toBeLessThan(0.94);
-    // Desktop late game always allows two lanes more often than touch.
-    expect(late.doubleLaneShare).toBeGreaterThan(0.5);
+    expect(opening.obstacleRate).toBeGreaterThan(0.49);
+    expect(opening.obstacleRate).toBeLessThan(0.61);
+    expect(late.obstacleRate).toBeGreaterThan(0.69);
+    expect(late.obstacleRate).toBeLessThan(0.81);
+    // Desktop late game still uses two-lane blocks more often than touch.
+    expect(late.doubleLaneShare).toBeGreaterThan(0.22);
+    expect(late.doubleLaneShare).toBeLessThan(0.38);
+  });
+});
+
+describe('jump and ramp physics', () => {
+  function setup(): GameEngine {
+    const engine = makeEngine();
+    engine.startGame();
+    engine.introState.active = false;
+    engine.obstacles = [];
+    const p = engine.player;
+    p.x = 0;
+    p.prevX = 0;
+    p.y = 100;
+    p.prevY = 100;
+    p.z = 0;
+    p.vz = 0;
+    p.stamina = 100;
+    p.invulnerableTimer = 0;
+    engine.stats.distanceRun = 100;
+    return engine;
+  }
+
+  function touchObstacle(engine: GameEngine, type: 'crate' | 'cart' | 'ramp', z: number) {
+    const p = engine.player;
+    p.z = z;
+    p.vz = 0;
+    p.stamina = 100;
+    p.invulnerableTimer = 0;
+    engine.obstacles = [
+      {
+        id: 1,
+        x: 0,
+        y: p.y + 12,
+        type,
+        width: 46,
+        height: 34,
+        hit: false,
+        rollSpeed: 0,
+        vx: 0,
+        isShifting: false,
+        shiftMinX: -100,
+        shiftMaxX: 100,
+      },
+    ];
+    (engine as unknown as { update(dtFactor: number): void }).update(1);
+    return engine;
+  }
+
+  it('lets a jump clear a crate at the top of the arc', () => {
+    const engine = touchObstacle(setup(), 'crate', 34);
+    expect(engine.player.stamina).toBe(100);
+    expect(engine.obstacles[0].hit).toBe(false);
+  });
+
+  it('does not let the same jump clear a solid cart', () => {
+    const engine = touchObstacle(setup(), 'cart', 34);
+    expect(engine.player.stamina).toBe(55);
+    expect(engine.obstacles[0].hit).toBe(true);
+  });
+
+  it('does not re-launch from a ramp in mid-air', () => {
+    const engine = touchObstacle(setup(), 'ramp', 30);
+    expect(engine.player.vz).toBeLessThanOrEqual(0);
+    expect(engine.player.stamina).toBe(100);
+    expect(engine.obstacles[0].hit).toBe(false);
+  });
+
+  it('launches from a ramp when grounded', () => {
+    const engine = touchObstacle(setup(), 'ramp', 0);
+    expect(engine.player.vz).toBeGreaterThan(5);
+    expect(engine.obstacles[0].hit).toBe(true);
+  });
+
+  /**
+   * Jumping is only fair if the timing window is wider than a frame. This runs
+   * the real update loop at cruising speed and checks how many take-off
+   * distances actually carry the dino over a crate.
+   */
+  it('gives a real timing window to hop a crate at cruising speed', () => {
+    const clearLeads: number[] = [];
+    for (let lead = 40; lead <= 170; lead += 2) {
+      const engine = setup();
+      const p = engine.player;
+      const crate = {
+        id: 1,
+        x: 0,
+        y: p.y + lead,
+        type: 'crate' as const,
+        width: 46,
+        height: 34,
+        hit: false,
+        rollSpeed: 0,
+        vx: 0,
+        isShifting: false,
+        shiftMinX: -100,
+        shiftMaxX: 100,
+      };
+      engine.requestJump();
+      for (let frame = 0; frame < 60; frame++) {
+        engine.obstacles = [crate];
+        (engine as unknown as { update(dtFactor: number): void }).update(1);
+      }
+      if (p.stamina === 100 && !crate.hit) clearLeads.push(lead);
+    }
+
+    // A 2-unit step of take-off distance is roughly one frame of input timing.
+    expect(clearLeads.length).toBeGreaterThanOrEqual(6);
   });
 });
 
