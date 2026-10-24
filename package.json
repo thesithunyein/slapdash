@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "Swiposaur: Tail Frenzy - a 3D voxel dinosaur runner built with React, Three.js and TypeScript for the Digit7 Jam.",
+  "author": "Sithu Nyein",
   "type": "module",
   "license": "Apache-2.0",
   "scripts": {

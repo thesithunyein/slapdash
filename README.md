@@ -276,4 +276,12 @@ for the submitted code and can explain any part of it.
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+Copyright 2026 Sithu Nyein.
+
+The game — source code, code-generated art and synthesized audio — is licensed under
+[Apache-2.0](LICENSE). The full license text in `LICENSE` is the canonical statement, and
+`package.json` declares the same SPDX identifier (`Apache-2.0`).
+
+Bundled dependencies keep their own licenses: React, React DOM, Three.js, Vite,
+Tailwind CSS and Express are MIT, lucide-react is ISC, TypeScript is Apache-2.0, and the
+Google Fonts families are SIL OFL 1.1.

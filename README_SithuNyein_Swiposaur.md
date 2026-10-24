@@ -135,6 +135,8 @@ flowchart TD
 
 ## 11. Asset credit summary
 
+- Copyright: © 2026 Sithu Nyein. The game is licensed **Apache-2.0**; the full text is in
+  `LICENSE`, and `package.json` declares the same identifier.
 - All art, 3D models, textures, logo and icons: original, generated in code (Three.js
   primitives + inline SVG), Apache-2.0.
 - All music and SFX: original, synthesized at runtime with the Web Audio API. No audio files.
