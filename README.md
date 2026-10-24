@@ -220,7 +220,7 @@ one record.
 - Touch input uses a gentler obstacle curve than desktop (52/62/72% coverage instead of
   70/82/90%) so swipes get more reaction room; desktop difficulty is unchanged.
 - Local Hall of Fame that works with no server, labelled "Saved on this device" with a
-  local rank. It stores the last five personal runs, one row per unique run id.
+  local rank. It stores one record only: this device's highest score.
 
 ---
 

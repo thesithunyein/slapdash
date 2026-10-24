@@ -12,7 +12,8 @@ export const MAX_LEADERBOARD_SCORE = 5_000_000;
 export const MAX_LEADERBOARD_COMBO = 250;
 export const MAX_PLAYER_NAME_LENGTH = 16;
 export const MAX_BOARD_ENTRIES = 20;
-export const MAX_LOCAL_RUNS = 5;
+/** The on-device board keeps one record: this player's highest score. */
+export const MAX_LOCAL_RUNS = 1;
 export const DEFAULT_PLAYER_NAME = 'YOU';
 
 /**

@@ -28,7 +28,7 @@ describe('local Hall of Fame', () => {
     expect(loadLocalBoard()).toEqual([]);
   });
 
-  it('saves one row per run', () => {
+  it('saves a best record for the first run', () => {
     const result = saveLocalRun(run('run-aaaaaaaa', 500));
     expect(result.entries).toHaveLength(1);
     expect(result.rank).toBe(1);
@@ -51,13 +51,27 @@ describe('local Hall of Fame', () => {
     expect(forgedRetry.entries[0].score).toBe(800);
   });
 
-  it(`keeps the best ${MAX_LOCAL_RUNS} runs sorted by score`, () => {
+  it(`keeps exactly ${MAX_LOCAL_RUNS} highest run, not a history`, () => {
     for (let i = 0; i < 7; i++) {
       saveLocalRun(run(`run-history-${i}`, (i + 1) * 100, i));
     }
     const board = loadLocalBoard();
     expect(board).toHaveLength(MAX_LOCAL_RUNS);
-    expect(board.map((entry) => entry.score)).toEqual([700, 600, 500, 400, 300]);
+    expect(board.map((entry) => entry.score)).toEqual([700]);
+  });
+
+  it('keeps the best score when a later run is lower', () => {
+    expect(saveLocalRun(run('run-high-01', 900)).rank).toBe(1);
+    const lower = saveLocalRun(run('run-low-0001', 400));
+
+    expect(lower.rank).toBe(0);
+    expect(lower.entries).toHaveLength(1);
+    expect(lower.entries[0].score).toBe(900);
+
+    const higher = saveLocalRun(run('run-higher-1', 950));
+    expect(higher.rank).toBe(1);
+    expect(higher.entries).toHaveLength(1);
+    expect(higher.entries[0].score).toBe(950);
   });
 
   it('drops seeded legacy rows and keeps only real player runs', () => {
@@ -75,12 +89,21 @@ describe('local Hall of Fame', () => {
           skinId: 'rex_red',
           isPlayer: true,
         },
+        {
+          id: 'run-legacy02',
+          name: 'YOU',
+          score: 1500,
+          maxCombo: 9,
+          date: 'Yesterday',
+          skinId: 'rex_red',
+          isPlayer: true,
+        },
       ])
     );
 
     const board = loadLocalBoard();
     expect(board).toHaveLength(1);
-    expect(board[0]).toMatchObject({ name: 'YOU', score: 900 });
+    expect(board[0]).toMatchObject({ name: 'YOU', score: 1500 });
     // Nothing is written until the next save, so the legacy key stays readable.
     expect(localStorage.getItem(LOCAL_BOARD_KEY)).toBeNull();
   });
