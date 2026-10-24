@@ -5,8 +5,8 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameEngine } from './game/GameEngine.ts';
-import { GameState, GameStats, CharacterSkin } from './game/types.ts';
-import { CHARACTER_SKINS, DEFAULT_LEADERBOARD } from './game/constants.ts';
+import { GameState, GameStats, CharacterSkin, LeaderboardEntry } from './game/types.ts';
+import { CHARACTER_SKINS } from './game/constants.ts';
 import { sounds } from './game/SoundEngine.ts';
 import { HUD } from './components/HUD.tsx';
 import { TouchControls } from './components/TouchControls.tsx';
@@ -29,14 +29,30 @@ import { GAME_MAPS, MapDefinition, getMapById } from './game/maps.ts';
 import { Achievement, loadAchievementStorage, ACHIEVEMENTS_LIST } from './game/achievements.ts';
 import { loadSettings, saveSettings, GameSettings } from './game/settings.ts';
 import { trackGameEvent } from './game/analytics.ts';
+import type { ValidRun } from './game/leaderboardCore.ts';
+import {
+  clearLocalLeaderboard,
+  createRunId,
+  fetchOnlineBoard,
+  isLeaderboardApiConfigured,
+  loadLastSubmittedRunId,
+  loadLocalBoard,
+  loadPlayerName,
+  markLocalBoardEntry,
+  rememberSubmittedRunId,
+  saveLocalRun,
+  submitOnlineRun,
+  type LeaderboardMode,
+} from './game/leaderboard.ts';
 import { Play, Settings as SettingsIcon } from 'lucide-react';
 
 /**
- * Online leaderboard is opt-in. When VITE_LEADERBOARD_API is not "true" the game
- * keeps a fully local Hall of Fame, so static hosting (Digit7) has zero failing
- * requests and the game works offline.
+ * Leaderboard modes:
+ * - local: on-device Hall of Fame, always available, labelled as such.
+ * - online: only when the build opts in AND /api/leaderboard reports durable
+ *   storage. A configured-but-broken endpoint degrades to local, never to a
+ *   fake "live" global board.
  */
-const LEADERBOARD_API_ENABLED = import.meta.env.VITE_LEADERBOARD_API === 'true';
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -59,13 +75,6 @@ export default function App() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState<boolean>(false);
   const [showGuide, setShowGuide] = useState<boolean>(false);
   const [hurtFlash, setHurtFlash] = useState<boolean>(false);
-  const [tournamentInfo, setTournamentInfo] = useState<{
-    season: string;
-    endsInHours: number;
-    topReward: string;
-    activeParticipants: number;
-  } | undefined>(undefined);
-
   // Daily Rewards & Missions
   const [isDailyRewardsOpen, setIsDailyRewardsOpen] = useState<boolean>(false);
   const [isDailyMissionsOpen, setIsDailyMissionsOpen] = useState<boolean>(false);
@@ -101,14 +110,25 @@ export default function App() {
     return ['rex_red', 'spino_blue'];
   });
 
-  // Persistent Tournament Leaderboard
-  const [leaderboardEntries, setLeaderboardEntries] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem('slap_run_leaderboard');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return DEFAULT_LEADERBOARD;
-  });
+  // On-device Hall of Fame plus the optional online board. Real runs only: no
+  // seeded demo competitors and no fake participant totals.
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>(() => loadLocalBoard());
+  const [leaderboardMode, setLeaderboardMode] = useState<LeaderboardMode>('local');
+
+  // Refs keep the Run callbacks stable so the GameEngine is never rebuilt when
+  // leaderboard rows or score-submission callbacks change.
+  const leaderboardModeRef = useRef<LeaderboardMode>('local');
+  const selectedSkinRef = useRef<CharacterSkin>(selectedSkin);
+  const currentRunIdRef = useRef<string | null>(null);
+  const lastRunRef = useRef<ValidRun | null>(null);
+
+  useEffect(() => {
+    leaderboardModeRef.current = leaderboardMode;
+  }, [leaderboardMode]);
+
+  useEffect(() => {
+    selectedSkinRef.current = selectedSkin;
+  }, [selectedSkin]);
 
   const [stats, setStats] = useState<GameStats>(() => {
     let savedHigh = 0;
@@ -161,109 +181,122 @@ export default function App() {
     }
   });
 
-  // Optional online leaderboard. Disabled by default so the game also runs on
-  // plain static hosting (Digit7 environment) without failing network calls.
+  // Probe the optional endpoint once. Only a durable, healthy response turns the
+  // board into an online board; anything else stays a local Hall of Fame.
   useEffect(() => {
-    if (!LEADERBOARD_API_ENABLED) return;
-    fetch('/api/leaderboard')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          if (Array.isArray(data.entries) && data.entries.length > 0) {
-            setLeaderboardEntries(data.entries);
-          }
-          if (data.tournament) {
-            setTournamentInfo(data.tournament);
-          }
-        }
-      })
-      .catch(() => {});
+    if (!isLeaderboardApiConfigured()) return;
+    let cancelled = false;
+    fetchOnlineBoard().then((result) => {
+      if (cancelled || !result.online) return;
+      leaderboardModeRef.current = 'online';
+      setLeaderboardMode('online');
+      setLeaderboardEntries(markLocalBoardEntry(result.entries, loadLastSubmittedRunId()));
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const submitScoreToLeaderboard = useCallback(
-    (scoreToSubmit: number, comboToSubmit: number) => {
-      let savedName = 'YOU (CHAMPION)';
-      try {
-        const stored = localStorage.getItem('slap_run_share_name');
-        if (stored) savedName = stored;
-      } catch {}
+  /**
+   * Saves the run locally first, then — only in online mode — submits it.
+   * Stable by design: it reads refs instead of state, so leaderboard updates
+   * never change this function's identity and never rebuild the engine.
+   */
+  const submitScoreToLeaderboard = useCallback((run: ValidRun) => {
+    lastRunRef.current = run;
+    const mode = leaderboardModeRef.current;
+    const local = saveLocalRun(run);
 
-      // Local board first: this is the source of truth on static hosting and
-      // keeps the Hall of Fame and rank badge working with no server at all.
-      const newEntry = {
-        id: String(Date.now()),
-        name: savedName,
-        score: scoreToSubmit,
-        maxCombo: comboToSubmit,
-        date: 'Just Now',
-        skinId: selectedSkin.id,
-        isPlayer: true,
-      };
-      const updated = [
-        ...leaderboardEntries.filter((e) => !e.isPlayer || e.score >= scoreToSubmit),
-        newEntry,
-      ]
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 15);
-      try {
-        localStorage.setItem('slap_run_leaderboard', JSON.stringify(updated));
-      } catch {}
-
-      const localRank = updated.findIndex((e) => e.id === newEntry.id) + 1;
-      setLeaderboardEntries(updated);
+    if (mode === 'local') {
+      setLeaderboardEntries(local.entries);
       setStats((curr) => ({
         ...curr,
-        globalRank: localRank > 0 ? localRank : undefined,
-        globalRankConfirmed: localRank > 0,
+        leaderboardMode: 'local',
+        leaderboardStatus: 'local',
+        localRank: local.rank > 0 ? local.rank : undefined,
+        globalRank: undefined,
+        globalRankConfirmed: false,
+        globalRankPending: false,
+        nextPlayerAbove: null,
+        leaderboardError: false,
+      }));
+      return;
+    }
+
+    setStats((curr) => ({
+      ...curr,
+      leaderboardMode: 'online',
+      leaderboardStatus: 'pending',
+      localRank: local.rank > 0 ? local.rank : undefined,
+      globalRank: undefined,
+      globalRankConfirmed: false,
+      globalRankPending: true,
+      nextPlayerAbove: null,
+      leaderboardError: false,
+    }));
+
+    void submitOnlineRun(run).then((result) => {
+      const stillCurrentRun = currentRunIdRef.current === run.runId;
+      if (!result.ok) {
+        if (!stillCurrentRun) return;
+        setStats((curr) => ({
+          ...curr,
+          leaderboardStatus: 'failed',
+          globalRank: undefined,
+          globalRankConfirmed: false,
+          globalRankPending: false,
+          leaderboardError: true,
+        }));
+        return;
+      }
+
+      // A late response for a run the player already restarted must not update
+      // the current card or overwrite which row is marked as YOU.
+      if (!stillCurrentRun) return;
+      rememberSubmittedRunId(run.runId);
+      setLeaderboardEntries(markLocalBoardEntry(result.entries, run.runId));
+      setStats((curr) => ({
+        ...curr,
+        leaderboardStatus: 'submitted',
+        globalRank: result.rank,
+        globalRankConfirmed: true,
         globalRankPending: false,
         leaderboardError: false,
       }));
+    });
+  }, []);
 
-      if (!LEADERBOARD_API_ENABLED) return;
-
-      fetch('/api/leaderboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: savedName,
-          score: scoreToSubmit,
-          maxCombo: comboToSubmit,
-          skinId: selectedSkin.id,
-        }),
-      })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data && data.rank) {
-            setStats((curr) => ({
-              ...curr,
-              globalRank: data.rank,
-              globalRankConfirmed: true,
-              globalRankPending: false,
-              nextPlayerAbove: data.nextPlayerAbove,
-            }));
-            if (Array.isArray(data.entries)) {
-              setLeaderboardEntries(data.entries);
-            }
-          }
-        })
-        .catch(() => {
-          // Keep the local board; the game never depends on the network.
-        });
-    },
-    [leaderboardEntries, selectedSkin.id]
-  );
-
-  // Handle stats updates from GameEngine
+  // Handle stats updates from GameEngine. Stable: no leaderboard state in its
+  // closure, so React never tears the engine down mid-session.
   const handleStatsUpdate = useCallback(
     (newStats: GameStats, newState: GameState) => {
-      setStats((curr) => ({
-        ...newStats,
-        globalRank: curr.globalRank,
-        globalRankPending: curr.globalRankPending,
-        globalRankConfirmed: curr.globalRankConfirmed,
-        nextPlayerAbove: curr.nextPlayerAbove,
-        leaderboardError: curr.leaderboardError,
-      }));
+      setStats((curr) => {
+        if (newState === 'GAMEOVER') {
+          // A finished run starts with no rank of any kind until its submission resolves.
+          return {
+            ...newStats,
+            leaderboardMode: curr.leaderboardMode,
+            leaderboardStatus: undefined,
+            localRank: undefined,
+            globalRank: undefined,
+            globalRankConfirmed: false,
+            globalRankPending: false,
+            nextPlayerAbove: null,
+            leaderboardError: false,
+          };
+        }
+        return {
+          ...newStats,
+          leaderboardMode: curr.leaderboardMode,
+          leaderboardStatus: curr.leaderboardStatus,
+          localRank: curr.localRank,
+          globalRank: curr.globalRank,
+          globalRankPending: curr.globalRankPending,
+          globalRankConfirmed: curr.globalRankConfirmed,
+          nextPlayerAbove: curr.nextPlayerAbove,
+          leaderboardError: curr.leaderboardError,
+        };
+      });
       setGameState(newState);
 
       // If transitioned to GAMEOVER
@@ -291,7 +324,17 @@ export default function App() {
         }
 
         if (newStats.score > 0) {
-          submitScoreToLeaderboard(newStats.score, newStats.maxCombo);
+          // One runId per run, created when the run ends. Retries reuse it, so a
+          // failed submission can never add a second row.
+          const runId = currentRunIdRef.current ?? createRunId();
+          currentRunIdRef.current = runId;
+          submitScoreToLeaderboard({
+            runId,
+            name: loadPlayerName(),
+            score: newStats.score,
+            maxCombo: Math.max(0, Math.round(newStats.maxCombo)),
+            skinId: selectedSkinRef.current.id,
+          });
         }
       }
     },
@@ -299,10 +342,11 @@ export default function App() {
   );
 
   const handleRetryLeaderboard = useCallback(() => {
-    if (stats.score > 0) {
-      submitScoreToLeaderboard(stats.score, stats.maxCombo);
+    const run = lastRunRef.current;
+    if (run && run.score > 0) {
+      submitScoreToLeaderboard(run);
     }
-  }, [stats.score, stats.maxCombo, submitScoreToLeaderboard]);
+  }, [submitScoreToLeaderboard]);
 
   const handleHurtFlash = useCallback(() => {
     setHurtFlash(true);
@@ -476,6 +520,8 @@ export default function App() {
   }, [gameState, selectedPace]);
 
   const handleStartGame = () => {
+    currentRunIdRef.current = null;
+    lastRunRef.current = null;
     if (engineRef.current) {
       engineRef.current.paceMultiplier = selectedPace.multiplier;
       engineRef.current.setSkin(selectedSkin);
@@ -507,6 +553,8 @@ export default function App() {
   }, [currentLevel, currentMap]);
 
   const handleSelectLevel = (levelNumber: number) => {
+    currentRunIdRef.current = null;
+    lastRunRef.current = null;
     setCurrentLevel(levelNumber);
     setIsLevelMode(true);
     const targetMap = getMapById(getMapForLevel(levelNumber));
@@ -531,6 +579,8 @@ export default function App() {
   };
 
   const handleRestart = () => {
+    currentRunIdRef.current = null;
+    lastRunRef.current = null;
     if (engineRef.current) {
       engineRef.current.paceMultiplier = selectedPace.multiplier;
       if (isLevelMode) {
@@ -573,8 +623,9 @@ export default function App() {
       localStorage.removeItem('slap_run_total_coins');
       localStorage.removeItem('slap_run_unlocked_skins');
       localStorage.removeItem('slap_run_achievements');
-      localStorage.removeItem('slap_run_leaderboard');
     } catch {}
+    clearLocalLeaderboard();
+    setLeaderboardEntries([]);
 
     setLevelProgress({ unlockedLevel: 1, levelStars: {}, levelScores: {} });
     setUnlockedSkinIds(['speedy_dash']);
@@ -990,7 +1041,8 @@ export default function App() {
         <LeaderboardModal
           entries={leaderboardEntries}
           playerScore={stats.highScore}
-          tournament={tournamentInfo}
+          mode={leaderboardMode}
+          playerRank={leaderboardMode === 'online' ? stats.globalRank : stats.localRank}
           onClose={() => setIsLeaderboardOpen(false)}
         />
       )}

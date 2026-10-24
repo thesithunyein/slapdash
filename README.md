@@ -168,10 +168,11 @@ npm run build      # outputs ./dist
 npm run preview    # serve ./dist locally
 ```
 
-Type check:
+Type check and tests:
 
 ```bash
 npm run typecheck
+npm test
 ```
 
 The optional Express/leaderboard server is not needed to play. To run the full-stack dev
@@ -185,16 +186,26 @@ npm run dev:api    # http://localhost:3000
 
 ## Configuration
 
-The game is static and works with **no backend**. Two optional Vite environment variables
-enable extra online features when a server is available:
+The game is static and works with **no backend**. Optional online features stay off until
+both the client flag and a durable server store are configured:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `VITE_LEADERBOARD_API` | unset (off) | `true` sends scores to `/api/leaderboard` and merges the online board |
+| `VITE_LEADERBOARD_API` | unset (off) | `true` lets the client probe `/api/leaderboard` |
+| `LEADERBOARD_KV_REST_URL` | unset | Redis REST endpoint for durable online scores (Vercel KV / Upstash) |
+| `LEADERBOARD_KV_REST_TOKEN` | unset | Bearer token for the same store |
 | `VITE_ANALYTICS_URL` | unset (off) | POST endpoint for optional gameplay telemetry (off by default) |
 
-With both unset the build makes **no network requests except Google Fonts** and never
-shows failing API calls.
+`KV_REST_API_URL` / `KV_REST_API_TOKEN` and `UPSTASH_REDIS_REST_URL` /
+`UPSTASH_REDIS_REST_TOKEN` are also accepted. The serverless endpoint returns
+`storage: "unavailable"` when no store is configured, and the client then keeps the
+on-device **Hall of Fame** instead of showing a global board. With everything unset the
+build makes **no network requests except Google Fonts** and never shows failing API calls.
+
+Online submissions are validated server-side: whole scores from 1 to 5,000,000, combos
+from 0 to 250, shipped skin ids, names sanitised to 16 characters, and at most 6
+submissions per minute per client. The same run id may be retried, but only ever creates
+one record.
 
 ---
 
@@ -206,7 +217,10 @@ shows failing API calls.
 - Persistence: high score, coins, skins, levels, achievements, daily rewards and missions
   are stored locally (`localStorage`).
 - Mobile-first layout: safe-area insets, 360×640 minimum viewport, large touch targets.
-- Local Hall of Fame that works with no server.
+- Touch input uses a gentler obstacle curve than desktop (52/62/72% coverage instead of
+  70/82/90%) so swipes get more reaction room; desktop difficulty is unchanged.
+- Local Hall of Fame that works with no server, labelled "Saved on this device" with a
+  local rank. It stores the last five personal runs, one row per unique run id.
 
 ---
 
@@ -224,9 +238,10 @@ shows failing API calls.
 
 - **No service worker / offline install.** The app ships a web manifest so "Add to Home
   Screen" creates a shortcut, but there is no offline cache and no install prompt.
-- **Leaderboard is local by default** (see Configuration). The bundled Express server and
-  `api/leaderboard.ts` are demo implementations with seeded scores, not a production
-  ranking service.
+- **Leaderboard is local by default** (see Configuration). Online mode needs a durable
+  Redis REST store; without one the game says so and stays on the local Hall of Fame.
+  Online scores are self-reported and not cheat-proof — the server validates shape and
+  rate limits, but does not verify a signed run or replay.
 - External font requests to `fonts.googleapis.com`; if the network blocks them the game
   falls back to system sans-serif.
 - Very old low-end Android devices with weak GPUs may drop below 30 FPS at 2× pixel ratio.
@@ -244,9 +259,14 @@ src/game/GameEngine.ts          run loop, collisions, whip, stamina, chase, scor
 src/game/ThreeGameRenderer.ts   scene, camera, track and world rendering
 src/game/DinoMeshBuilder.ts     voxel dinosaur construction
 src/game/SoundEngine.ts         Web Audio synthesis
+src/game/obstacleDensity.ts     desktop vs touch obstacle curve
+src/game/leaderboard.ts         local Hall of Fame storage and online client
+src/game/leaderboardCore.ts     shared validation and ranking rules
 src/game/*.ts                   constants, maps, levels, missions, rewards, achievements
-api/leaderboard.ts              optional demo serverless endpoint (off by default)
+server/leaderboardStore.ts      durable file / Redis REST stores, idempotent by runId
+api/leaderboard.ts              optional serverless endpoint (disabled without a store)
 server.ts                       optional Express dev server with the same endpoints
+tests/                          Vitest coverage for rules, storage, API and UI copy
 docs/brand/                     README logo and seal artwork
 ```
 

@@ -1,68 +1,117 @@
-// Vercel Serverless Function Handler for /api/leaderboard
-interface LeaderboardRecord {
-  id: string;
-  name: string;
-  score: number;
-  maxCombo: number;
-  date: string;
-  skinId: string;
-  isPlayer?: boolean;
+import { validateRunPayload } from '../src/game/leaderboardCore.ts';
+import {
+  createUpstashStoreFromEnv,
+  type LeaderboardStore,
+} from '../server/leaderboardStore.ts';
+
+/**
+ * /api/leaderboard — optional online board.
+ *
+ * Requires durable storage (Vercel KV / Upstash Redis REST). Without it the
+ * endpoint answers 503 with `storage: 'unavailable'`, and the game falls back to
+ * the on-device Hall of Fame rather than inventing a "live global" board.
+ *
+ * Scores are self-reported: this is a community leaderboard, not a cheat-proof
+ * tournament. Only a signed run or replay could justify that claim.
+ */
+
+const RATE_LIMIT_MAX_SUBMISSIONS = 6;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+
+interface ApiRequest {
+  method?: string;
+  body?: unknown;
+  headers?: Record<string, string | string[] | undefined>;
+  socket?: { remoteAddress?: string };
 }
 
-let vercelLeaderboard: LeaderboardRecord[] = [
-  { id: 'rec-1', name: 'REXY_PRIME', score: 48900, maxCombo: 34, date: 'Today', skinId: 'rex_red' },
-  { id: 'rec-2', name: 'BUBBLES_SURF', score: 38200, maxCombo: 28, date: 'Today', skinId: 'spino_blue' },
-  { id: 'rec-3', name: 'GOLDIE_BASH', score: 29400, maxCombo: 24, date: 'Yesterday', skinId: 'spike_gold' },
-  { id: 'rec-4', name: 'RAPTOR_DASH', score: 21500, maxCombo: 19, date: '2d ago', skinId: 'snappy_green' },
-  { id: 'rec-5', name: 'FOSSIL_KING', score: 18900, maxCombo: 17, date: '3d ago', skinId: 'king_fossil' },
-  { id: 'rec-6', name: 'CYBER_SAUR', score: 15400, maxCombo: 15, date: '3d ago', skinId: 'mecha_saur' },
-  { id: 'rec-7', name: 'ISLAND_SPEED', score: 12600, maxCombo: 12, date: '4d ago', skinId: 'rex_red' },
-  { id: 'rec-8', name: 'TROPIC_RUNNER', score: 9800, maxCombo: 10, date: '5d ago', skinId: 'spino_blue' },
-];
+interface ApiResponse {
+  status(code: number): ApiResponse;
+  json(body: unknown): unknown;
+  setHeader(name: string, value: string | string[]): unknown;
+  end(body?: string): unknown;
+}
 
-export default function handler(req: any, res: any) {
-  if (req.method === 'GET') {
-    const sorted = [...vercelLeaderboard].sort((a, b) => b.score - a.score).slice(0, 20);
-    return res.status(200).json({
-      status: 'ok',
-      totalEntries: vercelLeaderboard.length,
-      entries: sorted,
-      updatedAt: new Date().toISOString(),
-    });
-  }
+function clientKey(req: ApiRequest): string {
+  const forwarded = req.headers?.['x-forwarded-for'];
+  const headerValue = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  const first = headerValue?.split(',')[0]?.trim();
+  return first || req.socket?.remoteAddress || 'unknown';
+}
 
-  if (req.method === 'POST') {
-    const { name, score, maxCombo, skinId } = req.body || {};
-    if (typeof score !== 'number' || score <= 0) {
-      return res.status(400).json({ error: 'Valid score is required' });
+export function createLeaderboardHandler(getStore: () => LeaderboardStore | null) {
+  return async function handler(req: ApiRequest, res: ApiResponse): Promise<unknown> {
+    const store = getStore();
+    if (!store) {
+      return res.status(503).json({
+        status: 'disabled',
+        storage: 'unavailable',
+        error: 'Online leaderboard storage is not configured',
+      });
     }
 
-    const cleanName = (name && typeof name === 'string' ? name.trim().slice(0, 16) : '') || 'YOU (CHAMPION)';
-    const newRecord: LeaderboardRecord = {
-      id: `run-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      name: cleanName,
-      score,
-      maxCombo: typeof maxCombo === 'number' ? maxCombo : 0,
-      date: 'Just Now',
-      skinId: skinId || 'classic',
-      isPlayer: true,
-    };
+    res.setHeader('Cache-Control', 'no-store');
 
-    vercelLeaderboard.push(newRecord);
-    vercelLeaderboard.sort((a, b) => b.score - a.score);
+    if (req.method === 'GET') {
+      try {
+        const entries = await store.list();
+        return res.status(200).json({
+          status: 'ok',
+          storage: 'durable',
+          entries,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        return res.status(500).json({
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Leaderboard unavailable',
+        });
+      }
+    }
 
-    const rank = vercelLeaderboard.findIndex((e) => e.id === newRecord.id) + 1;
-    const top20 = vercelLeaderboard.slice(0, 20);
+    if (req.method === 'POST') {
+      const parsed = validateRunPayload(req.body);
+      if (!parsed.ok) {
+        return res.status(400).json({ status: 'error', storage: 'durable', error: parsed.error });
+      }
 
-    return res.status(200).json({
-      status: 'ok',
-      rank,
-      totalEntries: vercelLeaderboard.length,
-      newRecord,
-      entries: top20,
-    });
-  }
+      try {
+        // Rate limiting lives inside the same guard: a datastore outage must
+        // answer 500, not leave the request hanging on an unhandled rejection.
+        const allowed = await store.consumeRateLimit(
+          `submit:${clientKey(req)}`,
+          RATE_LIMIT_MAX_SUBMISSIONS,
+          RATE_LIMIT_WINDOW_SECONDS
+        );
+        if (!allowed) {
+          return res.status(429).json({
+            status: 'error',
+            storage: 'durable',
+            error: 'Too many submissions, try again in a minute',
+          });
+        }
 
-  res.setHeader('Allow', ['GET', 'POST']);
-  return res.status(405).end(`Method ${req.method} Not Allowed`);
+        const result = await store.submit(parsed.run);
+        return res.status(200).json({
+          status: 'ok',
+          storage: 'durable',
+          rank: result.rank,
+          duplicate: result.duplicate,
+          newRecord: result.record,
+          entries: result.entries,
+          totalRuns: result.totalRuns,
+        });
+      } catch (error) {
+        return res.status(500).json({
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Score could not be persisted',
+        });
+      }
+    }
+
+    res.setHeader('Allow', ['GET', 'POST']);
+    return res.status(405).json({ status: 'error', error: `Method ${req.method ?? 'UNKNOWN'} not allowed` });
+  };
 }
+
+export default createLeaderboardHandler(() => createUpstashStoreFromEnv());

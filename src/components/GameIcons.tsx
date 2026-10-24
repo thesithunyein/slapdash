@@ -659,7 +659,7 @@ export const IslandBiomes3DIcon: React.FC<{ className?: string; size?: number }>
 
 /**
  * 3D Golden Arcade Champion Star with Laurel Wreath
- * Replaces generic 2D AI star in "Official Tournament Standings".
+ * Used beside the Hall of Fame / community leaderboard footer label.
  */
 export const TournamentStandings3DIcon: React.FC<{ className?: string; size?: number }> = ({
   className = 'w-4 h-4',
@@ -672,7 +672,7 @@ export const TournamentStandings3DIcon: React.FC<{ className?: string; size?: nu
     className={`select-none ${className}`}
     style={size ? { width: size, height: size } : undefined}
     role="img"
-    aria-label="3D Tournament Standings Emblem"
+    aria-label="Leaderboard emblem"
   >
     <defs>
       <linearGradient id="tournStarGrad" x1="0%" y1="0%" x2="0%" y2="100%">

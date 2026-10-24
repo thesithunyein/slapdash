@@ -92,8 +92,10 @@ flowchart LR
 
 - No offline mode: there is **no service worker**, so there is no install prompt and no
   cached play. "Add to Home Screen" only creates a shortcut.
-- The Hall of Fame is stored locally on the device; the optional online ledger is disabled
-  by default (no server is required for the game to run).
+- The Hall of Fame is stored locally on the device and is labelled "Saved on this device"
+  with a local rank. The optional online board is disabled by default, needs a durable
+  Redis REST store, and is a community leaderboard: scores are self-reported, not
+  cheat-proof.
 - Fonts load from Google Fonts; with the network blocked the UI falls back to system fonts.
 - Very low-end GPUs may dip below 30 FPS at high device pixel ratios.
 
@@ -147,7 +149,11 @@ flowchart TD
 ## 12. Special testing instructions
 
 - Test both a desktop browser and a phone; touch controls are swipe + a 72 px whip button.
+- Touch devices intentionally spawn fewer obstacles (52/62/72% by distance band, mostly
+  one lane) than desktop (70/82/90%). Compare the same distance on both if a run feels off.
 - If a run feels too easy or too hard, note the grade and distance on the game-over card.
+- Leaderboard smoke test: finish a run → the game-over card should say "LOCAL RANK" and
+  "Saved locally". Only a successful, persisted online response may show "GLOBAL RANK".
 - To reset progress: Settings (gear icon, top right of the menu) → Reset progress, or
   clear site data.
 - Quick smoke test: PLAY → whip the intro rival → survive 6 s → whip a sidewalk critter
@@ -161,8 +167,11 @@ larger. The canvas fills the viewport and letterboxes nothing.
 ## 14. Network, API and third-party services
 
 - **Required network:** none. The game is fully client-side.
-- **Optional:** `VITE_LEADERBOARD_API=true` enables `/api/leaderboard`; `VITE_ANALYTICS_URL`
-  enables telemetry. Both are **off** in the submitted build.
+- **Optional:** `VITE_LEADERBOARD_API=true` enables the `/api/leaderboard` probe, but the
+  endpoint needs a durable store (`LEADERBOARD_KV_REST_URL` + `LEADERBOARD_KV_REST_TOKEN`,
+  or the Vercel KV / Upstash equivalents) before it reports online mode. Without that it
+  returns `storage: "unavailable"` and the game stays on the local Hall of Fame.
+  `VITE_ANALYTICS_URL` enables telemetry. All of these are **off** in the submitted build.
 - **External requests in the submitted build:** Google Fonts stylesheet only.
 - **Storage:** `localStorage` for scores, coins, skins, settings, missions and achievements.
 - No accounts, cookies, ads, trackers, crypto, downloads or device permissions.

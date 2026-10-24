@@ -285,5 +285,12 @@ export interface GameStats {
   globalRankConfirmed?: boolean;
   nextPlayerAbove?: { name: string; score: number; scoreToSurpass: number } | null;
   leaderboardError?: boolean;
+  /** Rank inside the on-device Hall of Fame; never presented as a global rank. */
+  localRank?: number;
+  /** Where this run's score lives: local-only board or a persisted online board. */
+  leaderboardMode?: 'local' | 'online';
+  leaderboardStatus?: 'local' | 'pending' | 'submitted' | 'failed';
+  /** Strictly greater than the best before the run; a tie is not a personal best. */
+  isNewPersonalBest?: boolean;
   currentLane?: number;
 }

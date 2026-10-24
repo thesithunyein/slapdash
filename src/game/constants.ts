@@ -1,4 +1,4 @@
-import { CharacterSkin, BystanderType, LeaderboardEntry } from './types.ts';
+import { CharacterSkin, BystanderType } from './types.ts';
 
 export const CHARACTER_SKINS: CharacterSkin[] = [
   {
@@ -101,14 +101,6 @@ export const CHARACTER_SKINS: CharacterSkin[] = [
     speedBonus: 0.15,
     cost: 350,
   },
-];
-
-export const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
-  { id: '1', name: 'REX_CHAMPION', score: 38400, maxCombo: 14, date: 'Today', skinId: 'raptor_gold' },
-  { id: '2', name: 'ISLAND_RUNNER', score: 29500, maxCombo: 11, date: 'Today', skinId: 'spino_blue' },
-  { id: '3', name: 'DINO_DASH', score: 22800, maxCombo: 9, date: 'Yesterday', skinId: 'rex_red' },
-  { id: '4', name: 'TURBO_SAUR', score: 17200, maxCombo: 8, date: '2d ago', skinId: 'rex_red' },
-  { id: '5', name: 'BEACH_VIPER', score: 12400, maxCombo: 6, date: '3d ago', skinId: 'dino_green' },
 ];
 
 export interface BystanderTemplate {

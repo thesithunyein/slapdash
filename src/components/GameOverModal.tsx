@@ -277,8 +277,11 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   stats,
   onRestart,
   onHome,
+  onRetryLeaderboard,
 }) => {
-  const isNewBest = stats.score > 0 && stats.score >= stats.highScore;
+  // The engine compares against the best captured before this run, so a tie with
+  // the old record is not a new personal best.
+  const isNewBest = stats.score > 0 && stats.isNewPersonalBest === true;
 
   const getReasonBadge = () => {
     if (stats.gameOverReason === 'BUSTED') {
@@ -445,10 +448,41 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
             </div>
           )}
 
-          {stats.globalRankConfirmed && stats.globalRank && (
+          {stats.leaderboardStatus === 'local' && stats.localRank && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#F97316]/20 border border-[#F97316]/60 text-[#FED7AA] rounded-full text-xs font-['Lilita_One'] mb-3">
+              <Award className="w-4 h-4" />
+              <span>LOCAL RANK #{stats.localRank}</span>
+            </div>
+          )}
+
+          {stats.leaderboardStatus === 'pending' && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 border border-white/25 text-[#FED7AA] rounded-full text-xs font-['Lilita_One'] mb-3">
+              <span>Submitting score…</span>
+            </div>
+          )}
+
+          {stats.leaderboardStatus === 'submitted' && stats.globalRank && (
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#10B981]/25 border border-[#10B981]/60 text-[#34D399] rounded-full text-xs font-['Lilita_One'] mb-3">
               <Award className="w-4 h-4" />
-              <span>ISLAND RANK #{stats.globalRank}</span>
+              <span>GLOBAL RANK #{stats.globalRank}</span>
+            </div>
+          )}
+
+          {stats.leaderboardStatus === 'failed' && (
+            <div className="w-full bg-[#7F1D1D]/40 border-2 border-[#EF4444]/60 rounded-2xl px-3 py-2 mb-3 text-center">
+              <p className="text-xs text-[#FECACA] font-medium">Saved locally — not submitted online.</p>
+              {onRetryLeaderboard && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playClick();
+                    onRetryLeaderboard();
+                  }}
+                  className="mt-1.5 text-[11px] font-['Lilita_One'] tracking-wider uppercase underline underline-offset-2 text-[#FEF08A] cursor-pointer"
+                >
+                  Retry submission
+                </button>
+              )}
             </div>
           )}
 

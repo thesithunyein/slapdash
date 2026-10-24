@@ -31,7 +31,8 @@ import { ThreeGameRenderer } from './ThreeGameRenderer.ts';
 import { LevelDefinition, getLevel, calculateLevelStars, saveLevelResult, loadLevelProgress, getObstaclesForLevel } from './levels.ts';
 import { MapDefinition, GAME_MAPS, getMapById } from './maps.ts';
 import { Achievement, evaluateAchievements, loadAchievementStorage } from './achievements.ts';
-import { GameSettings, loadSettings } from './settings.ts';
+import { GameSettings, isTouchEnvironment, loadSettings } from './settings.ts';
+import { resolveObstacleSpawn } from './obstacleDensity.ts';
 
 export class GameEngine {
   private canvas: HTMLCanvasElement;
@@ -116,8 +117,17 @@ export class GameEngine {
   };
 
   // Callback to sync stats with React UI
+  /**
+   * Frozen once at construction: a device does not switch between touch and
+   * keyboard mid-run, and probing matchMedia every frame would be wasted work.
+   * Only obstacle density reads this; damage, stamina and Fever behave the same
+   * on both input modes.
+   */
+  public readonly touchInputMode: boolean;
   private onStatsUpdate?: (stats: GameStats, state: GameState) => void;
   public onHurtFlash?: () => void;
+  /** High score as it stood when the current run began, captured before saving. */
+  private previousHighScore: number = 0;
   public paceMultiplier: number = 1.0;
   private hitFreezeMs: number = 0;
   private passiveRunTimer: number = 0;
@@ -132,6 +142,7 @@ export class GameEngine {
   ) {
     this.canvas = canvas;
     this.onHurtFlash = onHurtFlash;
+    this.touchInputMode = isTouchEnvironment();
     this.renderer = new ThreeGameRenderer(this.canvas);
     this.onStatsUpdate = onStatsUpdate;
 
@@ -244,6 +255,10 @@ export class GameEngine {
   }
 
   public startGame(): void {
+    // Capture the old best before this run can raise it, so a score that merely
+    // ties the record is not announced as a new personal best.
+    this.previousHighScore = this.stats.highScore;
+    this.stats.isNewPersonalBest = false;
     this.initPlayer();
     this.currentLaneIndex = 1; // Squarely in center lane (0)
     this.stats.currentLane = 1;
@@ -1446,25 +1461,16 @@ export class GameEngine {
     }
 
     // 2. Balanced Obstacle Spawning with Easy Start
-    // 2. Engaging Obstacle Spawning (Active from the start!)
-    // - 15m-80m: Quick start with 1 obstacle per segment (70% chance), leaving 2 wide-open lanes
-    // - 80m-250m: Rhythmic challenge (82% chance), with ramps and jumping challenges
-    // - 250m+: High-energy density (90% chance), always keeping at least 1 open lane or jump ramp
-    let isObstacleSegment = false;
-    let obstacleLaneCount = 1;
-
-    if (dist > 15) {
-      if (dist <= 80) {
-        isObstacleSegment = Math.random() < 0.70;
-        obstacleLaneCount = 1;
-      } else if (dist <= 250) {
-        isObstacleSegment = Math.random() < 0.82;
-        obstacleLaneCount = Math.random() < 0.65 ? 1 : 2;
-      } else {
-        isObstacleSegment = Math.random() < 0.90;
-        obstacleLaneCount = Math.random() < 0.40 ? 1 : 2;
-      }
-    }
+    // - Desktop keeps the shipped curve: 70% / 82% / 90% obstacle segments.
+    // - Touch uses a lighter curve (52% / 62% / 72%, mostly single-lane) because
+    //   swipe input needs more reaction room between obstacle decisions than a
+    //   keyboard does. See obstacleDensity.ts for the full table.
+    // Either way a segment occupies at most 2 of 3 lanes, so one route is open,
+    // and a hit only costs stamina (heavy hazards more than low ones).
+    const { isObstacleSegment, laneCount: obstacleLaneCount } = resolveObstacleSpawn(
+      dist,
+      this.touchInputMode
+    );
     const chosenLanes: number[] = [];
 
     if (isObstacleSegment) {
@@ -1648,6 +1654,7 @@ export class GameEngine {
     // Spawn massive dust cloud dogpile!
     this.spawnParticleExplosion(this.player.x, this.player.y, '#E2E8F0', 25, 'cloud');
     this.saveHighScore();
+    this.stats.isNewPersonalBest = this.stats.score > this.previousHighScore;
 
     if (this.onStatsUpdate) {
       this.onStatsUpdate(this.stats, this.state);

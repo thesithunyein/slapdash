@@ -2,6 +2,8 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createLeaderboardHandler } from './api/leaderboard.ts';
+import { FileLeaderboardStore } from './server/leaderboardStore.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,27 +13,10 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
-interface LeaderboardRecord {
-  id: string;
-  name: string;
-  score: number;
-  maxCombo: number;
-  date: string;
-  skinId: string;
-  isPlayer?: boolean;
-}
-
-// Optional local dev leaderboard, seeded with demo scores for UI testing
-let globalLeaderboard: LeaderboardRecord[] = [
-  { id: 'rec-1', name: 'REXY_PRIME', score: 48900, maxCombo: 34, date: 'Today', skinId: 'rex_red' },
-  { id: 'rec-2', name: 'BUBBLES_SURF', score: 38200, maxCombo: 28, date: 'Today', skinId: 'spino_blue' },
-  { id: 'rec-3', name: 'GOLDIE_BASH', score: 29400, maxCombo: 24, date: 'Yesterday', skinId: 'spike_gold' },
-  { id: 'rec-4', name: 'RAPTOR_DASH', score: 21500, maxCombo: 19, date: '2d ago', skinId: 'snappy_green' },
-  { id: 'rec-5', name: 'FOSSIL_KING', score: 18900, maxCombo: 17, date: '3d ago', skinId: 'king_fossil' },
-  { id: 'rec-6', name: 'CYBER_SAUR', score: 15400, maxCombo: 15, date: '3d ago', skinId: 'mecha_saur' },
-  { id: 'rec-7', name: 'ISLAND_SPEED', score: 12600, maxCombo: 12, date: '4d ago', skinId: 'rex_red' },
-  { id: 'rec-8', name: 'TROPIC_RUNNER', score: 9800, maxCombo: 10, date: '5d ago', skinId: 'spino_blue' },
-];
+// Durable file store for the dev server: submissions survive a restart, so the
+// optional online board behaves like the real endpoint instead of an array.
+const leaderboardStore = new FileLeaderboardStore(path.join(__dirname, '.data', 'leaderboard.json'));
+const leaderboardHandler = createLeaderboardHandler(() => leaderboardStore);
 
 // In-memory lightweight gameplay analytics
 interface AnalyticsSummary {
@@ -52,87 +37,13 @@ const analyticsData: AnalyticsSummary = {
   stageClears: 0,
 };
 
-// GET /api/leaderboard - Returns official global standings and tournament status
-app.get('/api/leaderboard', (_req, res) => {
-  const sorted = [...globalLeaderboard].sort((a, b) => b.score - a.score).slice(0, 20);
-  
-  // Weekly Tournament metadata (resets every Sunday midnight UTC)
-  const now = new Date();
-  const dayOfWeek = now.getUTCDay(); // 0 is Sunday
-  const daysUntilSunday = (7 - dayOfWeek) % 7 || 7;
-  const resetDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + daysUntilSunday, 23, 59, 59));
-  const hoursRemaining = Math.max(1, Math.round((resetDate.getTime() - now.getTime()) / (1000 * 60 * 60)));
-
-  res.json({
-    status: 'ok',
-    totalEntries: globalLeaderboard.length,
-    entries: sorted,
-    tournament: {
-      season: 'Season 1: Swiposaur Tail Frenzy Blitz',
-      endsInHours: hoursRemaining,
-      topReward: '500 Dino Coins + Golden Dino Trophy',
-      activeParticipants: globalLeaderboard.length + 142,
-    },
-    updatedAt: new Date().toISOString(),
-  });
-});
-
-// POST /api/leaderboard - Validates run, registers entry, and calculates gap to next player
-app.post('/api/leaderboard', (req, res) => {
-  const { name, score, maxCombo, skinId } = req.body;
-  
-  // Validate score integrity: positive integer, capped at reasonable limit
-  if (typeof score !== 'number' || isNaN(score) || score <= 0 || score > 5000000) {
-    return res.status(400).json({ error: 'Valid score between 1 and 5,000,000 is required' });
-  }
-
-  // Validate maxCombo integrity
-  const safeCombo = typeof maxCombo === 'number' && !isNaN(maxCombo) && maxCombo >= 0 && maxCombo <= 250 
-    ? Math.floor(maxCombo) 
-    : 0;
-
-  const cleanName = (typeof name === 'string' ? name.trim().slice(0, 16).replace(/[^\w\s-]/g, '') : '') || 'YOU (CHAMPION)';
-  
-  const newRecord: LeaderboardRecord = {
-    id: `run-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-    name: cleanName,
-    score: Math.floor(score),
-    maxCombo: safeCombo,
-    date: 'Just Now',
-    skinId: typeof skinId === 'string' ? skinId.slice(0, 32) : 'speedy_dash',
-    isPlayer: true,
-  };
-
-  globalLeaderboard.push(newRecord);
-  globalLeaderboard.sort((a, b) => b.score - a.score);
-
-  // 1-indexed real global rank
-  const rank = globalLeaderboard.findIndex((e) => e.id === newRecord.id) + 1;
-  const top20 = globalLeaderboard.slice(0, 20);
-
-  // Calculate score needed to surpass player above
-  let nextPlayerAbove: { name: string; score: number; scoreToSurpass: number } | null = null;
-  if (rank > 1 && globalLeaderboard[rank - 2]) {
-    const higherPlayer = globalLeaderboard[rank - 2];
-    nextPlayerAbove = {
-      name: higherPlayer.name,
-      score: higherPlayer.score,
-      scoreToSurpass: higherPlayer.score - newRecord.score + 1,
-    };
-  }
-
-  // Update in-memory telemetry
-  analyticsData.runsCompleted++;
-  analyticsData.totalScoreLogged += newRecord.score;
-
-  res.json({
-    status: 'ok',
-    rank,
-    totalEntries: globalLeaderboard.length,
-    newRecord,
-    entries: top20,
-    nextPlayerAbove,
-  });
+// GET/POST /api/leaderboard - durable, idempotent, validated. Shares its handler
+// with the Vercel function so dev and production enforce the same rules.
+app.all('/api/leaderboard', (req, res) => {
+  void leaderboardHandler(
+    req as unknown as Parameters<typeof leaderboardHandler>[0],
+    res as unknown as Parameters<typeof leaderboardHandler>[1]
+  );
 });
 
 // GET /api/daily-schedule - Synchronized UTC reset schedule for online players

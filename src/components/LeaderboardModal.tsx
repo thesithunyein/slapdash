@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Crown, Sparkles } from 'lucide-react';
+import { X, Sparkles, Wifi, HardDrive } from 'lucide-react';
 import { LeaderboardEntry } from '../game/types.ts';
 import { sounds } from '../game/SoundEngine.ts';
 import { LeaderboardAdvancedIcon, TournamentStandings3DIcon } from './GameIcons.tsx';
@@ -7,21 +7,23 @@ import { LeaderboardAdvancedIcon, TournamentStandings3DIcon } from './GameIcons.
 interface LeaderboardModalProps {
   entries: LeaderboardEntry[];
   playerScore: number;
-  tournament?: {
-    season: string;
-    endsInHours: number;
-    topReward: string;
-    activeParticipants: number;
-  };
+  /** Local mode is the on-device Hall of Fame; online is a community board. */
+  mode: 'local' | 'online';
+  playerRank?: number;
   onClose: () => void;
 }
 
 export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   entries,
   playerScore,
-  tournament,
+  mode,
+  playerRank,
   onClose,
 }) => {
+  const isOnline = mode === 'online';
+  const title = isOnline ? 'GLOBAL LEADERBOARD' : 'HALL OF FAME';
+  const subtitle = isOnline ? 'Community scores, saved online' : 'Saved on this device';
+
   return (
     <div
       onClick={(e) => {
@@ -44,11 +46,9 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             </div>
             <div>
               <h2 className="font-['Lilita_One'] text-xl text-[#FEF08A] tracking-wider uppercase">
-                GLOBAL LEADERBOARD
+                {title}
               </h2>
-              <span className="text-xs text-[#FED7AA] font-medium block">
-                Top championship runners & tournament scores
-              </span>
+              <span className="text-xs text-[#FED7AA] font-medium block">{subtitle}</span>
             </div>
           </div>
 
@@ -65,26 +65,41 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           </button>
         </div>
 
-        {/* Clean Tournament & Personal Best Banner */}
+        {/* Personal best + where the board lives */}
         <div className="p-3.5 mx-4 mt-3 bg-[#19110B] border-2 border-[#F97316]/30 rounded-2xl flex flex-col gap-1.5 shrink-0 shadow-inner">
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5 text-[#FEF08A] font-['Lilita_One']">
-              <Crown className="w-4 h-4 text-[#FBBF24] shrink-0" />
-              <span className="truncate">{tournament?.season || 'Season 1: Dino Mayhem Blitz'}</span>
+              <Sparkles className="w-4 h-4 text-[#FBBF24] shrink-0" />
+              <span className="truncate">Your Best</span>
             </div>
-            <span className="text-[#34D399] font-['Lilita_One'] shrink-0">
-              {tournament ? `${tournament.endsInHours}h left` : 'Active'}
+            <span className="font-['Lilita_One'] text-sm tabular-nums text-white">
+              {playerScore.toLocaleString()}
             </span>
           </div>
 
           <div className="flex items-center justify-between text-[11px] text-[#FED7AA]/80 border-t border-white/10 pt-1.5">
-            <span>Prize: <strong className="text-white font-['Lilita_One']">{tournament?.topReward || '500 Coins'}</strong></span>
-            <span>Your Best: <strong className="text-[#FEF08A] font-['Lilita_One']">{playerScore.toLocaleString()}</strong></span>
+            <span className="flex items-center gap-1.5">
+              {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <HardDrive className="w-3.5 h-3.5" />}
+              {isOnline ? 'Saved on the server' : 'Saved on this device'}
+            </span>
+            {typeof playerRank === 'number' && playerRank > 0 && (
+              <span className="font-['Lilita_One'] text-[#FEF08A]">
+                {isOnline ? 'GLOBAL' : 'LOCAL'} RANK #{playerRank}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Standings List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {entries.length === 0 && (
+            <p className="text-center text-sm text-[#FED7AA]/80 py-8">
+              {isOnline
+                ? 'No scores on the online board yet — finish a run to be the first.'
+                : 'No saved runs yet — finish a run to set your local best.'}
+            </p>
+          )}
+
           {entries.map((entry, idx) => {
             const rank = idx + 1;
             const isFirst = rank === 1;
@@ -122,16 +137,21 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     )}
                   </div>
 
-                  {/* Name */}
-                  <div className="truncate flex items-center gap-1.5">
-                    <span className={`font-['Lilita_One'] text-xs sm:text-sm truncate ${isPlayer ? 'text-black' : 'text-white'}`}>
-                      {entry.name}
-                    </span>
-                    {isPlayer && (
-                      <span className="text-[9px] font-['Lilita_One'] bg-black text-[#FEF08A] px-1.5 py-0.2 rounded-full shrink-0">
-                        YOU
+                  {/* Name, with the run date so repeated personal runs are distinguishable */}
+                  <div className="flex flex-col min-w-0">
+                    <div className="truncate flex items-center gap-1.5">
+                      <span className={`font-['Lilita_One'] text-xs sm:text-sm truncate ${isPlayer ? 'text-black' : 'text-white'}`}>
+                        {entry.name}
                       </span>
-                    )}
+                      {isPlayer && (
+                        <span className="text-[9px] font-['Lilita_One'] bg-black text-[#FEF08A] px-1.5 py-0.2 rounded-full shrink-0">
+                          YOU
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-[9px] font-medium ${isPlayer ? 'text-black/60' : 'text-[#94A3B8]'}`}>
+                      {entry.date}
+                    </span>
                   </div>
                 </div>
 
@@ -151,15 +171,21 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           })}
         </div>
 
+        {/* Honest note: self-reported scores are not a verified tournament. */}
+        {isOnline && (
+          <p className="px-4 pb-2 text-[10px] leading-snug text-center text-[#FED7AA]/70">
+            Scores are self-reported by players and not cheat-proof.
+          </p>
+        )}
+
         {/* Footer */}
-        <div className="bg-[#140D08] border-t-2 border-[#F97316]/40 px-5 py-2.5 flex items-center justify-between text-xs text-[#FED7AA] shrink-0 font-medium">
-          <span className="flex items-center gap-2">
+        <div className="bg-[#140D08] border-t-2 border-[#F97316]/40 px-5 py-2.5 flex items-center justify-between gap-3 text-xs text-[#FED7AA] shrink-0 font-medium">
+          <span className="flex items-center gap-2 min-w-0">
             <TournamentStandings3DIcon className="w-4 h-4 shrink-0" />
-            Official Tournament Standings
+            <span className="truncate">{isOnline ? 'Community leaderboard' : 'Local Hall of Fame'}</span>
           </span>
-          <span className="text-[#10B981] font-['Lilita_One'] flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping" />
-            LIVE
+          <span className="text-[#FED7AA]/80 font-['Lilita_One'] shrink-0">
+            {isOnline ? 'Self-reported' : 'This device only'}
           </span>
         </div>
       </div>
