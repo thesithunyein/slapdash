@@ -24,7 +24,7 @@ Sithu Nyein (individual participant)
 
 ## 3. Main contact person
 
-Sithu Nyein — sithunyein.mailto@gmail.com — Telegram: @sithunyein
+Sithu Nyein, sithunyein.mailto@gmail.com, Telegram: @sithunyein
 
 ## 4. Short game description
 
@@ -137,7 +137,7 @@ flowchart TD
 - All art, 3D models, textures, logo and icons: original, generated in code (Three.js
   primitives + inline SVG), Apache-2.0.
 - All music and SFX: original, synthesized at runtime with the Web Audio API. No audio files.
-- Fonts: Fredoka, Lilita One, Titan One, Sniglet, Press Start 2P — Google Fonts, SIL OFL 1.1.
+- Fonts: Fredoka, Lilita One, Titan One, Sniglet, Press Start 2P (Google Fonts, SIL OFL 1.1).
 - Code libraries: MIT / ISC / Apache-2.0, see `README.md` for the full table.
 - No third-party art, sprites, music or purchased assets are included.
 
@@ -166,8 +166,8 @@ larger. The canvas fills the viewport and letterboxes nothing.
 
 ## 15. AI tools used and purpose
 
-- **Google AI Studio (Gemini)** — initial scaffolding, component drafts, UI copy.
-- **An AI coding assistant** — refactors, gameplay tuning, documentation and review.
+- **Google AI Studio (Gemini):** initial scaffolding, component drafts, UI copy.
+- **An AI coding assistant:** refactors, gameplay tuning, documentation and review.
 
 Affected areas: most of `src/` was AI-assisted and then reviewed, tested and edited by the
 developer. No AI-generated images, audio or fonts are shipped: all visuals are code-drawn
@@ -185,5 +185,5 @@ responsible for the submitted code.
 
 ## 17. Build version
 
-**v1.0.0** — Digit7 Jam 2026 submission build. The playable URL, the ZIP and this
+**v1.0.0**: Digit7 Jam 2026 submission build. The playable URL, the ZIP and this
 repository all point at this tag.

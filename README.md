@@ -28,8 +28,8 @@ charge the Primal Roar and outrun the stampede.
 ## What it is
 
 Swiposaur is a one-thumb endless runner that runs entirely in the browser: no plugins,
-no server, no asset downloads. The whole world — dinosaur, critters, biomes, weather and
-soundtrack — is generated in code at runtime.
+no server, no asset downloads. The whole world (dinosaur, critters, biomes, weather and
+soundtrack) is generated in code at runtime.
 
 | | |
 | --- | --- |
@@ -64,7 +64,7 @@ flowchart LR
 1. **Opening cinematic.** A rival blocks the road; the first tap lands a cinematic
    mega tail-whip and puts the camera behind the dino.
 2. **Safe start (6 s).** The road is clear, the mob is off-camera and a mistake cannot
-   end the run — the first obstacle is never a blind death.
+   end the run: the first obstacle is never a blind death.
 3. **Three-hit stamina.** A stumble costs 35–45 stamina. From full health that is three
    mistakes; each hit also spawns the chasing stampede for 6 seconds unless you run clean.
 4. **Whip to survive.** A landed whip refunds +35 stamina and charges the roar meter.
@@ -80,8 +80,8 @@ alone:
 
 | Grade | Title | Threshold |
 | :---: | --- | --- |
-| **S+** | Apex Primal Legend | 24,000 pts — or 1,100 m with a 12× combo |
-| **S** | Master Dino Drifter | 14,000 pts — or 800 m with an 8× combo |
+| **S+** | Apex Primal Legend | 24,000 pts, or 1,100 m with a 12× combo |
+| **S** | Master Dino Drifter | 14,000 pts, or 800 m with an 8× combo |
 | **A** | Speedway Champion | 7,000 pts |
 | **B** | Rising Roarer | 3,000 pts |
 | **C** | Stampede Rookie | anything below |
@@ -126,10 +126,11 @@ flowchart TD
 ```
 
 A single `requestAnimationFrame` loop owns the simulation: `GameEngine` advances the
-world with a fixed timestep, resolves lane changes, jumps and whip hitboxes, then hands
-camera and entity transforms to `ThreeGameRenderer`, which draws them with instanced
-voxel meshes on a single scene graph. React never re-renders per frame — it only receives
-throttled stat snapshots, so the DOM stays cheap while the canvas runs at full speed.
+world with a variable delta (capped at 32 ms), resolves lane changes, jumps and whip
+hitboxes, then hands camera and entity transforms to `ThreeGameRenderer`, which draws
+them with instanced voxel meshes on a single scene graph. React never re-renders per
+frame; it only receives throttled stat snapshots, so the DOM stays cheap while the
+canvas runs at full speed.
 
 ---
 
@@ -193,7 +194,7 @@ shows failing API calls.
 
 - Custom Three.js renderer: voxel dinosaur built from primitives, 6 skins, 6 biomes,
   dynamic shadows, weather and camera shake.
-- Procedural Web Audio soundtrack and SFX — no audio files, no sample licensing.
+- Procedural Web Audio soundtrack and SFX, with no audio files and no sample licensing.
 - Persistence: high score, coins, skins, levels, achievements, daily rewards and missions
   are stored locally (`localStorage`).
 - Mobile-first layout: safe-area insets, 360×640 minimum viewport, large touch targets.
@@ -263,8 +264,8 @@ No third-party art, audio, sprites or templates are included. No paid assets.
 
 AI tools were used during development and are disclosed here as required:
 
-- **Google AI Studio (Gemini)** — initial project scaffolding, component drafts and UI copy.
-- **An AI coding assistant** — refactors, gameplay tuning, documentation and code review.
+- **Google AI Studio (Gemini):** initial project scaffolding, component drafts and UI copy.
+- **An AI coding assistant:** refactors, gameplay tuning, documentation and code review.
 
 Human review: every file was read, tested and modified by the developer; behaviour was
 verified in Chrome at 360×640, 390×844 and 1280×720; no generated art or audio is used
