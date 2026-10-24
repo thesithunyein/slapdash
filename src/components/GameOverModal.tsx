@@ -383,8 +383,8 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   const rating = computeOverallRating();
 
   return (
-    <div className="absolute inset-0 bg-black/65 backdrop-blur-md flex flex-col items-center justify-center z-50 pointer-events-auto p-4 select-none animate-fadeIn font-['Fredoka']">
-      <div className="w-full max-w-sm sm:max-w-md flex flex-col items-center">
+    <div className="absolute inset-0 bg-black/65 backdrop-blur-md flex flex-col items-center overflow-y-auto z-50 pointer-events-auto px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] select-none animate-fadeIn font-['Fredoka']">
+      <div className="w-full max-w-sm sm:max-w-md flex flex-col items-center my-auto">
         {/* Title Header: 3D Vector 'GAME OVER' matching SWIPOSAUR Logo */}
         <div className="text-center mb-1 flex flex-col items-center w-full">
           <GameOverTitle3D className="mb-0.5" />

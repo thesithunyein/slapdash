@@ -204,9 +204,10 @@ shows failing API calls.
 
 ## Supported environments
 
-- Chrome, Edge, Firefox and Safari (current stable), desktop and mobile.
-- Android 10+, iOS 16+ (Safari), Windows 10/11, recent macOS.
-- Requires WebGL. Tested at 360×640, 390×844 and 1280×720.
+- Built for Chrome, Edge, Firefox and Safari (current stable), desktop and mobile.
+- Verified in Chrome at 360×640, 390×844 and 1280×720. Edge uses the same engine.
+- Firefox and Safari are supported targets but have not been verified on physical devices.
+- Targets Android 10+, iOS 16+, Windows 10/11 and recent macOS. Requires WebGL.
 - Recommended: portrait on phones, any orientation on desktop.
 
 ---
@@ -268,7 +269,8 @@ AI tools were used during development and are disclosed here as required:
 - **An AI coding assistant:** refactors, gameplay tuning, documentation and code review.
 
 Human review: every file was read, tested and modified by the developer; behaviour was
-verified in Chrome at 360×640, 390×844 and 1280×720; no generated art or audio is used
+verified in Chrome at 360×640, 390×844 and 1280×720 (Firefox and Safari were not run);
+no generated art or audio is used
 (all visuals are code-drawn and all sound is synthesized). The developer is responsible
 for the submitted code and can explain any part of it.
 
