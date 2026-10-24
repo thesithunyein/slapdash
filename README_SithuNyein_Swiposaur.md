@@ -10,7 +10,7 @@
 
 **Team:** Sithu Nyein (individual participant)
 
-[![Play now](https://img.shields.io/badge/%E2%96%B6_PLAY_NOW-swiposaur.vercel.app-F97316?style=for-the-badge)](https://swiposaur.vercel.app/)
+[![Play now](https://img.shields.io/badge/%E2%96%B6_PLAY_NOW-swiposaur.sithunyein.com-F97316?style=for-the-badge)](https://swiposaur.sithunyein.com/)
 
 </div>
 

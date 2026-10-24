@@ -11,7 +11,7 @@
 Swipe between three lanes, tail-whip prehistoric critters to refill stamina,
 charge the Primal Roar and outrun the stampede.
 
-[![Play now](https://img.shields.io/badge/%E2%96%B6_PLAY_NOW-swiposaur.vercel.app-F97316?style=for-the-badge)](https://swiposaur.vercel.app/)
+[![Play now](https://img.shields.io/badge/%E2%96%B6_PLAY_NOW-swiposaur.sithunyein.com-F97316?style=for-the-badge)](https://swiposaur.sithunyein.com/)
 
 [![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
 [![Three.js](https://img.shields.io/badge/Three.js-r186-000000?logo=three.js&logoColor=white)](https://threejs.org)
@@ -34,7 +34,7 @@ soundtrack) is generated in code at runtime.
 | | |
 | --- | --- |
 | **Playable build** | `v1.0.0` jam build (tag [`v1.0.0`](../../releases/tag/v1.0.0)); `main` also carries post-jam polish |
-| **Live build** | <https://swiposaur.vercel.app/> |
+| **Live build** | <https://swiposaur.sithunyein.com/> |
 | **Engine** | React 19 + Three.js, custom voxel meshes, synthesized Web Audio |
 | **Entry point** | `index.html` → `src/main.tsx` |
 | **Footprint** | ~2.4 MB production build, zero image/audio files |
