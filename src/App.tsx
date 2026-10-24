@@ -34,12 +34,11 @@ import {
   clearLocalLeaderboard,
   createRunId,
   fetchOnlineBoard,
+  getPlayerId,
   isLeaderboardApiConfigured,
-  loadLastSubmittedRunId,
   loadLocalBoard,
   loadPlayerName,
-  markLocalBoardEntry,
-  rememberSubmittedRunId,
+  markPlayerEntry,
   saveLocalRun,
   submitOnlineRun,
   type LeaderboardMode,
@@ -181,6 +180,13 @@ export default function App() {
     }
   });
 
+  // Every device gets a stable id and a board name on the first visit, so the
+  // global board can show a real player without asking them to sign up.
+  useEffect(() => {
+    getPlayerId();
+    loadPlayerName();
+  }, []);
+
   // Probe the optional endpoint once. Only a durable, healthy response turns the
   // board into an online board; anything else stays a local Hall of Fame.
   useEffect(() => {
@@ -190,11 +196,20 @@ export default function App() {
       if (cancelled || !result.online) return;
       leaderboardModeRef.current = 'online';
       setLeaderboardMode('online');
-      setLeaderboardEntries(markLocalBoardEntry(result.entries, loadLastSubmittedRunId()));
+      setLeaderboardEntries(markPlayerEntry(result.entries, getPlayerId()));
     });
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  /** Reloads the global board after a rename, so the name shows immediately. */
+  const refreshOnlineBoard = useCallback(() => {
+    if (leaderboardModeRef.current !== 'online') return;
+    void fetchOnlineBoard().then((result) => {
+      if (!result.online) return;
+      setLeaderboardEntries(markPlayerEntry(result.entries, getPlayerId()));
+    });
   }, []);
 
   /**
@@ -253,8 +268,7 @@ export default function App() {
       // A late response for a run the player already restarted must not update
       // the current card or overwrite which row is marked as YOU.
       if (!stillCurrentRun) return;
-      rememberSubmittedRunId(run.runId);
-      setLeaderboardEntries(markLocalBoardEntry(result.entries, run.runId));
+      setLeaderboardEntries(markPlayerEntry(result.entries, run.playerId));
       setStats((curr) => ({
         ...curr,
         leaderboardStatus: 'submitted',
@@ -329,6 +343,7 @@ export default function App() {
           const runId = currentRunIdRef.current ?? createRunId();
           currentRunIdRef.current = runId;
           submitScoreToLeaderboard({
+            playerId: getPlayerId(),
             runId,
             name: loadPlayerName(),
             score: newStats.score,
@@ -1060,6 +1075,7 @@ export default function App() {
             engineRef.current?.setCharacterFocus(newSettings.characterFocus !== 'classic');
           }}
           onResetProgress={handleResetProgress}
+          onPlayerNameSaved={refreshOnlineBoard}
         />
       )}
 

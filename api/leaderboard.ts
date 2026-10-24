@@ -1,4 +1,8 @@
-import { validateRunPayload } from '../src/game/leaderboardCore.ts';
+import {
+  isValidPlayerId,
+  sanitizePlayerName,
+  validateRunPayload,
+} from '../src/game/leaderboardCore.ts';
 import {
   createUpstashStoreFromEnv,
   type LeaderboardStore,
@@ -10,6 +14,9 @@ import {
  * Requires durable storage (Vercel KV / Upstash Redis REST). Without it the
  * endpoint answers 503 with `storage: 'unavailable'`, and the game falls back to
  * the on-device Hall of Fame rather than inventing a "live global" board.
+ *
+ * One row per player: submitting a better run replaces that player's row, so
+ * the board shows everyone's highest score rather than a wall of attempts.
  *
  * Scores are self-reported: this is a community leaderboard, not a cheat-proof
  * tournament. Only a signed run or replay could justify that claim.
@@ -70,6 +77,43 @@ export function createLeaderboardHandler(getStore: () => LeaderboardStore | null
     }
 
     if (req.method === 'POST') {
+      // Renaming is separate from scoring: a player who changes their name in
+      // settings should see it on their existing row, without a new best run.
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      if (body.action === 'rename') {
+        if (!isValidPlayerId(body.playerId)) {
+          return res.status(400).json({
+            status: 'error',
+            storage: 'durable',
+            error: 'playerId must be 8-64 URL-safe characters',
+          });
+        }
+
+        try {
+          const allowed = await store.consumeRateLimit(
+            `rename:${clientKey(req)}`,
+            RATE_LIMIT_MAX_SUBMISSIONS,
+            RATE_LIMIT_WINDOW_SECONDS
+          );
+          if (!allowed) {
+            return res.status(429).json({
+              status: 'error',
+              storage: 'durable',
+              error: 'Too many submissions, try again in a minute',
+            });
+          }
+
+          const name = sanitizePlayerName(body.name);
+          const entries = await store.rename(body.playerId, name);
+          return res.status(200).json({ status: 'ok', storage: 'durable', name, entries });
+        } catch (error) {
+          return res.status(500).json({
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Name could not be saved',
+          });
+        }
+      }
+
       const parsed = validateRunPayload(req.body);
       if (!parsed.ok) {
         return res.status(400).json({ status: 'error', storage: 'durable', error: parsed.error });
@@ -97,9 +141,10 @@ export function createLeaderboardHandler(getStore: () => LeaderboardStore | null
           storage: 'durable',
           rank: result.rank,
           duplicate: result.duplicate,
+          improved: result.improved,
           newRecord: result.record,
           entries: result.entries,
-          totalRuns: result.totalRuns,
+          totalPlayers: result.totalPlayers,
         });
       } catch (error) {
         return res.status(500).json({

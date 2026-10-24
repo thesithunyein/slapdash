@@ -3,15 +3,19 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   LEGACY_BOARD_KEY,
   LOCAL_BOARD_KEY,
-  loadLastSubmittedRunId,
+  PLAYER_ID_KEY,
+  PLAYER_NAME_KEY,
+  getPlayerId,
   loadLocalBoard,
-  markLocalBoardEntry,
-  rememberSubmittedRunId,
+  loadPlayerName,
+  markPlayerEntry,
   saveLocalRun,
+  savePlayerName,
 } from '../src/game/leaderboard.ts';
 import { MAX_LOCAL_RUNS } from '../src/game/leaderboardCore.ts';
 
 const run = (runId: string, score: number, maxCombo = 4) => ({
+  playerId: 'player-aaaaaaaa',
   runId,
   name: 'YOU',
   score,
@@ -108,16 +112,61 @@ describe('local Hall of Fame', () => {
     expect(localStorage.getItem(LOCAL_BOARD_KEY)).toBeNull();
   });
 
-  it('marks only the last submitted run as YOU on an online board', () => {
-    rememberSubmittedRunId('run-dddddddd');
-    expect(loadLastSubmittedRunId()).toBe('run-dddddddd');
-    const marked = markLocalBoardEntry(
+  it('marks the player row by player id, not by run id', () => {
+    const marked = markPlayerEntry(
       [
-        { id: 'run-dddddddd', name: 'YOU', score: 10, maxCombo: 1, date: 'Just now', skinId: 'rex_red' },
-        { id: 'run-eeeeeeee', name: 'RIVAL', score: 20, maxCombo: 1, date: 'Just now', skinId: 'rex_red' },
+        {
+          id: 'run-best-001',
+          name: 'NEON_REX42',
+          score: 900,
+          maxCombo: 9,
+          date: 'Just now',
+          skinId: 'rex_red',
+          playerId: 'player-aaaaaaaa',
+        },
+        {
+          id: 'run-best-002',
+          name: 'IRON_TALON77',
+          score: 500,
+          maxCombo: 4,
+          date: 'Just now',
+          skinId: 'spino_blue',
+          playerId: 'player-bbbbbbbb',
+        },
       ],
-      'run-dddddddd'
+      'player-aaaaaaaa'
     );
     expect(marked.map((entry) => entry.isPlayer)).toEqual([true, false]);
+  });
+});
+
+describe('player identity', () => {
+  it('generates and persists a board name on a first visit', () => {
+    const name = loadPlayerName();
+    expect(name).toMatch(/^[A-Z]+_[A-Z]+\d{2}$/);
+    expect(localStorage.getItem(PLAYER_NAME_KEY)).toBe(name);
+    // Reading it again must not reshuffle the name.
+    expect(loadPlayerName()).toBe(name);
+  });
+
+  it('generates one stable player id per device', () => {
+    const id = getPlayerId();
+    expect(id).toHaveLength(36);
+    expect(localStorage.getItem(PLAYER_ID_KEY)).toBe(id);
+    expect(getPlayerId()).toBe(id);
+  });
+
+  it('lets the player rename themselves and sanitizes the input', () => {
+    expect(savePlayerName('  Sir   Sithu  ')).toBe('Sir Sithu');
+    expect(loadPlayerName()).toBe('Sir Sithu');
+
+    expect(savePlayerName('')).toBe('YOU');
+    expect(savePlayerName('X'.repeat(40))).toHaveLength(16);
+  });
+
+  it('keeps the generated name off the high-score reset', () => {
+    const name = loadPlayerName();
+    localStorage.removeItem(LOCAL_BOARD_KEY);
+    expect(loadPlayerName()).toBe(name);
   });
 });

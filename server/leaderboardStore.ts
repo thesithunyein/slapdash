@@ -18,6 +18,8 @@ import {
  */
 
 export interface StoredRun {
+  /** Optional on rows written before player ids existed. */
+  playerId?: string;
   runId: string;
   name: string;
   score: number;
@@ -30,14 +32,23 @@ export interface SubmitResult {
   record: LeaderboardEntry;
   rank: number;
   duplicate: boolean;
+  /** True when this submission replaced the player's row on the board. */
+  improved: boolean;
   entries: LeaderboardEntry[];
-  totalRuns: number;
+  totalPlayers: number;
+}
+
+/** One board row per player; older rows fall back to their run id. */
+function playerKey(run: { playerId?: string; runId: string }): string {
+  return run.playerId && run.playerId.length > 0 ? run.playerId : run.runId;
 }
 
 export interface LeaderboardStore {
   readonly durable: boolean;
   readonly description: string;
   submit(run: ValidRun): Promise<SubmitResult>;
+  /** Updates the display name on a player's existing row; never adds a row. */
+  rename(playerId: string, name: string): Promise<LeaderboardEntry[]>;
   list(limit?: number): Promise<LeaderboardEntry[]>;
   /** Sliding window limiter; returns false when the caller is over budget. */
   consumeRateLimit(key: string, limit: number, windowSeconds: number): Promise<boolean>;
@@ -50,25 +61,32 @@ function toEntry(run: StoredRun, now = Date.now()): LeaderboardEntry {
     score: run.score,
     maxCombo: run.maxCombo,
     skinId: run.skinId,
+    playerId: run.playerId,
     date: formatRunDate(run.savedAt, now),
     isPlayer: false,
   };
 }
 
-function buildResult(runs: StoredRun[], runId: string, duplicate: boolean): SubmitResult {
+function buildResult(
+  runs: StoredRun[],
+  key: string,
+  duplicate: boolean,
+  improved: boolean
+): SubmitResult {
   const sorted = sortLeaderboard(runs);
   const now = Date.now();
-  const rank = sorted.findIndex((run) => run.runId === runId) + 1;
+  const rank = sorted.findIndex((run) => playerKey(run) === key) + 1;
   const entries = sorted.slice(0, MAX_BOARD_ENTRIES).map((run) => toEntry(run, now));
-  const record = sorted.find((run) => run.runId === runId);
-  if (!record) throw new Error(`Run ${runId} is missing after insert`);
+  const record = sorted.find((run) => playerKey(run) === key);
+  if (!record) throw new Error(`Player ${key} is missing after insert`);
 
   return {
     record: toEntry(record, now),
     rank,
     duplicate,
+    improved,
     entries,
-    totalRuns: sorted.length,
+    totalPlayers: sorted.length,
   };
 }
 
@@ -78,6 +96,7 @@ function isStoredRun(value: unknown): value is StoredRun {
   return (
     typeof run.runId === 'string' &&
     run.runId.length > 0 &&
+    (run.playerId === undefined || typeof run.playerId === 'string') &&
     typeof run.name === 'string' &&
     typeof run.score === 'number' &&
     typeof run.maxCombo === 'number' &&
@@ -112,7 +131,7 @@ export class FileLeaderboardStore implements LeaderboardStore {
         : (parsed as { runs?: unknown })?.runs;
       if (Array.isArray(runs)) {
         for (const run of runs) {
-          if (isStoredRun(run)) this.runs.set(run.runId, run);
+          if (isStoredRun(run)) this.runs.set(playerKey(run), run);
         }
       }
     } catch (error) {
@@ -136,13 +155,17 @@ export class FileLeaderboardStore implements LeaderboardStore {
 
   async submit(run: ValidRun): Promise<SubmitResult> {
     await this.ensureLoaded();
-    const existing = this.runs.get(run.runId);
-    if (existing) {
-      // Idempotent: retrying a submission must not add a second row.
-      return buildResult([...this.runs.values()], existing.runId, true);
+    const key = playerKey(run);
+    const existing = this.runs.get(key);
+
+    // A retried runId is idempotent, and a worse run never overwrites a better
+    // one, so the board holds exactly one row per player: their best score.
+    if (existing && (existing.runId === run.runId || existing.score >= run.score)) {
+      return buildResult([...this.runs.values()], key, existing.runId === run.runId, false);
     }
 
-    this.runs.set(run.runId, {
+    this.runs.set(key, {
+      playerId: run.playerId,
       runId: run.runId,
       name: run.name,
       score: run.score,
@@ -151,7 +174,17 @@ export class FileLeaderboardStore implements LeaderboardStore {
       savedAt: Date.now(),
     });
     await this.persist();
-    return buildResult([...this.runs.values()], run.runId, false);
+    return buildResult([...this.runs.values()], key, false, true);
+  }
+
+  async rename(playerId: string, name: string): Promise<LeaderboardEntry[]> {
+    await this.ensureLoaded();
+    const existing = this.runs.get(playerId);
+    if (existing && existing.name !== name) {
+      this.runs.set(playerId, { ...existing, name });
+      await this.persist();
+    }
+    return this.list();
   }
 
   async list(limit: number = MAX_BOARD_ENTRIES): Promise<LeaderboardEntry[]> {
@@ -181,8 +214,8 @@ interface UpstashResponse {
 
 /**
  * Upstash-compatible Redis REST store (also used by Vercel KV). No SDK and no
- * dependencies: submissions are written with HSETNX keyed by runId, which makes
- * them idempotent, and the board survives cold starts.
+ * dependencies: rows are keyed by playerId in one hash, so a player's improved
+ * score replaces their old row and the board survives cold starts.
  */
 export class RedisRestLeaderboardStore implements LeaderboardStore {
   readonly durable = true;
@@ -220,7 +253,7 @@ export class RedisRestLeaderboardStore implements LeaderboardStore {
       if (typeof value !== 'string') continue;
       try {
         const parsed: unknown = JSON.parse(value);
-        if (isStoredRun(parsed)) runs.set(parsed.runId, parsed);
+        if (isStoredRun(parsed)) runs.set(playerKey(parsed), parsed);
       } catch {}
     }
     return runs;
@@ -232,6 +265,7 @@ export class RedisRestLeaderboardStore implements LeaderboardStore {
 
   async submit(run: ValidRun): Promise<SubmitResult> {
     const stored: StoredRun = {
+      playerId: run.playerId,
       runId: run.runId,
       name: run.name,
       score: run.score,
@@ -239,18 +273,42 @@ export class RedisRestLeaderboardStore implements LeaderboardStore {
       skinId: run.skinId,
       savedAt: Date.now(),
     };
-    const inserted = await this.command(['HSETNX', this.boardKey, run.runId, JSON.stringify(stored)]);
 
-    if (inserted !== 1) {
-      // Same runId already stored: return the original record rather than adding.
-      const runs = await this.readAll();
-      const existing = runs.find((candidate) => candidate.runId === run.runId);
-      if (existing) return buildResult(runs, existing.runId, true);
-      throw new Error('Stored run could not be read back');
+    // Read the player's current row first: the board keeps one row per player
+    // holding their best score, and a retried runId must not add a second row.
+    const current = await this.command(['HGET', this.boardKey, run.playerId]);
+    if (typeof current === 'string') {
+      try {
+        const existing: unknown = JSON.parse(current);
+        if (
+          isStoredRun(existing) &&
+          (existing.runId === run.runId || existing.score >= run.score)
+        ) {
+          return buildResult(await this.readAll(), run.playerId, existing.runId === run.runId, false);
+        }
+      } catch {}
     }
 
-    const runs = await this.readAll();
-    return buildResult(runs, run.runId, false);
+    await this.command(['HSET', this.boardKey, run.playerId, JSON.stringify(stored)]);
+    return buildResult(await this.readAll(), run.playerId, false, true);
+  }
+
+  async rename(playerId: string, name: string): Promise<LeaderboardEntry[]> {
+    const current = await this.command(['HGET', this.boardKey, playerId]);
+    if (typeof current === 'string') {
+      try {
+        const existing: unknown = JSON.parse(current);
+        if (isStoredRun(existing) && existing.name !== name) {
+          await this.command([
+            'HSET',
+            this.boardKey,
+            playerId,
+            JSON.stringify({ ...existing, name }),
+          ]);
+        }
+      } catch {}
+    }
+    return this.list();
   }
 
   async list(limit: number = MAX_BOARD_ENTRIES): Promise<LeaderboardEntry[]> {

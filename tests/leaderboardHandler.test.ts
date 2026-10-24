@@ -35,6 +35,7 @@ function createRes() {
 }
 
 const validBody = {
+  playerId: 'player-aaaabbbb',
   runId: 'run-aaaabbbb',
   name: 'SITHU',
   score: 1200,
@@ -100,6 +101,8 @@ describe('/api/leaderboard handler', () => {
       { ...validBody, maxCombo: 999 },
       { ...validBody, skinId: 'fake_skin' },
       { ...validBody, runId: 'nope' },
+      { ...validBody, playerId: 'nope' },
+      { ...validBody, playerId: undefined },
     ]) {
       const { res, recorded } = createRes();
       await handler({ method: 'POST', body }, res);
@@ -115,6 +118,68 @@ describe('/api/leaderboard handler', () => {
 
     expect(recorded.statusCode).toBe(200);
     expect((await store.list())[0].name).toBe('YOU');
+  });
+
+  it('keeps one row per player across separate runs', async () => {
+    const handler = createLeaderboardHandler(() => store);
+
+    const first = createRes();
+    await handler(
+      { method: 'POST', body: { ...validBody, runId: 'run-first-001', score: 500 } },
+      first.res
+    );
+    expect(first.recorded.body).toMatchObject({ improved: true, rank: 1 });
+
+    // A worse follow-up run must not take over the player's row.
+    const worse = createRes();
+    await handler(
+      { method: 'POST', body: { ...validBody, runId: 'run-second-01', score: 400 } },
+      worse.res
+    );
+    expect(worse.recorded.body).toMatchObject({ improved: false, rank: 1 });
+    expect(await store.list()).toHaveLength(1);
+    expect((await store.list())[0].score).toBe(500);
+
+    const better = createRes();
+    await handler(
+      { method: 'POST', body: { ...validBody, runId: 'run-third-001', score: 900 } },
+      better.res
+    );
+    expect(better.recorded.body).toMatchObject({ improved: true, rank: 1 });
+    expect(await store.list()).toHaveLength(1);
+    expect((await store.list())[0].score).toBe(900);
+  });
+
+  it('renames the player row without adding a run', async () => {
+    const handler = createLeaderboardHandler(() => store);
+    const submitted = createRes();
+    await handler({ method: 'POST', body: validBody }, submitted.res);
+
+    const renamed = createRes();
+    await handler(
+      {
+        method: 'POST',
+        body: { action: 'rename', playerId: validBody.playerId, name: '  Sir   Sithu  ' },
+      },
+      renamed.res
+    );
+
+    expect(renamed.recorded.statusCode).toBe(200);
+    expect(renamed.recorded.body).toMatchObject({ status: 'ok', name: 'Sir Sithu' });
+    const entries = await store.list();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ name: 'Sir Sithu', score: 1200 });
+  });
+
+  it('rejects a rename from an invalid player id', async () => {
+    const handler = createLeaderboardHandler(() => store);
+    const { res, recorded } = createRes();
+    await handler(
+      { method: 'POST', body: { action: 'rename', playerId: 'nope', name: 'X' } },
+      res
+    );
+    expect(recorded.statusCode).toBe(400);
+    expect(await store.list()).toEqual([]);
   });
 
   it('rate limits repeated submissions from one client', async () => {
@@ -136,6 +201,7 @@ describe('/api/leaderboard handler', () => {
       durable: true,
       description: 'broken',
       list: async () => [],
+      rename: async () => [],
       consumeRateLimit: async () => true,
       submit: async () => {
         throw new Error('datastore offline');
@@ -155,6 +221,7 @@ describe('/api/leaderboard handler', () => {
       durable: true,
       description: 'broken',
       list: async () => [],
+      rename: async () => [],
       consumeRateLimit: async () => {
         throw new Error('redis unavailable');
       },

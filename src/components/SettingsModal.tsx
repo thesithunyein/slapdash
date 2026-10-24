@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { X, Volume2, VolumeX, Eye, Smartphone, RotateCcw, ShieldAlert, Settings } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, Volume2, VolumeX, Eye, Smartphone, RotateCcw, ShieldAlert, Settings, User, Check } from 'lucide-react';
 import { GameSettings } from '../game/settings.ts';
 import { sounds } from '../game/SoundEngine.ts';
+import { getPlayerId, loadPlayerName, savePlayerName, syncPlayerName } from '../game/leaderboard.ts';
+import { MAX_PLAYER_NAME_LENGTH } from '../game/leaderboardCore.ts';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -9,6 +11,8 @@ interface SettingsModalProps {
   settings: GameSettings & { isMuted?: boolean };
   onUpdateSettings: (newSettings: any) => void;
   onResetProgress: () => void;
+  /** Called after a rename reaches the server, so the board can refresh. */
+  onPlayerNameSaved?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -17,10 +21,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdateSettings,
   onResetProgress,
+  onPlayerNameSaved,
 }) => {
   const [showConfirmReset, setShowConfirmReset] = useState<boolean>(false);
+  const [nameDraft, setNameDraft] = useState<string>(() => loadPlayerName());
+  const [nameSaved, setNameSaved] = useState<boolean>(false);
+
+  // Refresh the field each time the panel opens, in case the stored name changed.
+  useEffect(() => {
+    if (!isOpen) return;
+    setNameDraft(loadPlayerName());
+    setNameSaved(false);
+  }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const commitName = () => {
+    const previous = loadPlayerName();
+    const saved = savePlayerName(nameDraft);
+    setNameDraft(saved);
+    setNameSaved(true);
+    if (saved !== previous) {
+      void syncPlayerName(getPlayerId(), saved).then((synced) => {
+        if (synced) onPlayerNameSaved?.();
+      });
+    }
+  };
 
   const toggleSound = () => {
     sounds.playClick();
@@ -101,6 +127,53 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+          {/* Leaderboard name */}
+          <div className="p-3.5 bg-[#25180E] rounded-2xl border border-white/10 space-y-2.5">
+            <div className="flex items-center gap-3">
+              <User className="w-5 h-5 text-[#FBBF24] shrink-0" />
+              <div>
+                <h4 className="font-['Lilita_One'] text-sm sm:text-base text-white">
+                  Leaderboard Name
+                </h4>
+                <p className="text-xs text-[#FED7AA]/70">
+                  Shown on the global board. Auto-generated until you change it.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={nameDraft}
+                maxLength={MAX_PLAYER_NAME_LENGTH}
+                aria-label="Leaderboard name"
+                onChange={(event) => {
+                  setNameDraft(event.target.value);
+                  setNameSaved(false);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    sounds.playClick();
+                    commitName();
+                  }
+                }}
+                onBlur={commitName}
+                className="flex-1 min-w-0 px-3 py-2 bg-[#160E08] text-white font-['Lilita_One'] text-sm tracking-wide rounded-xl border-2 border-[#F59E0B]/40 focus:border-[#FBBF24] focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playClick();
+                  commitName();
+                }}
+                className="px-3 py-2 bg-[#F97316] hover:bg-[#FB923C] text-white font-['Lilita_One'] text-xs rounded-xl border border-white/40 shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                {nameSaved ? <Check className="w-3.5 h-3.5" /> : null}
+                {nameSaved ? 'SAVED' : 'SAVE'}
+              </button>
+            </div>
+          </div>
+
           {/* Audio */}
           <div className="flex items-center justify-between p-3.5 bg-[#25180E] rounded-2xl border border-white/10">
             <div className="flex items-center gap-3">

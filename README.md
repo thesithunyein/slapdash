@@ -186,26 +186,33 @@ npm run dev:api    # http://localhost:3000
 
 ## Configuration
 
-The game is static and works with **no backend**. Optional online features stay off until
-both the client flag and a durable server store are configured:
+The game is playable with **no backend**. The global board works when the deployment
+provides a durable Redis REST store:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `VITE_LEADERBOARD_API` | unset (off) | `true` lets the client probe `/api/leaderboard` |
+| `VITE_LEADERBOARD_API` | on | Set `false` to force the local-only Hall of Fame |
 | `LEADERBOARD_KV_REST_URL` | unset | Redis REST endpoint for durable online scores (Vercel KV / Upstash) |
 | `LEADERBOARD_KV_REST_TOKEN` | unset | Bearer token for the same store |
 | `VITE_ANALYTICS_URL` | unset (off) | POST endpoint for optional gameplay telemetry (off by default) |
 
 `KV_REST_API_URL` / `KV_REST_API_TOKEN` and `UPSTASH_REDIS_REST_URL` /
-`UPSTASH_REDIS_REST_TOKEN` are also accepted. The serverless endpoint returns
-`storage: "unavailable"` when no store is configured, and the client then keeps the
-on-device **Hall of Fame** instead of showing a global board. With everything unset the
-build makes **no network requests except Google Fonts** and never shows failing API calls.
+`UPSTASH_REDIS_REST_TOKEN` are also accepted. On a deployment without those credentials
+the endpoint answers `503` with `storage: "unavailable"`, and the client quietly keeps
+the on-device **Hall of Fame** instead of showing a fake global board. On a purely static
+host the probe fails the same way. With `VITE_LEADERBOARD_API=false` the app makes **no
+network requests except Google Fonts**.
 
-Online submissions are validated server-side: whole scores from 1 to 5,000,000, combos
-from 0 to 250, shipped skin ids, names sanitised to 16 characters, and at most 6
-submissions per minute per client. The same run id may be retried, but only ever creates
-one record.
+Each browser gets one stable player id and a generated name (for example
+`NEON_RAPTOR42`), so a new player appears on the board without filling anything in. The
+name can be changed in **Settings → Leaderboard Name**, which renames your existing row
+immediately. The global board keeps **one row per player**: a better run replaces your
+row, a worse run changes nothing.
+
+Online submissions are validated server-side: player and run ids, whole scores from 1 to
+5,000,000, combos from 0 to 250, shipped skin ids, names sanitised to 16 characters, and
+at most 6 submissions per minute per client. The same run id may be retried, but only
+ever creates one record.
 
 ---
 
@@ -219,8 +226,11 @@ one record.
 - Mobile-first layout: safe-area insets, 360×640 minimum viewport, large touch targets.
 - Touch input uses a gentler obstacle curve than desktop (52/62/72% coverage instead of
   70/82/90%) so swipes get more reaction room; desktop difficulty is unchanged.
-- Local Hall of Fame that works with no server, labelled "Saved on this device" with a
-  local rank. It stores one record only: this device's highest score.
+- Global leaderboard of every player's highest score, one row per player. A new device
+  gets a generated name such as `IRON_TALON77`; players can rename themselves in
+  Settings at any time.
+- Local Hall of Fame fallback that works with no server, labelled "Saved on this device"
+  with a local rank. It stores one record only: this device's highest score.
 
 ---
 
@@ -238,10 +248,12 @@ one record.
 
 - **No service worker / offline install.** The app ships a web manifest so "Add to Home
   Screen" creates a shortcut, but there is no offline cache and no install prompt.
-- **Leaderboard is local by default** (see Configuration). Online mode needs a durable
-  Redis REST store; without one the game says so and stays on the local Hall of Fame.
+- **The global board needs durable storage** (see Configuration). Without Redis REST
+  credentials the game stays on the local Hall of Fame rather than inventing a board.
   Online scores are self-reported and not cheat-proof — the server validates shape and
   rate limits, but does not verify a signed run or replay.
+- Clearing browser storage gives that device a new player id, so it appears as a new
+  player on the global board.
 - External font requests to `fonts.googleapis.com`; if the network blocks them the game
   falls back to system sans-serif.
 - Very old low-end Android devices with weak GPUs may drop below 30 FPS at 2× pixel ratio.

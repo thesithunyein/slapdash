@@ -31,6 +31,8 @@ export interface LeaderboardEntry {
   maxCombo: number;
   date: string;
   skinId: string;
+  /** Identifies the player row on the global board (one row per player). */
+  playerId?: string;
   isPlayer?: boolean;
 }
 

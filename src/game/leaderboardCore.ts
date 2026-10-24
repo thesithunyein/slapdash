@@ -33,6 +33,8 @@ export const ALLOWED_SKIN_IDS = [
 ] as const;
 
 export interface ValidRun {
+  /** Stable per-device player id, so one person keeps one board row. */
+  playerId: string;
   runId: string;
   name: string;
   score: number;
@@ -43,6 +45,50 @@ export interface ValidRun {
 export type RunValidation = { ok: true; run: ValidRun } | { ok: false; error: string };
 
 const RUN_ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/;
+
+/** Names are always generated from these, so a fresh player needs no setup. */
+export const PLAYER_NAME_PREFIXES = [
+  'SWIFT',
+  'WILD',
+  'BOLD',
+  'IRON',
+  'NEON',
+  'GOLD',
+  'SHADOW',
+  'MEGA',
+  'TURBO',
+  'FERAL',
+] as const;
+export const PLAYER_NAME_DINOS = [
+  'REX',
+  'RAPTOR',
+  'TREX',
+  'SPINO',
+  'CLAW',
+  'TAIL',
+  'ROAR',
+  'TALON',
+  'SAUR',
+  'DINO',
+] as const;
+
+/**
+ * Builds a short, readable board name such as `NEON_RAPTOR42` so a brand new
+ * player appears on the global board without being asked to type anything.
+ * Always passes sanitizePlayerName's rules (uppercase, < MAX_PLAYER_NAME_LENGTH).
+ */
+export function generatePlayerName(random: () => number = Math.random): string {
+  const pick = <T>(list: readonly T[]): T => {
+    const index = Math.floor(random() * list.length);
+    return list[Math.min(list.length - 1, Math.max(0, index))];
+  };
+  const number = 10 + Math.floor(random() * 90);
+  return sanitizePlayerName(`${pick(PLAYER_NAME_PREFIXES)}_${pick(PLAYER_NAME_DINOS)}${number}`);
+}
+
+export function isValidPlayerId(value: unknown): value is string {
+  return typeof value === 'string' && RUN_ID_PATTERN.test(value);
+}
 
 /** Strips control characters, collapses whitespace and enforces a length cap. */
 export function sanitizePlayerName(raw: unknown): string {
@@ -69,6 +115,10 @@ export function isAllowedSkinId(skinId: unknown): skinId is string {
 export function validateRunPayload(raw: unknown): RunValidation {
   if (!raw || typeof raw !== 'object') return { ok: false, error: 'Run payload is required' };
   const body = raw as Record<string, unknown>;
+
+  if (!isValidPlayerId(body.playerId)) {
+    return { ok: false, error: 'playerId must be 8-64 URL-safe characters' };
+  }
 
   if (typeof body.runId !== 'string' || !RUN_ID_PATTERN.test(body.runId)) {
     return { ok: false, error: 'runId must be 8-64 URL-safe characters' };
@@ -106,6 +156,7 @@ export function validateRunPayload(raw: unknown): RunValidation {
   return {
     ok: true,
     run: {
+      playerId: body.playerId,
       runId: body.runId,
       name: sanitizePlayerName(body.name),
       score,

@@ -153,6 +153,7 @@ afterEach(async () => {
 
 describe('App leaderboard lifecycle', () => {
   it('does not rebuild the GameEngine when leaderboard rows change', async () => {
+    vi.stubEnv('VITE_LEADERBOARD_API', 'false');
     await renderApp();
     expect(engineInstances).toHaveLength(1);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -232,5 +233,50 @@ describe('App leaderboard lifecycle', () => {
     expect(container.textContent).toContain('GLOBAL RANK #1');
     expect(container.textContent).not.toContain('LOCAL RANK');
     expect(container.textContent).not.toContain('Saved locally — not submitted online.');
+  });
+
+  it('submits a stable player id and an auto-generated name', async () => {
+    vi.stubEnv('VITE_LEADERBOARD_API', 'true');
+    fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init || init.method !== 'POST') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ status: 'ok', storage: 'durable', entries: [] }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          status: 'ok',
+          storage: 'durable',
+          rank: 1,
+          improved: true,
+          duplicate: false,
+          entries: [],
+        }),
+      });
+    });
+
+    await renderApp();
+    await flush();
+
+    const generatedName = localStorage.getItem('slap_run_share_name');
+    const playerId = localStorage.getItem('slap_run_player_id');
+    expect(generatedName).toMatch(/^[A-Z]+_[A-Z]+\d{2}$/);
+    expect(playerId).toBeTruthy();
+
+    finishRun(baseStats({ score: 880, maxCombo: 6 }));
+    await flush();
+    await flush();
+
+    const postCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(postCall).toBeTruthy();
+    const posted = JSON.parse(String(postCall?.[1]?.body));
+    expect(posted).toMatchObject({ playerId, name: generatedName, score: 880 });
+
+    // The same identity is reused for the next run, so it stays one row per player.
+    expect(localStorage.getItem('slap_run_player_id')).toBe(playerId);
   });
 });

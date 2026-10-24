@@ -3,7 +3,10 @@ import {
   MAX_BOARD_ENTRIES,
   MAX_LOCAL_RUNS,
   formatRunDate,
+  generatePlayerName,
   isRenderableEntry,
+  isValidPlayerId,
+  sanitizePlayerName,
   sortLeaderboard,
   type ValidRun,
 } from './leaderboardCore.ts';
@@ -20,13 +23,18 @@ export type LeaderboardMode = 'local' | 'online';
 
 export const LOCAL_BOARD_KEY = 'slap_run_hall_of_fame';
 export const LEGACY_BOARD_KEY = 'slap_run_leaderboard';
-export const LAST_SUBMITTED_RUN_KEY = 'slap_run_last_submitted_run';
 export const PLAYER_NAME_KEY = 'slap_run_share_name';
+export const PLAYER_ID_KEY = 'slap_run_player_id';
 const REQUEST_TIMEOUT_MS = 6000;
 
+/**
+ * The online board is on unless a build explicitly opts out with
+ * VITE_LEADERBOARD_API=false. If there is no working endpoint (a purely static
+ * deploy) the probe fails and the game quietly keeps the local Hall of Fame.
+ */
 export function isLeaderboardApiConfigured(): boolean {
   try {
-    return import.meta.env.VITE_LEADERBOARD_API === 'true';
+    return import.meta.env.VITE_LEADERBOARD_API !== 'false';
   } catch {
     return false;
   }
@@ -41,12 +49,41 @@ export function createRunId(): string {
   return `run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/**
+ * One stable id per browser, created on first use. The global board keeps a
+ * single row per player id, so improving your score replaces your old row
+ * instead of filling the board with your attempts.
+ */
+export function getPlayerId(): string {
+  try {
+    const stored = localStorage.getItem(PLAYER_ID_KEY);
+    if (isValidPlayerId(stored)) return stored;
+  } catch {}
+  const created = createRunId();
+  try {
+    localStorage.setItem(PLAYER_ID_KEY, created);
+  } catch {}
+  return created;
+}
+
+/** Reads the board name, generating and persisting one on a first visit. */
 export function loadPlayerName(): string {
   try {
     const stored = localStorage.getItem(PLAYER_NAME_KEY);
-    if (stored) return stored;
+    if (stored) return sanitizePlayerName(stored);
   } catch {}
-  return 'YOU';
+  const generated = generatePlayerName();
+  savePlayerName(generated);
+  return generated;
+}
+
+/** Sanitizes, persists and returns the name shown on the board. */
+export function savePlayerName(raw: unknown): string {
+  const name = sanitizePlayerName(raw);
+  try {
+    localStorage.setItem(PLAYER_NAME_KEY, name);
+  } catch {}
+  return name;
 }
 
 interface StoredRun extends LeaderboardEntry {
@@ -101,6 +138,7 @@ export function saveLocalRun(run: ValidRun): { entries: LeaderboardEntry[]; rank
       score: run.score,
       maxCombo: run.maxCombo,
       skinId: run.skinId,
+      playerId: run.playerId,
       date: 'Just now',
       isPlayer: true,
       addedAt: Date.now(),
@@ -131,34 +169,20 @@ function toBoardRows(runs: StoredRun[]): LeaderboardEntry[] {
       score: entry.score,
       maxCombo: entry.maxCombo,
       skinId: entry.skinId,
+      playerId: entry.playerId,
       date: formatRunDate(entry.addedAt, now),
       isPlayer: true,
     }));
 }
 
-export function markLocalBoardEntry(entries: LeaderboardEntry[], runId?: string | null): LeaderboardEntry[] {
-  return entries.map((entry) => ({ ...entry, isPlayer: entry.id === runId }));
-}
-
-export function loadLastSubmittedRunId(): string | null {
-  try {
-    return localStorage.getItem(LAST_SUBMITTED_RUN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function rememberSubmittedRunId(runId: string): void {
-  try {
-    localStorage.setItem(LAST_SUBMITTED_RUN_KEY, runId);
-  } catch {}
+export function markPlayerEntry(entries: LeaderboardEntry[], playerId: string | null): LeaderboardEntry[] {
+  return entries.map((entry) => ({ ...entry, isPlayer: entry.playerId === playerId }));
 }
 
 export function clearLocalLeaderboard(): void {
   try {
     localStorage.removeItem(LOCAL_BOARD_KEY);
     localStorage.removeItem(LEGACY_BOARD_KEY);
-    localStorage.removeItem(LAST_SUBMITTED_RUN_KEY);
   } catch {}
 }
 
@@ -184,6 +208,7 @@ function sanitizeOnlineEntries(rawEntries: unknown): LeaderboardEntry[] {
       score: entry.score,
       maxCombo: entry.maxCombo,
       skinId: entry.skinId,
+      playerId: typeof entry.playerId === 'string' ? entry.playerId : undefined,
       date: typeof entry.date === 'string' ? entry.date : 'Earlier',
       isPlayer: false,
     }));
@@ -219,8 +244,27 @@ export async function fetchOnlineBoard(): Promise<OnlineBoardResult> {
   }
 }
 
+/**
+ * Best-effort rename of the player's existing row. A failure is silent on
+ * purpose: the name is already saved on the device and the next submission
+ * carries it anyway.
+ */
+export async function syncPlayerName(playerId: string, name: string): Promise<boolean> {
+  if (!isLeaderboardApiConfigured()) return false;
+  try {
+    const res = await fetchWithTimeout('/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ action: 'rename', playerId, name }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export type OnlineSubmitResult =
-  | { ok: true; rank: number; entries: LeaderboardEntry[]; duplicate: boolean }
+  | { ok: true; rank: number; entries: LeaderboardEntry[]; duplicate: boolean; improved: boolean }
   | { ok: false; error: string };
 
 /** Sends one run. The server is idempotent on runId, so a retry is safe. */
@@ -232,7 +276,7 @@ export async function submitOnlineRun(run: ValidRun): Promise<OnlineSubmitResult
       body: JSON.stringify(run),
     });
     const data = (await res.json().catch(() => null)) as
-      | { rank?: unknown; entries?: unknown; duplicate?: unknown; error?: unknown; storage?: unknown }
+      | { rank?: unknown; entries?: unknown; duplicate?: unknown; improved?: unknown; error?: unknown; storage?: unknown }
       | null;
 
     if (!res.ok || !data) {
@@ -247,6 +291,7 @@ export async function submitOnlineRun(run: ValidRun): Promise<OnlineSubmitResult
       rank: data.rank,
       entries: sanitizeOnlineEntries(data.entries),
       duplicate: data.duplicate === true,
+      improved: data.improved !== false,
     };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : 'Network error' };

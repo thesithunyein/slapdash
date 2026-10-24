@@ -74,7 +74,7 @@ describe('Hall of Fame copy', () => {
     );
 
     expect(markup).toContain('GLOBAL LEADERBOARD');
-    expect(markup).toContain('Community scores, saved online');
+    expect(markup).toContain('Best score per player, saved online');
     expect(markup).toContain('GLOBAL RANK #3');
     expect(markup).toContain('not cheat-proof');
     expect(markup).not.toContain('LIVE');

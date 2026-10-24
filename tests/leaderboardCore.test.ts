@@ -4,6 +4,8 @@ import {
   MAX_LEADERBOARD_SCORE,
   MAX_PLAYER_NAME_LENGTH,
   formatRunDate,
+  generatePlayerName,
+  isValidPlayerId,
   rankOfRun,
   sanitizePlayerName,
   sortLeaderboard,
@@ -12,6 +14,7 @@ import {
 import { CHARACTER_SKINS } from '../src/game/constants.ts';
 
 const validPayload = {
+  playerId: '4f0c5f3e-2a11-4a8e-9b21-0c1d2e3f4a5b',
   runId: 'run-1a2b3c4d',
   name: 'SITHU',
   score: 12_345,
@@ -25,6 +28,7 @@ describe('validateRunPayload', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.run).toEqual({
+        playerId: '4f0c5f3e-2a11-4a8e-9b21-0c1d2e3f4a5b',
         runId: 'run-1a2b3c4d',
         name: 'SITHU',
         score: 12_345,
@@ -55,6 +59,14 @@ describe('validateRunPayload', () => {
     expect(validateRunPayload({ ...validPayload, runId: 12345678 }).ok).toBe(false);
   });
 
+  it('requires a player id so each player owns exactly one row', () => {
+    expect(validateRunPayload({ ...validPayload, playerId: undefined }).ok).toBe(false);
+    expect(validateRunPayload({ ...validPayload, playerId: 'short' }).ok).toBe(false);
+    expect(validateRunPayload({ ...validPayload, playerId: 'has spaces' }).ok).toBe(false);
+    expect(validateRunPayload({ ...validPayload, playerId: 42 }).ok).toBe(false);
+    expect(isValidPlayerId(validPayload.playerId)).toBe(true);
+  });
+
   it('rejects missing payloads', () => {
     expect(validateRunPayload(null).ok).toBe(false);
     expect(validateRunPayload(undefined).ok).toBe(false);
@@ -74,6 +86,22 @@ describe('validateRunPayload', () => {
   it('uses the same skin roster as the game', () => {
     const gameSkins = CHARACTER_SKINS.map((skin) => skin.id).sort();
     expect([...ALLOWED_SKIN_IDS].sort()).toEqual(gameSkins);
+  });
+});
+
+describe('generated player names', () => {
+  it('builds a short name a new player never has to type', () => {
+    expect(generatePlayerName(() => 0)).toBe('SWIFT_REX10');
+    expect(generatePlayerName(() => 0.999)).toBe('FERAL_DINO99');
+  });
+
+  it('always fits the board name rules', () => {
+    for (let i = 0; i < 200; i++) {
+      const name = generatePlayerName();
+      expect(name.length).toBeLessThanOrEqual(MAX_PLAYER_NAME_LENGTH);
+      expect(name).toMatch(/^[A-Z]+_[A-Z]+\d{2}$/);
+      expect(sanitizePlayerName(name)).toBe(name);
+    }
   });
 });
 

@@ -22,7 +22,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 }) => {
   const isOnline = mode === 'online';
   const title = isOnline ? 'GLOBAL LEADERBOARD' : 'HALL OF FAME';
-  const subtitle = isOnline ? 'Community scores, saved online' : 'Saved on this device';
+  const subtitle = isOnline ? 'Best score per player, saved online' : 'Saved on this device';
 
   return (
     <div
@@ -182,7 +182,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         <div className="bg-[#140D08] border-t-2 border-[#F97316]/40 px-5 py-2.5 flex items-center justify-between gap-3 text-xs text-[#FED7AA] shrink-0 font-medium">
           <span className="flex items-center gap-2 min-w-0">
             <TournamentStandings3DIcon className="w-4 h-4 shrink-0" />
-            <span className="truncate">{isOnline ? 'Community leaderboard' : 'Local Hall of Fame'}</span>
+            <span className="truncate">{isOnline ? 'All players' : 'Local Hall of Fame'}</span>
           </span>
           <span className="text-[#FED7AA]/80 font-['Lilita_One'] shrink-0">
             {isOnline ? 'Self-reported' : 'This device only'}
